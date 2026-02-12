@@ -4,23 +4,23 @@
 
 Core task management without plugins. A usable task manager.
 
-- [ ] Project scaffold (package.json, tsconfig, linting, formatting)
-- [ ] Core infrastructure (logger, config, validation, ID generation)
-- [ ] Database schema and migrations (Drizzle + SQLite)
+- [x] Project scaffold (package.json, tsconfig, linting, formatting)
+- [x] Core infrastructure (logger, config, validation, ID generation)
+- [x] Database schema and migrations (Drizzle + SQLite)
 - [ ] Task CRUD (create, read, update, delete, complete)
 - [ ] Project management (create, list, archive)
 - [ ] Tag system (create, assign, filter)
-- [ ] Priority levels (P1–P4 with sorting)
+- [x] Priority levels (P1–P4 with sorting)
 - [ ] Due dates with time support
-- [ ] Natural language task input (chrono-node + custom grammar)
-- [ ] Basic React UI: inbox, today, upcoming views
-- [ ] Sidebar navigation
+- [x] Natural language task input (chrono-node + custom grammar)
+- [x] Basic React UI: inbox, today, upcoming views
+- [x] Sidebar navigation
 - [ ] Keyboard-first navigation
-- [ ] Command palette (Ctrl+K)
+- [x] Command palette (Ctrl+K)
 - [ ] Light/dark theme
-- [ ] CLI companion: `add`, `list`, `done`, `edit`, `delete` commands
-- [ ] Unit tests for core logic and parser
-- [ ] Documentation: all docs complete
+- [x] CLI companion: `add`, `list`, `done`, `edit`, `delete` commands
+- [x] Unit tests for core logic and parser
+- [x] Documentation: all docs complete
 
 ## v0.2 — Polish
 

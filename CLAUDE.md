@@ -260,4 +260,6 @@ Plugin Discovery → Manifest Validation → Sandbox Creation → Lifecycle Hook
 | [docs/PLUGIN_EXAMPLES.md](docs/PLUGIN_EXAMPLES.md) | Example plugin walkthroughs |
 | [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) | How to contribute |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Milestones and future plans |
+| [docs/BACKLOG.md](docs/BACKLOG.md) | All work items, prioritized by area |
+| [docs/SPRINTS.md](docs/SPRINTS.md) | Sprint planning and tracking |
 | [docs/SECURITY.md](docs/SECURITY.md) | Threat model, plugin sandboxing |
