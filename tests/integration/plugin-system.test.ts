@@ -119,6 +119,7 @@ describe("Plugin System Integration", () => {
         settingsManager: new PluginSettingsManager(queries),
         commandRegistry: new CommandRegistry(),
         uiRegistry: new UIRegistry(),
+        queries,
       });
 
       const discovered = await loader.discover();
@@ -137,6 +138,7 @@ describe("Plugin System Integration", () => {
         settingsManager: new PluginSettingsManager(queries),
         commandRegistry: new CommandRegistry(),
         uiRegistry: new UIRegistry(),
+        queries,
       });
 
       const discovered = await loader.discover();
@@ -154,6 +156,7 @@ describe("Plugin System Integration", () => {
         settingsManager: new PluginSettingsManager(queries),
         commandRegistry: new CommandRegistry(),
         uiRegistry: new UIRegistry(),
+        queries,
       });
 
       const discovered = await loader.discover();
@@ -192,9 +195,12 @@ describe("Plugin System Integration", () => {
         settingsManager: new PluginSettingsManager(queries),
         commandRegistry: new CommandRegistry(),
         uiRegistry: new UIRegistry(),
+        queries,
       });
 
       await loader.discover();
+      // Pre-approve permissions so the plugin loads
+      queries.setPluginPermissions("test-plugin", ["task:read", "commands", "ui:status"]);
       await loader.load("test-plugin");
 
       const plugin = loader.get("test-plugin");
@@ -237,9 +243,11 @@ describe("Plugin System Integration", () => {
         settingsManager: new PluginSettingsManager(queries),
         commandRegistry,
         uiRegistry,
+        queries,
       });
 
       await loader.discover();
+      queries.setPluginPermissions("test-plugin", ["task:read", "commands", "ui:status"]);
       await loader.load("test-plugin");
 
       expect(commandRegistry.getAll()).toHaveLength(1);
@@ -524,9 +532,11 @@ describe("Plugin System Integration", () => {
         settingsManager: new PluginSettingsManager(queries),
         commandRegistry: new CommandRegistry(),
         uiRegistry: new UIRegistry(),
+        queries,
       });
 
-      // Discover and load
+      // Pre-approve and discover + load
+      queries.setPluginPermissions("test-plugin", ["task:read", "commands", "ui:status"]);
       await loader.loadAll();
       expect(loader.getAll().filter((p) => p.enabled)).toHaveLength(1);
 

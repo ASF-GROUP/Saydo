@@ -62,6 +62,21 @@ export function PluginStore() {
                   </span>
                 ))}
               </div>
+              {(plugin as any).permissions && (plugin as any).permissions.length > 0 && (
+                <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700">
+                  <p className="text-xs text-gray-400 mb-1">Required permissions:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {((plugin as any).permissions as string[]).map((p) => (
+                      <span
+                        key={p}
+                        className="text-xs font-mono px-1 py-0.5 rounded bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400"
+                      >
+                        {p}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>

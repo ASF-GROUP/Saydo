@@ -8,6 +8,8 @@ import type { EventBus } from "../core/event-bus.js";
 import type { PluginSettingsManager } from "./settings.js";
 import type { CommandRegistry } from "./command-registry.js";
 import type { UIRegistry } from "./ui-registry.js";
+import type { Queries } from "../db/queries.js";
+import type { AIProviderRegistry } from "../ai/provider-registry.js";
 import { createLogger } from "../utils/logger.js";
 
 const logger = createLogger("info");
@@ -17,6 +19,7 @@ export interface LoadedPlugin {
   path: string;
   enabled: boolean;
   instance?: Plugin;
+  pendingApproval?: boolean;
 }
 
 export interface PluginServices {
@@ -25,6 +28,8 @@ export interface PluginServices {
   settingsManager: PluginSettingsManager;
   commandRegistry: CommandRegistry;
   uiRegistry: UIRegistry;
+  queries: Queries;
+  aiProviderRegistry?: AIProviderRegistry;
 }
 
 /**
@@ -105,19 +110,36 @@ export class PluginLoader {
 
     logger.info(`Loading plugin: ${pluginId}`);
 
+    // Check permissions
+    const approvedPermissions = this.services.queries.getPluginPermissions(pluginId);
+    const requestedPermissions = (loaded.manifest.permissions ?? []) as Permission[];
+
+    if (requestedPermissions.length > 0 && approvedPermissions === null) {
+      // Never approved — mark as pending and skip loading
+      loaded.pendingApproval = true;
+      logger.info(`Plugin "${pluginId}" requires permission approval, skipping load`);
+      return;
+    }
+
+    // Compute effective permissions: intersection of requested and approved
+    const effectivePermissions = approvedPermissions
+      ? requestedPermissions.filter((p) => approvedPermissions.includes(p))
+      : requestedPermissions;
+
     // Load settings from DB
     await this.services.settingsManager.load(pluginId);
 
     // Create permission-gated API
     const api = createPluginAPI({
       pluginId,
-      permissions: (loaded.manifest.permissions ?? []) as Permission[],
+      permissions: effectivePermissions,
       taskService: this.services.taskService,
       eventBus: this.services.eventBus,
       settingsManager: this.services.settingsManager,
       commandRegistry: this.services.commandRegistry,
       uiRegistry: this.services.uiRegistry,
       settingDefinitions: loaded.manifest.settings ?? [],
+      aiProviderRegistry: this.services.aiProviderRegistry,
     });
 
     // Dynamic import of the plugin entry file
@@ -139,7 +161,28 @@ export class PluginLoader {
 
     loaded.instance = instance;
     loaded.enabled = true;
+    loaded.pendingApproval = false;
     logger.info(`Loaded plugin: ${loaded.manifest.name}`);
+  }
+
+  /** Approve permissions and load a plugin. */
+  async approveAndLoad(pluginId: string, permissions: string[]): Promise<void> {
+    this.services.queries.setPluginPermissions(pluginId, permissions);
+    const loaded = this.plugins.get(pluginId);
+    if (loaded) {
+      loaded.pendingApproval = false;
+    }
+    await this.load(pluginId);
+  }
+
+  /** Revoke all permissions and unload a plugin. */
+  async revokePermissions(pluginId: string): Promise<void> {
+    await this.unload(pluginId);
+    this.services.queries.deletePluginPermissions(pluginId);
+    const loaded = this.plugins.get(pluginId);
+    if (loaded) {
+      loaded.pendingApproval = true;
+    }
   }
 
   /** Deactivate and unload a plugin by ID. */
@@ -163,6 +206,9 @@ export class PluginLoader {
     // Clean up registered commands and UI
     this.services.commandRegistry.unregisterByPlugin(pluginId);
     this.services.uiRegistry.removeByPlugin(pluginId);
+
+    // Clean up AI providers registered by this plugin
+    this.services.aiProviderRegistry?.unregisterByPlugin(pluginId);
 
     loaded.instance = undefined;
     loaded.enabled = false;

@@ -64,6 +64,7 @@ export const VALID_PERMISSIONS = [
   "settings",
   "storage",
   "network",
+  "ai:provider",
 ] as const;
 
 export type Permission = (typeof VALID_PERMISSIONS)[number];

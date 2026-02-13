@@ -28,9 +28,15 @@ export function AIProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<AIChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
 
+  // Dynamic check: provider is configured if it has an API key or doesn't need one
+  // For built-in providers we check known names; for plugin providers,
+  // we assume they handle their own key requirements
   const isConfigured = !!(
     config?.provider &&
-    (config.hasApiKey || config.provider === "ollama" || config.provider === "lmstudio")
+    (config.hasApiKey ||
+      config.provider === "ollama" ||
+      config.provider === "lmstudio" ||
+      config.provider.includes(":"))
   );
 
   const refreshConfig = useCallback(async () => {

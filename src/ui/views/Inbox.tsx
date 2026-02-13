@@ -15,6 +15,12 @@ interface InboxProps {
   onToggleTask: (id: string) => void;
   onSelectTask: (id: string) => void;
   selectedTaskId: string | null;
+  selectedTaskIds?: Set<string>;
+  onMultiSelect?: (
+    id: string,
+    event: { ctrlKey: boolean; metaKey: boolean; shiftKey: boolean },
+  ) => void;
+  onReorder?: (orderedIds: string[]) => void;
 }
 
 export function Inbox({
@@ -23,6 +29,9 @@ export function Inbox({
   onToggleTask,
   onSelectTask,
   selectedTaskId,
+  selectedTaskIds,
+  onMultiSelect,
+  onReorder,
 }: InboxProps) {
   const inboxTasks = tasks.filter((t) => t.status === "pending" && !t.projectId);
 
@@ -36,6 +45,9 @@ export function Inbox({
         onSelect={onSelectTask}
         selectedTaskId={selectedTaskId}
         emptyMessage="Your inbox is empty. Add a task above!"
+        selectedTaskIds={selectedTaskIds}
+        onMultiSelect={onMultiSelect}
+        onReorder={onReorder}
       />
     </div>
   );

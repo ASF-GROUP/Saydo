@@ -14,7 +14,9 @@ type TaskAction =
   | { type: "LOAD_ERROR"; error: string }
   | { type: "TASK_ADDED"; task: Task }
   | { type: "TASK_UPDATED"; task: Task }
-  | { type: "TASK_REMOVED"; id: string };
+  | { type: "TASK_REMOVED"; id: string }
+  | { type: "TASKS_UPDATED"; tasks: Task[] }
+  | { type: "TASKS_REMOVED"; ids: string[] };
 
 function taskReducer(state: TaskState, action: TaskAction): TaskState {
   switch (action.type) {
@@ -36,6 +38,20 @@ function taskReducer(state: TaskState, action: TaskAction): TaskState {
         ...state,
         tasks: state.tasks.filter((t) => t.id !== action.id),
       };
+    case "TASKS_UPDATED": {
+      const updatedMap = new Map(action.tasks.map((t) => [t.id, t]));
+      return {
+        ...state,
+        tasks: state.tasks.map((t) => updatedMap.get(t.id) ?? t),
+      };
+    }
+    case "TASKS_REMOVED": {
+      const removedIds = new Set(action.ids);
+      return {
+        ...state,
+        tasks: state.tasks.filter((t) => !removedIds.has(t.id)),
+      };
+    }
     default:
       return state;
   }
@@ -47,6 +63,9 @@ interface TaskContextValue {
   updateTask: (id: string, input: UpdateTaskInput) => Promise<void>;
   completeTask: (id: string) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
+  completeManyTasks: (ids: string[]) => Promise<void>;
+  deleteManyTasks: (ids: string[]) => Promise<void>;
+  updateManyTasks: (ids: string[], changes: UpdateTaskInput) => Promise<void>;
   refreshTasks: () => Promise<void>;
 }
 
@@ -97,13 +116,46 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: "TASK_REMOVED", id });
   }, []);
 
+  const completeManyTasks = useCallback(
+    async (ids: string[]) => {
+      const tasks = await api.completeManyTasks(ids);
+      // If any had recurrence, refresh all
+      if (tasks.some((t) => t.recurrence)) {
+        await refreshTasks();
+      } else {
+        dispatch({ type: "TASKS_UPDATED", tasks });
+      }
+    },
+    [refreshTasks],
+  );
+
+  const deleteManyTasks = useCallback(async (ids: string[]) => {
+    await api.deleteManyTasks(ids);
+    dispatch({ type: "TASKS_REMOVED", ids });
+  }, []);
+
+  const updateManyTasks = useCallback(async (ids: string[], changes: UpdateTaskInput) => {
+    const tasks = await api.updateManyTasks(ids, changes);
+    dispatch({ type: "TASKS_UPDATED", tasks });
+  }, []);
+
   useEffect(() => {
     refreshTasks();
   }, [refreshTasks]);
 
   return (
     <TaskContext.Provider
-      value={{ state, createTask, updateTask, completeTask, deleteTask, refreshTasks }}
+      value={{
+        state,
+        createTask,
+        updateTask,
+        completeTask,
+        deleteTask,
+        completeManyTasks,
+        deleteManyTasks,
+        updateManyTasks,
+        refreshTasks,
+      }}
     >
       {children}
     </TaskContext.Provider>

@@ -3,11 +3,16 @@ import { Sidebar } from "./components/Sidebar.js";
 import { CommandPalette } from "./components/CommandPalette.js";
 import { StatusBar } from "./components/StatusBar.js";
 import { TaskDetailPanel } from "./components/TaskDetailPanel.js";
+import { BulkActionBar } from "./components/BulkActionBar.js";
 import { TaskProvider, useTaskContext } from "./context/TaskContext.js";
 import { PluginProvider, usePluginContext } from "./context/PluginContext.js";
 import { AIProvider } from "./context/AIContext.js";
+import { UndoProvider, useUndoContext } from "./context/UndoContext.js";
 import { AIChatPanel } from "./components/AIChatPanel.js";
+import { Toast } from "./components/Toast.js";
 import { useKeyboardNavigation } from "./hooks/useKeyboardNavigation.js";
+import { useMultiSelect } from "./hooks/useMultiSelect.js";
+import { ShortcutManager } from "./shortcuts.js";
 import { themeManager } from "./themes/manager.js";
 import { Inbox } from "./views/Inbox.js";
 import { Today } from "./views/Today.js";
@@ -18,6 +23,8 @@ import { PluginStore } from "./views/PluginStore.js";
 import { PluginView } from "./views/PluginView.js";
 import type { Project as ProjectType } from "../core/types.js";
 import { api } from "./api.js";
+
+const shortcutManager = new ShortcutManager();
 
 type View =
   | "inbox"
@@ -36,7 +43,17 @@ function AppContent() {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [chatPanelOpen, setChatPanelOpen] = useState(false);
   const [projects, setProjects] = useState<ProjectType[]>([]);
-  const { state, createTask, updateTask, completeTask, deleteTask } = useTaskContext();
+  const {
+    state,
+    createTask,
+    updateTask,
+    completeTask,
+    deleteTask,
+    completeManyTasks,
+    deleteManyTasks,
+    updateManyTasks,
+  } = useTaskContext();
+  const { undo, redo, toast, dismissToast } = useUndoContext();
   const {
     commands: pluginCommands,
     panels,
@@ -135,6 +152,58 @@ function AppContent() {
     }
   }, [state.tasks, currentView, selectedProjectId]);
 
+  // Multi-select
+  const {
+    selectedIds: multiSelectedIds,
+    handleMultiSelect,
+    clearSelection,
+  } = useMultiSelect(visibleTasks.map((t) => t.id));
+
+  const handleBulkComplete = async () => {
+    const ids = Array.from(multiSelectedIds);
+    await completeManyTasks(ids);
+    clearSelection();
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(multiSelectedIds);
+    await deleteManyTasks(ids);
+    clearSelection();
+  };
+
+  const handleBulkMoveToProject = async (projectId: string | null) => {
+    const ids = Array.from(multiSelectedIds);
+    await updateManyTasks(ids, { projectId });
+    clearSelection();
+  };
+
+  const handleBulkAddTag = async (tag: string) => {
+    // We need to add a tag to existing tasks. Since updateMany replaces tags,
+    // we gather existing tags and append the new one
+    const ids = Array.from(multiSelectedIds);
+    for (const id of ids) {
+      const task = state.tasks.find((t) => t.id === id);
+      if (task) {
+        const existingTags = task.tags.map((t) => t.name);
+        if (!existingTags.includes(tag)) {
+          await updateTask(id, { tags: [...existingTags, tag] });
+        }
+      }
+    }
+    clearSelection();
+  };
+
+  // Drag-and-drop reorder
+  const handleReorder = useCallback(async (orderedIds: string[]) => {
+    try {
+      await api.reorderTasks(orderedIds);
+      // Refresh tasks to pick up new sort orders
+      // The TaskContext will handle this via the next fetch
+    } catch {
+      // Non-critical — visual order already reflects the change
+    }
+  }, []);
+
   // Keyboard navigation
   useKeyboardNavigation({
     tasks: visibleTasks,
@@ -145,17 +214,50 @@ function AppContent() {
     enabled: !commandPaletteOpen,
   });
 
-  // Ctrl+K / Cmd+K for command palette
+  // Register shortcuts
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
-        e.preventDefault();
-        setCommandPaletteOpen((open) => !open);
+    shortcutManager.register({
+      id: "command-palette",
+      description: "Open Command Palette",
+      defaultKey: "ctrl+k",
+      callback: () => setCommandPaletteOpen((open) => !open),
+    });
+    shortcutManager.register({
+      id: "toggle-dark-mode",
+      description: "Toggle Dark Mode",
+      defaultKey: "ctrl+shift+d",
+      callback: () => themeManager.toggle(),
+    });
+    shortcutManager.register({
+      id: "undo",
+      description: "Undo",
+      defaultKey: "ctrl+z",
+      callback: () => undo(),
+    });
+    shortcutManager.register({
+      id: "redo",
+      description: "Redo",
+      defaultKey: "ctrl+shift+z",
+      callback: () => redo(),
+    });
+
+    // Load custom bindings from settings
+    api.getAppSetting("keyboard_shortcuts").then((val) => {
+      if (val) {
+        try {
+          shortcutManager.loadCustomBindings(JSON.parse(val));
+        } catch {
+          // Non-critical
+        }
       }
+    });
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      shortcutManager.handleKeyDown(e);
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, []);
+  }, [undo, redo]);
 
   // Command palette commands — merge built-in + plugin commands
   const commands = useMemo(() => {
@@ -215,6 +317,9 @@ function AppContent() {
             onToggleTask={handleToggleTask}
             onSelectTask={handleSelectTask}
             selectedTaskId={selectedTaskId}
+            selectedTaskIds={multiSelectedIds}
+            onMultiSelect={handleMultiSelect}
+            onReorder={handleReorder}
           />
         );
       case "today":
@@ -224,6 +329,9 @@ function AppContent() {
             onToggleTask={handleToggleTask}
             onSelectTask={handleSelectTask}
             selectedTaskId={selectedTaskId}
+            selectedTaskIds={multiSelectedIds}
+            onMultiSelect={handleMultiSelect}
+            onReorder={handleReorder}
           />
         );
       case "upcoming":
@@ -233,6 +341,9 @@ function AppContent() {
             onToggleTask={handleToggleTask}
             onSelectTask={handleSelectTask}
             selectedTaskId={selectedTaskId}
+            selectedTaskIds={multiSelectedIds}
+            onMultiSelect={handleMultiSelect}
+            onReorder={handleReorder}
           />
         );
       case "project": {
@@ -248,6 +359,9 @@ function AppContent() {
             onToggleTask={handleToggleTask}
             onSelectTask={handleSelectTask}
             selectedTaskId={selectedTaskId}
+            selectedTaskIds={multiSelectedIds}
+            onMultiSelect={handleMultiSelect}
+            onReorder={handleReorder}
           />
         );
       }
@@ -281,6 +395,15 @@ function AppContent() {
           chatOpen={chatPanelOpen}
         />
         <main className="flex-1 overflow-auto p-6">
+          <BulkActionBar
+            selectedCount={multiSelectedIds.size}
+            onCompleteAll={handleBulkComplete}
+            onDeleteAll={handleBulkDelete}
+            onMoveToProject={handleBulkMoveToProject}
+            onAddTag={handleBulkAddTag}
+            onClear={clearSelection}
+            projects={projects}
+          />
           {state.loading ? (
             <p className="text-gray-500">Loading...</p>
           ) : state.error ? (
@@ -313,16 +436,28 @@ function AppContent() {
         isOpen={commandPaletteOpen}
         onClose={() => setCommandPaletteOpen(false)}
       />
+      {toast && (
+        <Toast
+          message={toast.message}
+          actionLabel={toast.actionLabel}
+          onAction={toast.onAction}
+          onDismiss={dismissToast}
+        />
+      )}
     </div>
   );
 }
+
+export { shortcutManager };
 
 export function App() {
   return (
     <TaskProvider>
       <PluginProvider>
         <AIProvider>
-          <AppContent />
+          <UndoProvider>
+            <AppContent />
+          </UndoProvider>
         </AIProvider>
       </PluginProvider>
     </TaskProvider>

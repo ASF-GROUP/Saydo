@@ -6,9 +6,23 @@ interface UpcomingProps {
   onToggleTask: (id: string) => void;
   onSelectTask: (id: string) => void;
   selectedTaskId: string | null;
+  selectedTaskIds?: Set<string>;
+  onMultiSelect?: (
+    id: string,
+    event: { ctrlKey: boolean; metaKey: boolean; shiftKey: boolean },
+  ) => void;
+  onReorder?: (orderedIds: string[]) => void;
 }
 
-export function Upcoming({ tasks, onToggleTask, onSelectTask, selectedTaskId }: UpcomingProps) {
+export function Upcoming({
+  tasks,
+  onToggleTask,
+  onSelectTask,
+  selectedTaskId,
+  selectedTaskIds,
+  onMultiSelect,
+  onReorder,
+}: UpcomingProps) {
   const upcomingTasks = tasks
     .filter((t) => t.status === "pending" && t.dueDate)
     .sort((a, b) => (a.dueDate! > b.dueDate! ? 1 : -1));
@@ -22,6 +36,9 @@ export function Upcoming({ tasks, onToggleTask, onSelectTask, selectedTaskId }: 
         onSelect={onSelectTask}
         selectedTaskId={selectedTaskId}
         emptyMessage="No upcoming tasks with due dates."
+        selectedTaskIds={selectedTaskIds}
+        onMultiSelect={onMultiSelect}
+        onReorder={onReorder}
       />
     </div>
   );

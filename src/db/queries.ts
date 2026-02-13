@@ -1,4 +1,4 @@
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, inArray } from "drizzle-orm";
 import type { BaseSQLiteDatabase } from "drizzle-orm/sqlite-core";
 import * as schema from "./schema.js";
 
@@ -16,6 +16,19 @@ export function createQueries(db: BaseSQLiteDatabase<"sync", any, typeof schema>
       db.update(schema.tasks).set(data).where(eq(schema.tasks.id, id)).run(),
 
     deleteTask: (id: string) => db.delete(schema.tasks).where(eq(schema.tasks.id, id)).run(),
+
+    // ── Batch Task Operations ───────────────────────────
+    deleteManyTasks: (ids: string[]) =>
+      db.delete(schema.tasks).where(inArray(schema.tasks.id, ids)).run(),
+
+    updateManyTasks: (ids: string[], data: Partial<typeof schema.tasks.$inferInsert>) =>
+      db.update(schema.tasks).set(data).where(inArray(schema.tasks.id, ids)).run(),
+
+    deleteManyTaskTags: (taskIds: string[]) =>
+      db.delete(schema.taskTags).where(inArray(schema.taskTags.taskId, taskIds)).run(),
+
+    insertTaskWithId: (task: typeof schema.tasks.$inferInsert) =>
+      db.insert(schema.tasks).values(task).run(),
 
     // ── Task Tags (junction) ─────────────────────────────
     getTaskTags: (taskId: string) =>
@@ -118,6 +131,37 @@ export function createQueries(db: BaseSQLiteDatabase<"sync", any, typeof schema>
         .orderBy(desc(schema.chatMessages.id))
         .limit(1)
         .get(),
+
+    // ── Plugin Permissions ────────────────────────────
+    getPluginPermissions: (pluginId: string): string[] | null => {
+      const row = db
+        .select()
+        .from(schema.appSettings)
+        .where(eq(schema.appSettings.key, `plugin_permissions:${pluginId}`))
+        .get();
+      return row ? JSON.parse(row.value) : null;
+    },
+
+    setPluginPermissions: (pluginId: string, permissions: string[]) => {
+      const now = new Date().toISOString();
+      db.insert(schema.appSettings)
+        .values({
+          key: `plugin_permissions:${pluginId}`,
+          value: JSON.stringify(permissions),
+          updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: schema.appSettings.key,
+          set: { value: JSON.stringify(permissions), updatedAt: now },
+        })
+        .run();
+    },
+
+    deletePluginPermissions: (pluginId: string) =>
+      db
+        .delete(schema.appSettings)
+        .where(eq(schema.appSettings.key, `plugin_permissions:${pluginId}`))
+        .run(),
   };
 }
 

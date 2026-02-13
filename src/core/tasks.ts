@@ -175,4 +175,96 @@ export class TaskService {
     }
     return deleted;
   }
+
+  /** Complete multiple tasks. Handles recurrence per-task. */
+  async completeMany(ids: string[]): Promise<Task[]> {
+    const results: Task[] = [];
+    for (const id of ids) {
+      results.push(await this.complete(id));
+    }
+    return results;
+  }
+
+  /** Delete multiple tasks in batch. */
+  async deleteMany(ids: string[]): Promise<Task[]> {
+    const snapshots: Task[] = [];
+    for (const id of ids) {
+      const task = await this.get(id);
+      if (task) snapshots.push(task);
+    }
+    if (ids.length > 0) {
+      this.queries.deleteManyTaskTags(ids);
+      this.queries.deleteManyTasks(ids);
+    }
+    for (const task of snapshots) {
+      this.eventBus?.emit("task:delete", task);
+    }
+    return snapshots;
+  }
+
+  /** Update multiple tasks with the same changes. */
+  async updateMany(ids: string[], changes: UpdateTaskInput): Promise<Task[]> {
+    const { tags: tagNames, ...fields } = changes;
+    const now = new Date().toISOString();
+
+    if (Object.keys(fields).length > 0) {
+      this.queries.updateManyTasks(ids, { ...fields, updatedAt: now });
+    }
+
+    // Handle tags per-task if provided
+    if (tagNames !== undefined) {
+      for (const id of ids) {
+        this.queries.deleteTaskTags(id);
+        for (const tagName of tagNames) {
+          const tag = await this.tagService.getOrCreate(tagName);
+          this.queries.insertTaskTag(id, tag.id);
+        }
+      }
+    }
+
+    const results: Task[] = [];
+    for (const id of ids) {
+      const updated = await this.get(id);
+      if (updated) {
+        results.push(updated);
+        this.eventBus?.emit("task:update", { task: updated, changes: fields });
+      }
+    }
+    return results;
+  }
+
+  /** Restore a previously deleted task (for undo). */
+  async restoreTask(task: Task): Promise<Task> {
+    this.queries.insertTaskWithId({
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      status: task.status,
+      priority: task.priority,
+      dueDate: task.dueDate,
+      dueTime: task.dueTime,
+      completedAt: task.completedAt,
+      projectId: task.projectId,
+      recurrence: task.recurrence,
+      sortOrder: task.sortOrder,
+      createdAt: task.createdAt,
+      updatedAt: task.updatedAt,
+    });
+
+    for (const tag of task.tags) {
+      const resolved = await this.tagService.getOrCreate(tag.name);
+      this.queries.insertTaskTag(task.id, resolved.id);
+    }
+
+    this.eventBus?.emit("task:create", task);
+    return task;
+  }
+
+  /** Reorder tasks by assigning sequential sort orders. */
+  async reorder(orderedIds: string[]): Promise<void> {
+    for (let i = 0; i < orderedIds.length; i++) {
+      this.queries.updateTask(orderedIds[i], { sortOrder: i });
+    }
+    this.eventBus?.emit("task:reorder", orderedIds);
+  }
 }

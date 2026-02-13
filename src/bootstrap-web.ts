@@ -6,6 +6,8 @@ import { ProjectService } from "./core/projects.js";
 import { TagService } from "./core/tags.js";
 import { EventBus } from "./core/event-bus.js";
 import { ChatManager } from "./ai/chat.js";
+import { createDefaultRegistry } from "./ai/provider.js";
+import type { AIProviderRegistry } from "./ai/provider-registry.js";
 import { PluginSettingsManager } from "./plugins/settings.js";
 import { CommandRegistry } from "./plugins/command-registry.js";
 import { UIRegistry } from "./plugins/ui-registry.js";
@@ -22,6 +24,7 @@ export interface WebAppServices {
   uiRegistry: UIRegistry;
   chatManager: ChatManager;
   queries: Queries;
+  aiProviderRegistry: AIProviderRegistry;
   save: () => void;
 }
 
@@ -47,6 +50,7 @@ export async function bootstrapWeb(): Promise<WebAppServices> {
   const commandRegistry = new CommandRegistry();
   const uiRegistry = new UIRegistry();
   const chatManager = new ChatManager();
+  const aiProviderRegistry = createDefaultRegistry();
 
   // Auto-save DB to Tauri FS after mutations (debounced)
   const save = debounce(() => {
@@ -75,6 +79,7 @@ export async function bootstrapWeb(): Promise<WebAppServices> {
     uiRegistry,
     chatManager,
     queries,
+    aiProviderRegistry,
     save,
   };
 }

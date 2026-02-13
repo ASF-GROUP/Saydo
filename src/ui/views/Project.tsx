@@ -16,6 +16,12 @@ interface ProjectProps {
   onToggleTask: (id: string) => void;
   onSelectTask: (id: string) => void;
   selectedTaskId: string | null;
+  selectedTaskIds?: Set<string>;
+  onMultiSelect?: (
+    id: string,
+    event: { ctrlKey: boolean; metaKey: boolean; shiftKey: boolean },
+  ) => void;
+  onReorder?: (orderedIds: string[]) => void;
 }
 
 export function Project({
@@ -25,6 +31,9 @@ export function Project({
   onToggleTask,
   onSelectTask,
   selectedTaskId,
+  selectedTaskIds,
+  onMultiSelect,
+  onReorder,
 }: ProjectProps) {
   const projectTasks = tasks.filter((t) => t.status === "pending" && t.projectId === project.id);
 
@@ -41,6 +50,9 @@ export function Project({
         onSelect={onSelectTask}
         selectedTaskId={selectedTaskId}
         emptyMessage="No tasks in this project yet."
+        selectedTaskIds={selectedTaskIds}
+        onMultiSelect={onMultiSelect}
+        onReorder={onReorder}
       />
     </div>
   );

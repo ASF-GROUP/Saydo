@@ -1,4 +1,5 @@
-export type ProviderName = "openai" | "anthropic" | "openrouter" | "ollama" | "lmstudio";
+export type BuiltInProviderName = "openai" | "anthropic" | "openrouter" | "ollama" | "lmstudio";
+export type ProviderName = string;
 
 export interface AIProviderConfig {
   provider: ProviderName;

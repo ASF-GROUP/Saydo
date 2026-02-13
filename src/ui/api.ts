@@ -92,6 +92,64 @@ export const api = {
     await fetch(`${BASE}/tasks/${id}`, { method: "DELETE" });
   },
 
+  async completeManyTasks(ids: string[]): Promise<Task[]> {
+    if (isTauri()) {
+      const svc = await getServices();
+      const tasks = await svc.taskService.completeMany(ids);
+      svc.save();
+      return tasks;
+    }
+    const res = await fetch(`${BASE}/tasks/bulk/complete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    });
+    return res.json();
+  },
+
+  async deleteManyTasks(ids: string[]): Promise<void> {
+    if (isTauri()) {
+      const svc = await getServices();
+      await svc.taskService.deleteMany(ids);
+      svc.save();
+      return;
+    }
+    await fetch(`${BASE}/tasks/bulk/delete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids }),
+    });
+  },
+
+  async updateManyTasks(ids: string[], changes: UpdateTaskInput): Promise<Task[]> {
+    if (isTauri()) {
+      const svc = await getServices();
+      const tasks = await svc.taskService.updateMany(ids, changes);
+      svc.save();
+      return tasks;
+    }
+    const res = await fetch(`${BASE}/tasks/bulk/update`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ids, changes }),
+    });
+    return res.json();
+  },
+
+  async reorderTasks(orderedIds: string[]): Promise<void> {
+    if (isTauri()) {
+      const svc = await getServices();
+      await svc.taskService.reorder(orderedIds);
+      svc.save();
+      return;
+    }
+    await fetch(`${BASE}/tasks/reorder`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ orderedIds }),
+    });
+  },
+
   async listProjects(): Promise<Project[]> {
     if (isTauri()) {
       const svc = await getServices();
@@ -209,6 +267,38 @@ export const api = {
     return data.content;
   },
 
+  async getPluginPermissions(pluginId: string): Promise<string[] | null> {
+    if (isTauri()) {
+      const svc = await getServices();
+      return svc.queries.getPluginPermissions(pluginId);
+    }
+    const res = await fetch(`${BASE}/plugins/${pluginId}/permissions`);
+    const data = await res.json();
+    return data.permissions;
+  },
+
+  async approvePluginPermissions(pluginId: string, permissions: string[]): Promise<void> {
+    if (isTauri()) {
+      // Not yet supported in Tauri mode
+      return;
+    }
+    await fetch(`${BASE}/plugins/${pluginId}/permissions/approve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ permissions }),
+    });
+  },
+
+  async revokePluginPermissions(pluginId: string): Promise<void> {
+    if (isTauri()) {
+      // Not yet supported in Tauri mode
+      return;
+    }
+    await fetch(`${BASE}/plugins/${pluginId}/permissions/revoke`, {
+      method: "POST",
+    });
+  },
+
   async getPluginStore(): Promise<{ plugins: StorePluginInfo[] }> {
     if (isTauri()) {
       // Plugin store not available in Tauri mode (deferred)
@@ -219,6 +309,58 @@ export const api = {
   },
 
   // AI APIs
+
+  async listAIProviders(): Promise<AIProviderInfo[]> {
+    if (isTauri()) {
+      // Return built-in providers for Tauri mode
+      return [
+        {
+          name: "openai",
+          displayName: "OpenAI",
+          needsApiKey: true,
+          defaultModel: "gpt-4o",
+          showBaseUrl: false,
+          pluginId: null,
+        },
+        {
+          name: "anthropic",
+          displayName: "Anthropic",
+          needsApiKey: true,
+          defaultModel: "claude-sonnet-4-5-20250929",
+          showBaseUrl: false,
+          pluginId: null,
+        },
+        {
+          name: "openrouter",
+          displayName: "OpenRouter",
+          needsApiKey: true,
+          defaultModel: "anthropic/claude-sonnet-4-5-20250929",
+          showBaseUrl: false,
+          pluginId: null,
+        },
+        {
+          name: "ollama",
+          displayName: "Ollama (local)",
+          needsApiKey: false,
+          defaultModel: "llama3.2",
+          defaultBaseUrl: "http://localhost:11434",
+          showBaseUrl: true,
+          pluginId: null,
+        },
+        {
+          name: "lmstudio",
+          displayName: "LM Studio (local)",
+          needsApiKey: false,
+          defaultModel: "default",
+          defaultBaseUrl: "http://localhost:1234",
+          showBaseUrl: true,
+          pluginId: null,
+        },
+      ];
+    }
+    const res = await fetch(`${BASE}/ai/providers`);
+    return res.json();
+  },
 
   async getAIConfig(): Promise<AIConfigInfo> {
     if (isTauri()) {
@@ -418,6 +560,55 @@ export const api = {
     }
     await fetch(`${BASE}/ai/clear`, { method: "POST" });
   },
+
+  async exportAllData(): Promise<{
+    tasks: Task[];
+    projects: Project[];
+    tags: { id: string; name: string; color: string }[];
+  }> {
+    if (isTauri()) {
+      const svc = await getServices();
+      const tasks = await svc.taskService.list();
+      const projects = await svc.projectService.list();
+      const tags = svc.queries.listTags();
+      return { tasks, projects, tags };
+    }
+    const [tasks, projects] = await Promise.all([api.listTasks(), api.listProjects()]);
+    // Tags are embedded in tasks, extract unique ones
+    const tagMap = new Map<string, { id: string; name: string; color: string }>();
+    for (const task of tasks) {
+      for (const tag of task.tags) {
+        tagMap.set(tag.id, tag);
+      }
+    }
+    return { tasks, projects, tags: Array.from(tagMap.values()) };
+  },
+
+  async getAppSetting(key: string): Promise<string | null> {
+    if (isTauri()) {
+      const svc = await getServices();
+      const row = svc.queries.getAppSetting(key);
+      return row?.value ?? null;
+    }
+    const res = await fetch(`${BASE}/settings/${key}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.value ?? null;
+  },
+
+  async setAppSetting(key: string, value: string): Promise<void> {
+    if (isTauri()) {
+      const svc = await getServices();
+      svc.queries.setAppSetting(key, value);
+      svc.save();
+      return;
+    }
+    await fetch(`${BASE}/settings/${key}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ value }),
+    });
+  },
 };
 
 export interface PluginInfo {
@@ -491,4 +682,14 @@ export interface AIChatMessage {
   content: string;
   toolCallId?: string;
   toolCalls?: { id: string; name: string; arguments: string }[];
+}
+
+export interface AIProviderInfo {
+  name: string;
+  displayName: string;
+  needsApiKey: boolean;
+  defaultModel: string;
+  defaultBaseUrl?: string;
+  showBaseUrl?: boolean;
+  pluginId: string | null;
 }

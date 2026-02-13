@@ -5,6 +5,7 @@ import type { EventBus, EventName, EventCallback } from "../core/event-bus.js";
 import type { PluginSettingsManager } from "./settings.js";
 import type { CommandRegistry } from "./command-registry.js";
 import type { UIRegistry } from "./ui-registry.js";
+import type { AIProviderRegistry } from "../ai/provider-registry.js";
 
 export interface PluginAPIOptions {
   pluginId: string;
@@ -15,6 +16,7 @@ export interface PluginAPIOptions {
   commandRegistry: CommandRegistry;
   uiRegistry: UIRegistry;
   settingDefinitions: SettingDefinition[];
+  aiProviderRegistry?: AIProviderRegistry;
 }
 
 /** Accessor bound to a specific plugin for reading/writing settings. */
@@ -39,6 +41,7 @@ export function createPluginAPI(options: PluginAPIOptions) {
     commandRegistry,
     uiRegistry,
     settingDefinitions,
+    aiProviderRegistry,
   } = options;
 
   const hasPermission = (p: Permission) => permissions.includes(p);
@@ -116,6 +119,26 @@ export function createPluginAPI(options: PluginAPIOptions) {
         eventBus.off(event, callback);
       },
     },
+
+    ai: hasPermission("ai:provider") && aiProviderRegistry
+      ? {
+          registerProvider: (registration: {
+            name: string;
+            displayName: string;
+            needsApiKey: boolean;
+            defaultModel: string;
+            defaultBaseUrl?: string;
+            showBaseUrl?: boolean;
+            factory: (config: { provider: string; apiKey?: string; model?: string; baseUrl?: string }) => any;
+          }) => {
+            aiProviderRegistry.register({
+              ...registration,
+              name: `${pluginId}:${registration.name}`,
+              pluginId,
+            });
+          },
+        }
+      : undefined,
 
     settings: {
       get: <T>(key: string): T => {

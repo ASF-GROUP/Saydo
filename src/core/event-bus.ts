@@ -6,6 +6,7 @@ export interface EventMap {
   "task:complete": Task;
   "task:update": { task: Task; changes: Partial<Task> };
   "task:delete": Task;
+  "task:reorder": string[];
 }
 
 export type EventName = keyof EventMap;

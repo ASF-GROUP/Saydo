@@ -66,6 +66,50 @@ function apiPlugin() {
         next();
       });
 
+      // POST /api/tasks/bulk/complete
+      server.middlewares.use(async (req, res, next) => {
+        if (req.url !== "/api/tasks/bulk/complete" || req.method !== "POST") return next();
+        const svc = await getServices();
+        const body = await parseBody(req);
+        const { ids } = body as { ids: string[] };
+        const tasks = await svc.taskService.completeMany(ids);
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify(tasks));
+      });
+
+      // POST /api/tasks/bulk/delete
+      server.middlewares.use(async (req, res, next) => {
+        if (req.url !== "/api/tasks/bulk/delete" || req.method !== "POST") return next();
+        const svc = await getServices();
+        const body = await parseBody(req);
+        const { ids } = body as { ids: string[] };
+        await svc.taskService.deleteMany(ids);
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({ ok: true }));
+      });
+
+      // POST /api/tasks/bulk/update
+      server.middlewares.use(async (req, res, next) => {
+        if (req.url !== "/api/tasks/bulk/update" || req.method !== "POST") return next();
+        const svc = await getServices();
+        const body = await parseBody(req);
+        const { ids, changes } = body as { ids: string[]; changes: any };
+        const tasks = await svc.taskService.updateMany(ids, changes);
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify(tasks));
+      });
+
+      // POST /api/tasks/reorder
+      server.middlewares.use(async (req, res, next) => {
+        if (req.url !== "/api/tasks/reorder" || req.method !== "POST") return next();
+        const svc = await getServices();
+        const body = await parseBody(req);
+        const { orderedIds } = body as { orderedIds: string[] };
+        await svc.taskService.reorder(orderedIds);
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({ ok: true }));
+      });
+
       // GET /api/projects
       server.middlewares.use(async (req, res, next) => {
         if (req.url !== "/api/projects" || req.method !== "GET") return next();
@@ -104,6 +148,45 @@ function apiPlugin() {
         }));
         res.setHeader("Content-Type", "application/json");
         res.end(JSON.stringify(plugins));
+      });
+
+      // Plugin permissions: GET, approve, revoke
+      server.middlewares.use(async (req, res, next) => {
+        const approveMatch = req.url?.match(/^\/api\/plugins\/([^/]+)\/permissions\/approve$/);
+        if (approveMatch && req.method === "POST") {
+          const pluginId = approveMatch[1];
+          const svc = await getServices();
+          await ensurePlugins();
+          const body = await parseBody(req);
+          const { permissions } = body as { permissions: string[] };
+          await svc.pluginLoader.approveAndLoad(pluginId, permissions);
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ ok: true }));
+          return;
+        }
+
+        const revokeMatch = req.url?.match(/^\/api\/plugins\/([^/]+)\/permissions\/revoke$/);
+        if (revokeMatch && req.method === "POST") {
+          const pluginId = revokeMatch[1];
+          const svc = await getServices();
+          await ensurePlugins();
+          await svc.pluginLoader.revokePermissions(pluginId);
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ ok: true }));
+          return;
+        }
+
+        const permMatch = req.url?.match(/^\/api\/plugins\/([^/]+)\/permissions$/);
+        if (permMatch && req.method === "GET") {
+          const pluginId = permMatch[1];
+          const svc = await getServices();
+          const permissions = svc.queries.getPluginPermissions(pluginId);
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ permissions }));
+          return;
+        }
+
+        next();
       });
 
       // GET/PUT /api/plugins/:id/settings
@@ -250,7 +333,102 @@ function apiPlugin() {
         }
       });
 
+      // GET/PUT /api/settings/:key — generic app settings
+      server.middlewares.use(async (req, res, next) => {
+        const match = req.url?.match(/^\/api\/settings\/([^/]+)$/);
+        if (!match) return next();
+        const key = decodeURIComponent(match[1]);
+        const svc = await getServices();
+
+        if (req.method === "GET") {
+          const row = svc.queries.getAppSetting(key);
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ value: row?.value ?? null }));
+          return;
+        }
+
+        if (req.method === "PUT") {
+          const body = await parseBody(req);
+          svc.queries.setAppSetting(key, body.value as string);
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ ok: true }));
+          return;
+        }
+
+        next();
+      });
+
       // ── AI Endpoints ──────────────────────────────────
+
+      // GET /api/ai/providers — list all registered AI providers
+      server.middlewares.use(async (req, res, next) => {
+        if (req.url !== "/api/ai/providers" || req.method !== "GET") return next();
+
+        const svc = await getServices();
+        const registry = (svc as any).aiProviderRegistry;
+        if (registry) {
+          const providers = registry.getAll().map((r: any) => ({
+            name: r.name,
+            displayName: r.displayName,
+            needsApiKey: r.needsApiKey,
+            defaultModel: r.defaultModel,
+            defaultBaseUrl: r.defaultBaseUrl,
+            showBaseUrl: r.showBaseUrl ?? false,
+            pluginId: r.pluginId,
+          }));
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify(providers));
+        } else {
+          // Fallback: return built-in providers
+          res.setHeader("Content-Type", "application/json");
+          res.end(
+            JSON.stringify([
+              {
+                name: "openai",
+                displayName: "OpenAI",
+                needsApiKey: true,
+                defaultModel: "gpt-4o",
+                showBaseUrl: false,
+                pluginId: null,
+              },
+              {
+                name: "anthropic",
+                displayName: "Anthropic",
+                needsApiKey: true,
+                defaultModel: "claude-sonnet-4-5-20250929",
+                showBaseUrl: false,
+                pluginId: null,
+              },
+              {
+                name: "openrouter",
+                displayName: "OpenRouter",
+                needsApiKey: true,
+                defaultModel: "anthropic/claude-sonnet-4-5-20250929",
+                showBaseUrl: false,
+                pluginId: null,
+              },
+              {
+                name: "ollama",
+                displayName: "Ollama (local)",
+                needsApiKey: false,
+                defaultModel: "llama3.2",
+                defaultBaseUrl: "http://localhost:11434",
+                showBaseUrl: true,
+                pluginId: null,
+              },
+              {
+                name: "lmstudio",
+                displayName: "LM Studio (local)",
+                needsApiKey: false,
+                defaultModel: "default",
+                defaultBaseUrl: "http://localhost:1234",
+                showBaseUrl: true,
+                pluginId: null,
+              },
+            ]),
+          );
+        }
+      });
 
       // GET/PUT /api/ai/config
       server.middlewares.use(async (req, res, next) => {

@@ -6,12 +6,17 @@ export function getPriority(value: number) {
   return entry ?? null;
 }
 
-/** Sort tasks by priority (P1 first, null last). */
-export function sortByPriority<T extends { priority: number | null }>(tasks: T[]): T[] {
+/** Sort tasks by priority (P1 first, null last), then by sortOrder within same priority. */
+export function sortByPriority<T extends { priority: number | null; sortOrder?: number }>(
+  tasks: T[],
+): T[] {
   return [...tasks].sort((a, b) => {
-    if (a.priority === null && b.priority === null) return 0;
+    if (a.priority === null && b.priority === null) {
+      return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
+    }
     if (a.priority === null) return 1;
     if (b.priority === null) return -1;
-    return a.priority - b.priority;
+    if (a.priority !== b.priority) return a.priority - b.priority;
+    return (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
   });
 }
