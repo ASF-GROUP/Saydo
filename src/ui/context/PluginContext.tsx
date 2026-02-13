@@ -77,11 +77,14 @@ export function PluginProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const executeCommand = useCallback(async (id: string) => {
-    await api.executePluginCommand(id);
-    // Refresh relevant state after command execution
-    await Promise.all([refreshStatusBar(), refreshPanels()]);
-  }, [refreshStatusBar, refreshPanels]);
+  const executeCommand = useCallback(
+    async (id: string) => {
+      await api.executePluginCommand(id);
+      // Refresh relevant state after command execution
+      await Promise.all([refreshStatusBar(), refreshPanels()]);
+    },
+    [refreshStatusBar, refreshPanels],
+  );
 
   // Initial fetch
   useEffect(() => {

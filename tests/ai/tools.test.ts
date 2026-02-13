@@ -56,7 +56,11 @@ describe("executeTool", () => {
     await taskService.create({ title: "Task B", tags: [] });
     await taskService.complete(task.id);
 
-    const result = await executeTool("list_tasks", { status: "pending" }, { taskService, projectService });
+    const result = await executeTool(
+      "list_tasks",
+      { status: "pending" },
+      { taskService, projectService },
+    );
     const parsed = JSON.parse(result);
     expect(parsed.count).toBe(1);
     expect(parsed.tasks[0].title).toBe("Task B");
@@ -110,8 +114,8 @@ describe("executeTool", () => {
 
   it("throws for unknown tool", async () => {
     const { taskService, projectService } = createTestServices();
-    await expect(
-      executeTool("unknown_tool", {}, { taskService, projectService }),
-    ).rejects.toThrow("Unknown tool: unknown_tool");
+    await expect(executeTool("unknown_tool", {}, { taskService, projectService })).rejects.toThrow(
+      "Unknown tool: unknown_tool",
+    );
   });
 });

@@ -37,23 +37,13 @@ describe("getPriority", () => {
 
 describe("sortByPriority", () => {
   it("sorts P1 before P2 before P3 before P4", () => {
-    const tasks = [
-      { priority: 3 },
-      { priority: 1 },
-      { priority: 4 },
-      { priority: 2 },
-    ];
+    const tasks = [{ priority: 3 }, { priority: 1 }, { priority: 4 }, { priority: 2 }];
     const sorted = sortByPriority(tasks);
     expect(sorted.map((t) => t.priority)).toEqual([1, 2, 3, 4]);
   });
 
   it("puts null priority last", () => {
-    const tasks = [
-      { priority: null },
-      { priority: 2 },
-      { priority: null },
-      { priority: 1 },
-    ];
+    const tasks = [{ priority: null }, { priority: 2 }, { priority: null }, { priority: 1 }];
     const sorted = sortByPriority(tasks);
     expect(sorted.map((t) => t.priority)).toEqual([1, 2, null, null]);
   });

@@ -19,7 +19,14 @@ import { PluginView } from "./views/PluginView.js";
 import type { Project as ProjectType } from "../core/types.js";
 import { api } from "./api.js";
 
-type View = "inbox" | "today" | "upcoming" | "project" | "settings" | "plugin-store" | "plugin-view";
+type View =
+  | "inbox"
+  | "today"
+  | "upcoming"
+  | "project"
+  | "settings"
+  | "plugin-store"
+  | "plugin-view";
 
 function AppContent() {
   const [currentView, setCurrentView] = useState<View>("inbox");
@@ -30,7 +37,12 @@ function AppContent() {
   const [chatPanelOpen, setChatPanelOpen] = useState(false);
   const [projects, setProjects] = useState<ProjectType[]>([]);
   const { state, createTask, updateTask, completeTask, deleteTask } = useTaskContext();
-  const { commands: pluginCommands, panels, views: pluginViews, executeCommand } = usePluginContext();
+  const {
+    commands: pluginCommands,
+    panels,
+    views: pluginViews,
+    executeCommand,
+  } = usePluginContext();
 
   // Fetch projects on mount and after task changes
   const fetchProjects = useCallback(async () => {
@@ -152,10 +164,22 @@ function AppContent() {
       { id: "nav-today", name: "Go to Today", callback: () => handleNavigate("today") },
       { id: "nav-upcoming", name: "Go to Upcoming", callback: () => handleNavigate("upcoming") },
       { id: "nav-settings", name: "Go to Settings", callback: () => handleNavigate("settings") },
-      { id: "nav-plugin-store", name: "Go to Plugin Store", callback: () => handleNavigate("plugin-store") },
+      {
+        id: "nav-plugin-store",
+        name: "Go to Plugin Store",
+        callback: () => handleNavigate("plugin-store"),
+      },
       { id: "theme-toggle", name: "Toggle Dark Mode", callback: () => themeManager.toggle() },
-      { id: "theme-light", name: "Switch to Light Theme", callback: () => themeManager.setTheme("light") },
-      { id: "theme-dark", name: "Switch to Dark Theme", callback: () => themeManager.setTheme("dark") },
+      {
+        id: "theme-light",
+        name: "Switch to Light Theme",
+        callback: () => themeManager.setTheme("light"),
+      },
+      {
+        id: "theme-dark",
+        name: "Switch to Dark Theme",
+        callback: () => themeManager.setTheme("dark"),
+      },
       { id: "ai-chat-toggle", name: "Toggle AI Chat", callback: () => setChatPanelOpen((o) => !o) },
     ];
 

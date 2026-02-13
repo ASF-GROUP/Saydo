@@ -23,10 +23,38 @@ function makeTask(overrides: Partial<Task> = {}): Task {
 }
 
 const TASKS: Task[] = [
-  makeTask({ id: "1", title: "Buy milk", status: "pending", priority: 1, projectId: "proj-1", tags: [{ id: "t1", name: "groceries", color: "#fff" }] }),
-  makeTask({ id: "2", title: "Review PR", status: "pending", priority: 2, projectId: "proj-2", tags: [{ id: "t2", name: "dev", color: "#fff" }], dueDate: "2025-01-16T00:00:00Z" }),
-  makeTask({ id: "3", title: "Clean desk", status: "completed", priority: 3, completedAt: "2025-01-15T12:00:00Z" }),
-  makeTask({ id: "4", title: "Write docs", status: "pending", description: "Update the README with new features", tags: [{ id: "t2", name: "dev", color: "#fff" }], dueDate: "2025-01-20T00:00:00Z" }),
+  makeTask({
+    id: "1",
+    title: "Buy milk",
+    status: "pending",
+    priority: 1,
+    projectId: "proj-1",
+    tags: [{ id: "t1", name: "groceries", color: "#fff" }],
+  }),
+  makeTask({
+    id: "2",
+    title: "Review PR",
+    status: "pending",
+    priority: 2,
+    projectId: "proj-2",
+    tags: [{ id: "t2", name: "dev", color: "#fff" }],
+    dueDate: "2025-01-16T00:00:00Z",
+  }),
+  makeTask({
+    id: "3",
+    title: "Clean desk",
+    status: "completed",
+    priority: 3,
+    completedAt: "2025-01-15T12:00:00Z",
+  }),
+  makeTask({
+    id: "4",
+    title: "Write docs",
+    status: "pending",
+    description: "Update the README with new features",
+    tags: [{ id: "t2", name: "dev", color: "#fff" }],
+    dueDate: "2025-01-20T00:00:00Z",
+  }),
   makeTask({ id: "5", title: "Cancel subscription", status: "cancelled" }),
 ];
 

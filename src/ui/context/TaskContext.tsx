@@ -79,15 +79,18 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: "TASK_UPDATED", task });
   }, []);
 
-  const completeTask = useCallback(async (id: string) => {
-    const task = await api.completeTask(id);
-    // If the task has recurrence, refresh to pick up the new occurrence
-    if (task.recurrence) {
-      await refreshTasks();
-    } else {
-      dispatch({ type: "TASK_UPDATED", task });
-    }
-  }, [refreshTasks]);
+  const completeTask = useCallback(
+    async (id: string) => {
+      const task = await api.completeTask(id);
+      // If the task has recurrence, refresh to pick up the new occurrence
+      if (task.recurrence) {
+        await refreshTasks();
+      } else {
+        dispatch({ type: "TASK_UPDATED", task });
+      }
+    },
+    [refreshTasks],
+  );
 
   const deleteTask = useCallback(async (id: string) => {
     await api.deleteTask(id);
@@ -99,7 +102,9 @@ export function TaskProvider({ children }: { children: React.ReactNode }) {
   }, [refreshTasks]);
 
   return (
-    <TaskContext.Provider value={{ state, createTask, updateTask, completeTask, deleteTask, refreshTasks }}>
+    <TaskContext.Provider
+      value={{ state, createTask, updateTask, completeTask, deleteTask, refreshTasks }}
+    >
       {children}
     </TaskContext.Provider>
   );

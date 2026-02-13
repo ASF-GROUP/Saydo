@@ -11,7 +11,7 @@ const RegistryEntry = z.object({
   minDocketVersion: z.string(),
 });
 
-const RegistrySchema = z.object({
+const _RegistrySchema = z.object({
   version: z.number(),
   description: z.string(),
   lastUpdated: z.string(),
@@ -19,7 +19,7 @@ const RegistrySchema = z.object({
 });
 
 export type RegistryEntry = z.infer<typeof RegistryEntry>;
-export type Registry = z.infer<typeof RegistrySchema>;
+export type Registry = z.infer<typeof _RegistrySchema>;
 
 /**
  * Plugin registry client — fetches and parses the community plugin directory.

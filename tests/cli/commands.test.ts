@@ -12,14 +12,14 @@ import { deleteTask } from "../../src/cli/commands/delete.js";
 describe("CLI commands", () => {
   let services: AppServices;
   let taskService: TaskService;
-  let projectService: ProjectService;
+  let _projectService: ProjectService;
   let logSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     const testServices = createTestServices();
     services = testServices;
     taskService = testServices.taskService;
-    projectService = testServices.projectService;
+    _projectService = testServices.projectService;
     logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
   });
 

@@ -32,12 +32,7 @@ describe("TaskList", () => {
     ];
 
     render(
-      <TaskList
-        tasks={tasks}
-        onToggle={() => {}}
-        onSelect={() => {}}
-        selectedTaskId={null}
-      />,
+      <TaskList tasks={tasks} onToggle={() => {}} onSelect={() => {}} selectedTaskId={null} />,
     );
 
     expect(screen.getByText("Task one")).toBeInTheDocument();
@@ -59,14 +54,7 @@ describe("TaskList", () => {
   });
 
   it("shows default empty message", () => {
-    render(
-      <TaskList
-        tasks={[]}
-        onToggle={() => {}}
-        onSelect={() => {}}
-        selectedTaskId={null}
-      />,
-    );
+    render(<TaskList tasks={[]} onToggle={() => {}} onSelect={() => {}} selectedTaskId={null} />);
 
     expect(screen.getByText("No tasks yet. Add one above!")).toBeInTheDocument();
   });
@@ -77,12 +65,7 @@ describe("TaskList", () => {
     const tasks = [createTask({ id: "task-1", title: "Click me" })];
 
     render(
-      <TaskList
-        tasks={tasks}
-        onToggle={() => {}}
-        onSelect={onSelect}
-        selectedTaskId={null}
-      />,
+      <TaskList tasks={tasks} onToggle={() => {}} onSelect={onSelect} selectedTaskId={null} />,
     );
 
     await user.click(screen.getByText("Click me"));
@@ -96,12 +79,7 @@ describe("TaskList", () => {
     ];
 
     const { container } = render(
-      <TaskList
-        tasks={tasks}
-        onToggle={() => {}}
-        onSelect={() => {}}
-        selectedTaskId="1"
-      />,
+      <TaskList tasks={tasks} onToggle={() => {}} onSelect={() => {}} selectedTaskId="1" />,
     );
 
     // The selected task's container should have the blue ring class

@@ -9,7 +9,13 @@ interface TaskListProps {
   emptyMessage?: string;
 }
 
-export function TaskList({ tasks, onToggle, onSelect, selectedTaskId, emptyMessage }: TaskListProps) {
+export function TaskList({
+  tasks,
+  onToggle,
+  onSelect,
+  selectedTaskId,
+  emptyMessage,
+}: TaskListProps) {
   if (tasks.length === 0) {
     return (
       <div className="text-center py-8 text-gray-400">

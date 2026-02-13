@@ -18,9 +18,8 @@ function apiPlugin() {
     name: "docket-api",
     configureServer(server: ViteDevServer) {
       // Lazy-load bootstrap to avoid issues with Vite's module resolution
-      let services: Awaited<
-        ReturnType<typeof import("./src/bootstrap.js").bootstrap>
-      > | null = null;
+      let services: Awaited<ReturnType<typeof import("./src/bootstrap.js").bootstrap>> | null =
+        null;
 
       async function getServices() {
         if (!services) {
@@ -300,7 +299,7 @@ function apiPlugin() {
             }
           }
           // Reset chat session when provider config changes
-          svc.chatManager.clearSession();
+          svc.chatManager.clearSession(svc.queries);
           res.setHeader("Content-Type", "application/json");
           res.end(JSON.stringify({ ok: true }));
           return;
@@ -339,6 +338,7 @@ function apiPlugin() {
 
         try {
           const { createProvider } = await import("./src/ai/provider.js");
+          const { gatherContext } = await import("./src/ai/chat.js");
           const apiKeySetting = svc.queries.getAppSetting("ai_api_key");
           const modelSetting = svc.queries.getAppSetting("ai_model");
           const baseUrlSetting = svc.queries.getAppSetting("ai_base_url");
@@ -350,10 +350,20 @@ function apiPlugin() {
             baseUrl: baseUrlSetting?.value,
           });
 
-          const session = svc.chatManager.getOrCreateSession(provider, {
+          const toolServices = {
             taskService: svc.taskService,
             projectService: svc.projectService,
-          });
+          };
+
+          // Gather context for new sessions
+          const contextBlock = await gatherContext(toolServices);
+
+          const session = svc.chatManager.getOrCreateSession(
+            provider,
+            toolServices,
+            svc.queries,
+            contextBlock,
+          );
 
           session.addUserMessage(message);
 
@@ -378,12 +388,41 @@ function apiPlugin() {
         }
       });
 
-      // GET /api/ai/messages — current chat history
+      // GET /api/ai/messages — current chat history (from memory or DB)
       server.middlewares.use(async (req, res, next) => {
         if (req.url !== "/api/ai/messages" || req.method !== "GET") return next();
 
         const svc = await getServices();
-        const session = svc.chatManager.getSession();
+        let session = svc.chatManager.getSession();
+
+        // Try to restore from DB if no in-memory session
+        if (!session) {
+          try {
+            const providerSetting = svc.queries.getAppSetting("ai_provider");
+            if (providerSetting?.value) {
+              const { createProvider } = await import("./src/ai/provider.js");
+              const apiKeySetting = svc.queries.getAppSetting("ai_api_key");
+              const modelSetting = svc.queries.getAppSetting("ai_model");
+              const baseUrlSetting = svc.queries.getAppSetting("ai_base_url");
+
+              const provider = createProvider({
+                provider: providerSetting.value as any,
+                apiKey: apiKeySetting?.value,
+                model: modelSetting?.value,
+                baseUrl: baseUrlSetting?.value,
+              });
+
+              session = svc.chatManager.restoreSession(
+                provider,
+                { taskService: svc.taskService, projectService: svc.projectService },
+                svc.queries,
+              );
+            }
+          } catch {
+            // Non-critical — just return empty messages
+          }
+        }
+
         const messages = session ? session.getMessages() : [];
         res.setHeader("Content-Type", "application/json");
         res.end(JSON.stringify(messages));
@@ -394,7 +433,7 @@ function apiPlugin() {
         if (req.url !== "/api/ai/clear" || req.method !== "POST") return next();
 
         const svc = await getServices();
-        svc.chatManager.clearSession();
+        svc.chatManager.clearSession(svc.queries);
         res.setHeader("Content-Type", "application/json");
         res.end(JSON.stringify({ ok: true }));
       });

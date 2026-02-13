@@ -1,6 +1,13 @@
 import OpenAI from "openai";
 import type { AIProvider } from "../provider.js";
-import type { AIProviderConfig, ChatMessage, ChatResponse, StreamEvent, ToolCall, ToolDefinition } from "../types.js";
+import type {
+  AIProviderConfig,
+  ChatMessage,
+  ChatResponse,
+  StreamEvent,
+  ToolCall,
+  ToolDefinition,
+} from "../types.js";
 
 function toOpenAIMessages(messages: ChatMessage[]): OpenAI.ChatCompletionMessageParam[] {
   return messages.map((msg) => {
@@ -41,7 +48,10 @@ function parseToolCalls(choices: OpenAI.ChatCompletion.Choice[]): ToolCall[] | u
   const calls = choices[0]?.message?.tool_calls;
   if (!calls?.length) return undefined;
   return calls
-    .filter((tc): tc is OpenAI.ChatCompletionMessageToolCall & { type: "function" } => tc.type === "function")
+    .filter(
+      (tc): tc is OpenAI.ChatCompletionMessageToolCall & { type: "function" } =>
+        tc.type === "function",
+    )
     .map((tc) => ({
       id: tc.id,
       name: tc.function.name,

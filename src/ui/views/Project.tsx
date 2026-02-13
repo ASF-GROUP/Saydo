@@ -5,16 +5,28 @@ import type { Task, Project as ProjectType } from "../../core/types.js";
 interface ProjectProps {
   project: ProjectType;
   tasks: Task[];
-  onCreateTask: (parsed: { title: string; priority: number | null; tags: string[]; project: string | null; dueDate: Date | null; dueTime: boolean }) => void;
+  onCreateTask: (parsed: {
+    title: string;
+    priority: number | null;
+    tags: string[];
+    project: string | null;
+    dueDate: Date | null;
+    dueTime: boolean;
+  }) => void;
   onToggleTask: (id: string) => void;
   onSelectTask: (id: string) => void;
   selectedTaskId: string | null;
 }
 
-export function Project({ project, tasks, onCreateTask, onToggleTask, onSelectTask, selectedTaskId }: ProjectProps) {
-  const projectTasks = tasks.filter(
-    (t) => t.status === "pending" && t.projectId === project.id,
-  );
+export function Project({
+  project,
+  tasks,
+  onCreateTask,
+  onToggleTask,
+  onSelectTask,
+  selectedTaskId,
+}: ProjectProps) {
+  const projectTasks = tasks.filter((t) => t.status === "pending" && t.projectId === project.id);
 
   return (
     <div>

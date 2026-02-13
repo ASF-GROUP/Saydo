@@ -85,9 +85,7 @@ describe("CreateTaskInput schema", () => {
   });
 
   it("rejects description over 10000 characters", () => {
-    expect(() =>
-      CreateTaskInput.parse({ title: "t", description: "a".repeat(10001) }),
-    ).toThrow();
+    expect(() => CreateTaskInput.parse({ title: "t", description: "a".repeat(10001) })).toThrow();
   });
 
   it("accepts null description", () => {
@@ -106,9 +104,7 @@ describe("CreateTaskInput schema", () => {
   });
 
   it("rejects invalid dueDate format", () => {
-    expect(() =>
-      CreateTaskInput.parse({ title: "t", dueDate: "not-a-date" }),
-    ).toThrow();
+    expect(() => CreateTaskInput.parse({ title: "t", dueDate: "not-a-date" })).toThrow();
   });
 
   it("defaults tags to empty array", () => {

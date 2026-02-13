@@ -10,9 +10,7 @@ interface TodayProps {
 
 export function Today({ tasks, onToggleTask, onSelectTask, selectedTaskId }: TodayProps) {
   const today = new Date().toISOString().split("T")[0];
-  const todayTasks = tasks.filter(
-    (t) => t.status === "pending" && t.dueDate?.startsWith(today),
-  );
+  const todayTasks = tasks.filter((t) => t.status === "pending" && t.dueDate?.startsWith(today));
 
   return (
     <div>

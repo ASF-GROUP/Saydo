@@ -4,7 +4,9 @@ export const tasks = sqliteTable("tasks", {
   id: text("id").primaryKey(),
   title: text("title").notNull(),
   description: text("description"),
-  status: text("status", { enum: ["pending", "completed", "cancelled"] }).notNull().default("pending"),
+  status: text("status", { enum: ["pending", "completed", "cancelled"] })
+    .notNull()
+    .default("pending"),
   priority: integer("priority"),
   dueDate: text("due_date"),
   dueTime: integer("due_time", { mode: "boolean" }).default(false),
@@ -32,12 +34,18 @@ export const tags = sqliteTable("tags", {
   color: text("color").notNull().default("#6b7280"),
 });
 
-export const taskTags = sqliteTable("task_tags", {
-  taskId: text("task_id").notNull().references(() => tasks.id, { onDelete: "cascade" }),
-  tagId: text("tag_id").notNull().references(() => tags.id, { onDelete: "cascade" }),
-}, (table) => [
-  primaryKey({ columns: [table.taskId, table.tagId] }),
-]);
+export const taskTags = sqliteTable(
+  "task_tags",
+  {
+    taskId: text("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    tagId: text("tag_id")
+      .notNull()
+      .references(() => tags.id, { onDelete: "cascade" }),
+  },
+  (table) => [primaryKey({ columns: [table.taskId, table.tagId] })],
+);
 
 export const pluginSettings = sqliteTable("plugin_settings", {
   pluginId: text("plugin_id").primaryKey(),
@@ -49,4 +57,14 @@ export const appSettings = sqliteTable("app_settings", {
   key: text("key").primaryKey(),
   value: text("value").notNull(),
   updatedAt: text("updated_at").notNull(),
+});
+
+export const chatMessages = sqliteTable("chat_messages", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  sessionId: text("session_id").notNull(),
+  role: text("role", { enum: ["system", "user", "assistant", "tool"] }).notNull(),
+  content: text("content").notNull(),
+  toolCallId: text("tool_call_id"),
+  toolCalls: text("tool_calls"),
+  createdAt: text("created_at").notNull(),
 });

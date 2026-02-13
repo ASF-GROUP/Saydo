@@ -1,6 +1,12 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { AIProvider } from "../provider.js";
-import type { AIProviderConfig, ChatMessage, ChatResponse, StreamEvent, ToolDefinition } from "../types.js";
+import type {
+  AIProviderConfig,
+  ChatMessage,
+  ChatResponse,
+  StreamEvent,
+  ToolDefinition,
+} from "../types.js";
 
 function toAnthropicMessages(messages: ChatMessage[]): Anthropic.MessageParam[] {
   const result: Anthropic.MessageParam[] = [];

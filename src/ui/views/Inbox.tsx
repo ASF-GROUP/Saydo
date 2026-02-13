@@ -4,13 +4,26 @@ import type { Task } from "../../core/types.js";
 
 interface InboxProps {
   tasks: Task[];
-  onCreateTask: (parsed: { title: string; priority: number | null; tags: string[]; project: string | null; dueDate: Date | null; dueTime: boolean }) => void;
+  onCreateTask: (parsed: {
+    title: string;
+    priority: number | null;
+    tags: string[];
+    project: string | null;
+    dueDate: Date | null;
+    dueTime: boolean;
+  }) => void;
   onToggleTask: (id: string) => void;
   onSelectTask: (id: string) => void;
   selectedTaskId: string | null;
 }
 
-export function Inbox({ tasks, onCreateTask, onToggleTask, onSelectTask, selectedTaskId }: InboxProps) {
+export function Inbox({
+  tasks,
+  onCreateTask,
+  onToggleTask,
+  onSelectTask,
+  selectedTaskId,
+}: InboxProps) {
   const inboxTasks = tasks.filter((t) => t.status === "pending" && !t.projectId);
 
   return (

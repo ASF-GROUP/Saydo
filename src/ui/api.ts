@@ -3,7 +3,11 @@ import type { Task, CreateTaskInput, UpdateTaskInput, Project } from "../core/ty
 const BASE = "/api";
 
 export const api = {
-  async listTasks(params?: { search?: string; projectId?: string; status?: string }): Promise<Task[]> {
+  async listTasks(params?: {
+    search?: string;
+    projectId?: string;
+    status?: string;
+  }): Promise<Task[]> {
     const url = new URL(`${BASE}/tasks`, window.location.origin);
     if (params?.search) url.searchParams.set("search", params.search);
     if (params?.projectId) url.searchParams.set("projectId", params.projectId);

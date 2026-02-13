@@ -23,7 +23,10 @@ export function extractTags(input: string): { tags: string[]; text: string } {
     tags.push(match[1].toLowerCase());
   }
 
-  const text = input.replace(/#[\w-]+/g, "").replace(/\s+/g, " ").trim();
+  const text = input
+    .replace(/#[\w-]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
   return { tags, text };
 }
 

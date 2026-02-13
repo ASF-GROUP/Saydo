@@ -11,6 +11,7 @@ interface AIState {
 interface AIContextValue extends AIState {
   sendMessage: (text: string) => Promise<void>;
   clearChat: () => Promise<void>;
+  restoreMessages: () => Promise<void>;
   updateConfig: (config: {
     provider?: string;
     apiKey?: string;
@@ -27,7 +28,10 @@ export function AIProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<AIChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
 
-  const isConfigured = !!(config?.provider && (config.hasApiKey || config.provider === "ollama" || config.provider === "lmstudio"));
+  const isConfigured = !!(
+    config?.provider &&
+    (config.hasApiKey || config.provider === "ollama" || config.provider === "lmstudio")
+  );
 
   const refreshConfig = useCallback(async () => {
     try {
@@ -41,6 +45,17 @@ export function AIProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     refreshConfig();
   }, [refreshConfig]);
+
+  const restoreMessages = useCallback(async () => {
+    try {
+      const restored = await api.getChatMessages();
+      if (restored.length > 0) {
+        setMessages(restored.filter((m) => m.role !== "tool"));
+      }
+    } catch {
+      // Non-critical — chat history just won't be restored
+    }
+  }, []);
 
   const sendMessage = useCallback(async (text: string) => {
     setMessages((prev) => [...prev, { role: "user", content: text }]);
@@ -56,6 +71,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
       const reader = stream.getReader();
       const decoder = new TextDecoder();
       let assistantContent = "";
+      let toolCalls: AIChatMessage["toolCalls"] = [];
       let buffer = "";
 
       while (true) {
@@ -82,19 +98,35 @@ export function AIProvider({ children }: { children: ReactNode }) {
               setMessages((prev) => {
                 const last = prev[prev.length - 1];
                 if (last?.role === "assistant") {
-                  return [...prev.slice(0, -1), { ...last, content: assistantContent }];
+                  return [...prev.slice(0, -1), { ...last, content: assistantContent, toolCalls }];
                 }
-                return [...prev, { role: "assistant", content: assistantContent }];
+                return [...prev, { role: "assistant", content: assistantContent, toolCalls }];
               });
-            } else if (event.type === "tool_result") {
-              // Tool results are internal — we could display them but for now just continue
+            } else if (event.type === "tool_call") {
+              // Capture tool calls for display as badges
+              try {
+                const calls = JSON.parse(event.data);
+                toolCalls = [...(toolCalls ?? []), ...calls];
+                setMessages((prev) => {
+                  const last = prev[prev.length - 1];
+                  if (last?.role === "assistant") {
+                    return [...prev.slice(0, -1), { ...last, toolCalls }];
+                  }
+                  return [...prev, { role: "assistant", content: "", toolCalls }];
+                });
+              } catch {
+                // Skip malformed tool call data
+              }
+            } else if (event.type === "done") {
+              // On done, reset accumulators for next tool-call round
+              assistantContent = "";
+              toolCalls = [];
             } else if (event.type === "error") {
               setMessages((prev) => [
                 ...prev,
                 { role: "assistant", content: `Error: ${event.data}` },
               ]);
             }
-            // "done" event just signals end
           } catch {
             // Skip malformed JSON
           }
@@ -102,10 +134,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to send message";
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: `Error: ${msg}` },
-      ]);
+      setMessages((prev) => [...prev, { role: "assistant", content: `Error: ${msg}` }]);
     } finally {
       setIsStreaming(false);
     }
@@ -116,20 +145,28 @@ export function AIProvider({ children }: { children: ReactNode }) {
     setMessages([]);
   }, []);
 
-  const updateConfig = useCallback(async (cfg: {
-    provider?: string;
-    apiKey?: string;
-    model?: string;
-    baseUrl?: string;
-  }) => {
-    await api.updateAIConfig(cfg);
-    await refreshConfig();
-    setMessages([]);
-  }, [refreshConfig]);
+  const updateConfig = useCallback(
+    async (cfg: { provider?: string; apiKey?: string; model?: string; baseUrl?: string }) => {
+      await api.updateAIConfig(cfg);
+      await refreshConfig();
+      setMessages([]);
+    },
+    [refreshConfig],
+  );
 
   return (
     <AIContext.Provider
-      value={{ config, messages, isStreaming, isConfigured, sendMessage, clearChat, updateConfig, refreshConfig }}
+      value={{
+        config,
+        messages,
+        isStreaming,
+        isConfigured,
+        sendMessage,
+        clearChat,
+        restoreMessages,
+        updateConfig,
+        refreshConfig,
+      }}
     >
       {children}
     </AIContext.Provider>

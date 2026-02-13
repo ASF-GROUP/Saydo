@@ -10,9 +10,21 @@ interface TaskDetailPanelProps {
 
 const PRIORITIES = [
   { value: 1, label: "P1", color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
-  { value: 2, label: "P2", color: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400" },
-  { value: 3, label: "P3", color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" },
-  { value: 4, label: "P4", color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
+  {
+    value: 2,
+    label: "P2",
+    color: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
+  },
+  {
+    value: 3,
+    label: "P3",
+    color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
+  },
+  {
+    value: 4,
+    label: "P4",
+    color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
+  },
 ];
 
 export function TaskDetailPanel({ task, onUpdate, onDelete, onClose }: TaskDetailPanelProps) {
@@ -60,7 +72,9 @@ export function TaskDetailPanel({ task, onUpdate, onDelete, onClose }: TaskDetai
         />
 
         <div>
-          <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Priority</label>
+          <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Priority
+          </label>
           <div className="flex gap-2 mt-1">
             {PRIORITIES.map((p) => (
               <button
@@ -79,7 +93,9 @@ export function TaskDetailPanel({ task, onUpdate, onDelete, onClose }: TaskDetai
         </div>
 
         <div>
-          <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Description</label>
+          <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Description
+          </label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -91,14 +107,18 @@ export function TaskDetailPanel({ task, onUpdate, onDelete, onClose }: TaskDetai
 
         {task.dueDate && (
           <div>
-            <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Due Date</label>
+            <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Due Date
+            </label>
             <p className="text-sm mt-1">{new Date(task.dueDate).toLocaleDateString()}</p>
           </div>
         )}
 
         {task.tags.length > 0 && (
           <div>
-            <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Tags</label>
+            <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Tags
+            </label>
             <div className="flex gap-1.5 mt-1 flex-wrap">
               {task.tags.map((tag) => (
                 <span
@@ -114,13 +134,17 @@ export function TaskDetailPanel({ task, onUpdate, onDelete, onClose }: TaskDetai
 
         {task.recurrence && (
           <div>
-            <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Recurrence</label>
+            <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+              Recurrence
+            </label>
             <p className="text-sm mt-1">{task.recurrence}</p>
           </div>
         )}
 
         <div>
-          <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">Created</label>
+          <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+            Created
+          </label>
           <p className="text-sm mt-1 text-gray-500">{new Date(task.createdAt).toLocaleString()}</p>
         </div>
       </div>

@@ -10,8 +10,14 @@ export const PRIORITIES = {
 export const TASK_STATUSES = ["pending", "completed", "cancelled"] as const;
 
 export const DEFAULT_PROJECT_COLORS = [
-  "#ef4444", "#f59e0b", "#10b981", "#3b82f6",
-  "#8b5cf6", "#ec4899", "#06b6d4", "#84cc16",
+  "#ef4444",
+  "#f59e0b",
+  "#10b981",
+  "#3b82f6",
+  "#8b5cf6",
+  "#ec4899",
+  "#06b6d4",
+  "#84cc16",
 ] as const;
 
 export const COMMAND_PALETTE_HOTKEY = "Ctrl+K";

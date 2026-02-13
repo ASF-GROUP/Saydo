@@ -1,20 +1,34 @@
 import type { AIProvider } from "./provider.js";
 import type { ChatMessage, StreamEvent } from "./types.js";
 import { getToolDefinitions, executeTool, type ToolServices } from "./tools.js";
+import type { Queries } from "../db/queries.js";
+import { generateId } from "../utils/ids.js";
 
 export class ChatSession {
   private messages: ChatMessage[] = [];
   private provider: AIProvider;
   private services: ToolServices;
+  readonly sessionId: string;
+  private queries?: Queries;
 
-  constructor(provider: AIProvider, services: ToolServices, systemMessage: ChatMessage) {
+  constructor(
+    provider: AIProvider,
+    services: ToolServices,
+    systemMessage: ChatMessage,
+    sessionId?: string,
+    queries?: Queries,
+  ) {
     this.provider = provider;
     this.services = services;
+    this.sessionId = sessionId ?? generateId();
+    this.queries = queries;
     this.messages.push(systemMessage);
   }
 
   addUserMessage(content: string): void {
-    this.messages.push({ role: "user", content });
+    const msg: ChatMessage = { role: "user", content };
+    this.messages.push(msg);
+    this.persistMessage(msg);
   }
 
   getMessages(): ChatMessage[] {
@@ -23,42 +37,40 @@ export class ChatSession {
 
   async *run(): AsyncIterable<StreamEvent> {
     const tools = getToolDefinitions();
-    let maxIterations = 10; // Safety limit for tool call loops
+    let maxIterations = 10;
 
     while (maxIterations-- > 0) {
       let fullContent = "";
       let toolCalls: { id: string; name: string; arguments: string }[] | null = null;
 
-      // Stream from provider
       for await (const event of this.provider.streamChat(this.messages, tools)) {
         if (event.type === "token") {
           fullContent += event.data;
           yield event;
         } else if (event.type === "tool_call") {
           toolCalls = JSON.parse(event.data);
-        } else if (event.type === "done") {
-          // No tool calls — we're done
         } else if (event.type === "error") {
           yield event;
           return;
         }
       }
 
-      // If no tool calls, append assistant message and finish
       if (!toolCalls || toolCalls.length === 0) {
-        this.messages.push({ role: "assistant", content: fullContent });
+        const msg: ChatMessage = { role: "assistant", content: fullContent };
+        this.messages.push(msg);
+        this.persistMessage(msg);
         yield { type: "done", data: "" };
         return;
       }
 
-      // Append assistant message with tool calls
-      this.messages.push({
+      const assistantMsg: ChatMessage = {
         role: "assistant",
         content: fullContent,
         toolCalls,
-      });
+      };
+      this.messages.push(assistantMsg);
+      this.persistMessage(assistantMsg);
 
-      // Execute each tool call
       for (const tc of toolCalls) {
         try {
           const args = JSON.parse(tc.arguments);
@@ -66,39 +78,50 @@ export class ChatSession {
 
           yield { type: "tool_result", data: JSON.stringify({ tool: tc.name, result }) };
 
-          this.messages.push({
-            role: "tool",
-            content: result,
-            toolCallId: tc.id,
-          });
+          const toolMsg: ChatMessage = { role: "tool", content: result, toolCallId: tc.id };
+          this.messages.push(toolMsg);
+          this.persistMessage(toolMsg);
         } catch (err: unknown) {
           const errorMsg = err instanceof Error ? err.message : String(err);
           const errorResult = JSON.stringify({ error: errorMsg });
 
           yield { type: "tool_result", data: JSON.stringify({ tool: tc.name, error: errorMsg }) };
 
-          this.messages.push({
-            role: "tool",
-            content: errorResult,
-            toolCallId: tc.id,
-          });
+          const toolMsg: ChatMessage = { role: "tool", content: errorResult, toolCallId: tc.id };
+          this.messages.push(toolMsg);
+          this.persistMessage(toolMsg);
         }
       }
-
-      // Loop: re-call provider with tool results appended
     }
 
     yield { type: "error", data: "Too many tool call iterations" };
+  }
+
+  private persistMessage(msg: ChatMessage): void {
+    if (!this.queries) return;
+    this.queries.insertChatMessage({
+      sessionId: this.sessionId,
+      role: msg.role,
+      content: msg.content,
+      toolCallId: msg.toolCallId ?? null,
+      toolCalls: msg.toolCalls ? JSON.stringify(msg.toolCalls) : null,
+      createdAt: new Date().toISOString(),
+    });
   }
 }
 
 export class ChatManager {
   private session: ChatSession | null = null;
 
-  getOrCreateSession(provider: AIProvider, services: ToolServices): ChatSession {
+  getOrCreateSession(
+    provider: AIProvider,
+    services: ToolServices,
+    queries?: Queries,
+    contextBlock?: string,
+  ): ChatSession {
     if (!this.session) {
-      const systemMessage = this.buildSystemMessage(services);
-      this.session = new ChatSession(provider, services, systemMessage);
+      const systemMessage = this.buildSystemMessage(services, contextBlock);
+      this.session = new ChatSession(provider, services, systemMessage, undefined, queries);
     }
     return this.session;
   }
@@ -107,16 +130,50 @@ export class ChatManager {
     return this.session;
   }
 
-  clearSession(): void {
+  clearSession(queries?: Queries): void {
+    if (this.session && queries) {
+      queries.deleteChatSession(this.session.sessionId);
+    }
     this.session = null;
   }
 
-  resetWithProvider(provider: AIProvider, services: ToolServices): ChatSession {
+  resetWithProvider(provider: AIProvider, services: ToolServices, queries?: Queries): ChatSession {
     this.session = null;
-    return this.getOrCreateSession(provider, services);
+    return this.getOrCreateSession(provider, services, queries);
   }
 
-  private buildSystemMessage(_services: ToolServices): ChatMessage {
+  restoreSession(
+    provider: AIProvider,
+    services: ToolServices,
+    queries: Queries,
+  ): ChatSession | null {
+    const latest = queries.getLatestSessionId();
+    if (!latest) return null;
+
+    const rows = queries.listChatMessages(latest.sessionId);
+    if (rows.length === 0) return null;
+
+    const systemMessage = this.buildSystemMessage(services);
+    const session = new ChatSession(provider, services, systemMessage, latest.sessionId, queries);
+
+    // Restore messages from DB (skip system — already added by constructor)
+    for (const row of rows) {
+      if (row.role === "system") continue;
+      const msg: ChatMessage = {
+        role: row.role as ChatMessage["role"],
+        content: row.content,
+        ...(row.toolCallId ? { toolCallId: row.toolCallId } : {}),
+        ...(row.toolCalls ? { toolCalls: JSON.parse(row.toolCalls) } : {}),
+      };
+      // Push directly to avoid re-persisting
+      (session as any).messages.push(msg);
+    }
+
+    this.session = session;
+    return session;
+  }
+
+  buildSystemMessage(_services: ToolServices, contextBlock = ""): ChatMessage {
     const now = new Date();
     const dateStr = now.toLocaleDateString("en-US", {
       weekday: "long",
@@ -128,22 +185,90 @@ export class ChatManager {
 
     return {
       role: "system",
-      content: `You are Docket's AI assistant. You help users manage their tasks efficiently.
+      content: `You are Docket's AI assistant — a smart, friendly task manager that helps users stay organized and productive.
 
 Current date and time: ${dateStr}, ${timeStr}
 
-You can:
-- Create, list, update, complete, and delete tasks
-- Help users organize their work
-- Suggest priorities and due dates
+${contextBlock}
 
-Guidelines:
-- Be concise and helpful
-- When listing tasks, format them clearly
-- When creating tasks, confirm what was created
-- Use the tools available to you to perform actions
-- If a user asks about their tasks, use list_tasks to check first
-- Dates should be in ISO 8601 format when calling tools`,
+## Your Capabilities
+You can create, list, update, complete, and delete tasks using the tools available to you.
+
+## Guidelines
+
+### Be Proactive & Context-Aware
+- When a user asks about their tasks, ALWAYS use list_tasks first to get current data
+- If a user has overdue tasks, mention them proactively: "I noticed you have X overdue tasks..."
+- When creating tasks, suggest a priority if the user didn't specify one
+- When a task has no due date, ask if they'd like to set one
+
+### Ask Follow-Up Questions
+- If a task description is ambiguous, ask for clarification before creating
+- "Which project should this go under?" when projects exist but none was specified
+- "What priority would you give this?" for important-sounding tasks without priority
+- "When is this due?" for tasks that sound time-sensitive
+
+### Daily Planning
+- When asked "plan my day" or similar, list today's tasks sorted by priority, suggest an order, and note any overdue items
+- Suggest breaking large tasks into smaller ones if appropriate
+
+### Priority Suggestions
+- If a user has many unpriorized tasks, offer to help prioritize them
+- Suggest bumping priority on tasks approaching their due date
+- When asked to reschedule, consider the full workload before suggesting new dates
+
+### Communication Style
+- Be concise but warm — 1-3 sentences for simple responses
+- Use bullet points for task lists
+- Confirm actions: "Done! Created task: [title]" after creating/updating/completing
+- Use ISO 8601 dates when calling tools (e.g., "2024-01-15T00:00:00.000Z")
+- Never fabricate task IDs — always use list_tasks to find real IDs first`,
     };
   }
+}
+
+/**
+ * Gather live context from services for the system message.
+ * Must be called async before building the system message.
+ */
+export async function gatherContext(services: ToolServices): Promise<string> {
+  const { taskService, projectService } = services;
+  const todayISO = new Date().toISOString().split("T")[0];
+
+  const allTasks = await taskService.list();
+  const projects = await projectService.list();
+
+  const pending = allTasks.filter((t) => t.status === "pending");
+  const overdue = pending.filter((t) => t.dueDate && t.dueDate < todayISO);
+  const dueToday = pending.filter((t) => t.dueDate?.startsWith(todayISO));
+  const highPriority = pending.filter((t) => t.priority === 1 || t.priority === 2);
+  const noPriority = pending.filter((t) => t.priority === null);
+
+  const lines: string[] = ["## Current Task Context"];
+
+  lines.push(`- Total pending tasks: ${pending.length}`);
+  if (overdue.length > 0) {
+    lines.push(`- OVERDUE tasks: ${overdue.length}`);
+    for (const t of overdue.slice(0, 5)) {
+      lines.push(`  - "${t.title}" (due ${t.dueDate}${t.priority ? `, P${t.priority}` : ""})`);
+    }
+    if (overdue.length > 5) lines.push(`  - ...and ${overdue.length - 5} more`);
+  }
+  if (dueToday.length > 0) {
+    lines.push(`- Due TODAY: ${dueToday.length}`);
+    for (const t of dueToday.slice(0, 5)) {
+      lines.push(`  - "${t.title}"${t.priority ? ` (P${t.priority})` : ""}`);
+    }
+  }
+  if (highPriority.length > 0) {
+    lines.push(`- High priority (P1/P2): ${highPriority.length}`);
+  }
+  if (noPriority.length > 0) {
+    lines.push(`- Tasks without priority: ${noPriority.length}`);
+  }
+  if (projects.length > 0) {
+    lines.push(`- Projects: ${projects.map((p) => p.name).join(", ")}`);
+  }
+
+  return lines.join("\n");
 }

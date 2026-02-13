@@ -24,9 +24,7 @@ export function CommandPalette({ commands, isOpen, onClose }: CommandPaletteProp
     }
   }, [isOpen]);
 
-  const filtered = commands.filter((cmd) =>
-    cmd.name.toLowerCase().includes(query.toLowerCase()),
-  );
+  const filtered = commands.filter((cmd) => cmd.name.toLowerCase().includes(query.toLowerCase()));
 
   // Reset selection when query changes
   useEffect(() => {
@@ -70,7 +68,10 @@ export function CommandPalette({ commands, isOpen, onClose }: CommandPaletteProp
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-black/50" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-black/50"
+      onClick={onClose}
+    >
       <div
         className="w-full max-w-lg bg-white dark:bg-gray-800 rounded-xl shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
@@ -96,9 +97,7 @@ export function CommandPalette({ commands, isOpen, onClose }: CommandPaletteProp
                 }`}
               >
                 <span>{cmd.name}</span>
-                {cmd.hotkey && (
-                  <span className="text-xs text-gray-400">{cmd.hotkey}</span>
-                )}
+                {cmd.hotkey && <span className="text-xs text-gray-400">{cmd.hotkey}</span>}
               </button>
             </li>
           ))}

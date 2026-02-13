@@ -1,10 +1,12 @@
 import { describe, it, expect, vi } from "vitest";
 import { ChatSession, ChatManager } from "../../src/ai/chat.js";
 import type { AIProvider } from "../../src/ai/provider.js";
-import type { ChatMessage, ChatResponse, StreamEvent } from "../../src/ai/types.js";
+import type { ChatResponse, StreamEvent } from "../../src/ai/types.js";
 import { createTestServices } from "../integration/helpers.js";
 
-function createMockProvider(responses: Array<{ content: string; toolCalls?: ChatResponse["toolCalls"] }>): AIProvider {
+function createMockProvider(
+  responses: Array<{ content: string; toolCalls?: ChatResponse["toolCalls"] }>,
+): AIProvider {
   let callCount = 0;
   return {
     chat: vi.fn(),

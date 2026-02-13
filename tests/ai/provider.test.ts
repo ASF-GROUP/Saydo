@@ -37,14 +37,20 @@ describe("createProvider", () => {
   });
 
   it("throws for missing API key on Anthropic", () => {
-    expect(() => createProvider({ provider: "anthropic" })).toThrow("Anthropic requires an API key");
+    expect(() => createProvider({ provider: "anthropic" })).toThrow(
+      "Anthropic requires an API key",
+    );
   });
 
   it("throws for missing API key on OpenRouter", () => {
-    expect(() => createProvider({ provider: "openrouter" })).toThrow("OpenRouter requires an API key");
+    expect(() => createProvider({ provider: "openrouter" })).toThrow(
+      "OpenRouter requires an API key",
+    );
   });
 
   it("throws for unknown provider", () => {
-    expect(() => createProvider({ provider: "unknown" as any })).toThrow("Unknown AI provider: unknown");
+    expect(() => createProvider({ provider: "unknown" as any })).toThrow(
+      "Unknown AI provider: unknown",
+    );
   });
 });

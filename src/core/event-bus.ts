@@ -16,19 +16,19 @@ export type EventCallback<E extends EventName> = (data: EventMap[E]) => void;
  * Listeners are called synchronously. Errors in listeners are caught and logged.
  */
 export class EventBus {
-  private listeners = new Map<string, Set<Function>>();
+  private listeners = new Map<string, Set<(...args: unknown[]) => void>>();
 
   on<E extends EventName>(event: E, callback: EventCallback<E>): void {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, new Set());
     }
-    this.listeners.get(event)!.add(callback);
+    this.listeners.get(event)!.add(callback as (...args: unknown[]) => void);
   }
 
   off<E extends EventName>(event: E, callback: EventCallback<E>): void {
     const set = this.listeners.get(event);
     if (set) {
-      set.delete(callback);
+      set.delete(callback as (...args: unknown[]) => void);
       if (set.size === 0) {
         this.listeners.delete(event);
       }

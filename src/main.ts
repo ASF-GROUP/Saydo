@@ -17,9 +17,7 @@ try {
   const loaded = services.pluginLoader.getAll().filter((p) => p.enabled);
   logger.info(`Plugins loaded: ${loaded.length}`);
 } catch (err) {
-  logger.error(
-    `Plugin loading failed: ${err instanceof Error ? err.message : err}`,
-  );
+  logger.error(`Plugin loading failed: ${err instanceof Error ? err.message : err}`);
 }
 
 // TODO: Start UI or CLI based on context

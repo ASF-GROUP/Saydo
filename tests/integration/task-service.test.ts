@@ -172,16 +172,13 @@ describe("TaskService (integration)", () => {
       });
 
       expect(updated.tags).toHaveLength(2);
-      expect(updated.tags.map((t) => t.name).sort()).toEqual([
-        "new-tag-a",
-        "new-tag-b",
-      ]);
+      expect(updated.tags.map((t) => t.name).sort()).toEqual(["new-tag-a", "new-tag-b"]);
     });
 
     it("throws NotFoundError for missing task", async () => {
-      await expect(
-        taskService.update("nonexistent", { title: "Fail" }),
-      ).rejects.toThrow(NotFoundError);
+      await expect(taskService.update("nonexistent", { title: "Fail" })).rejects.toThrow(
+        NotFoundError,
+      );
     });
   });
 
@@ -196,9 +193,7 @@ describe("TaskService (integration)", () => {
     });
 
     it("throws NotFoundError for missing task", async () => {
-      await expect(taskService.complete("nonexistent")).rejects.toThrow(
-        NotFoundError,
-      );
+      await expect(taskService.complete("nonexistent")).rejects.toThrow(NotFoundError);
     });
 
     it("creates next occurrence for a daily recurring task", async () => {

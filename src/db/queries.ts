@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
 import * as schema from "./schema.js";
 
@@ -7,8 +7,7 @@ export function createQueries(db: BetterSQLite3Database<typeof schema>) {
     // ── Tasks ────────────────────────────────────────────
     listTasks: () => db.select().from(schema.tasks).all(),
 
-    getTask: (id: string) =>
-      db.select().from(schema.tasks).where(eq(schema.tasks.id, id)).all(),
+    getTask: (id: string) => db.select().from(schema.tasks).where(eq(schema.tasks.id, id)).all(),
 
     insertTask: (task: typeof schema.tasks.$inferInsert) =>
       db.insert(schema.tasks).values(task).run(),
@@ -16,8 +15,7 @@ export function createQueries(db: BetterSQLite3Database<typeof schema>) {
     updateTask: (id: string, data: Partial<typeof schema.tasks.$inferInsert>) =>
       db.update(schema.tasks).set(data).where(eq(schema.tasks.id, id)).run(),
 
-    deleteTask: (id: string) =>
-      db.delete(schema.tasks).where(eq(schema.tasks.id, id)).run(),
+    deleteTask: (id: string) => db.delete(schema.tasks).where(eq(schema.tasks.id, id)).run(),
 
     // ── Task Tags (junction) ─────────────────────────────
     getTaskTags: (taskId: string) =>
@@ -32,10 +30,7 @@ export function createQueries(db: BetterSQLite3Database<typeof schema>) {
       db.insert(schema.taskTags).values({ taskId, tagId }).run(),
 
     deleteTaskTags: (taskId: string) =>
-      db
-        .delete(schema.taskTags)
-        .where(eq(schema.taskTags.taskId, taskId))
-        .run(),
+      db.delete(schema.taskTags).where(eq(schema.taskTags.taskId, taskId)).run(),
 
     // ── Projects ─────────────────────────────────────────
     listProjects: () => db.select().from(schema.projects).all(),
@@ -44,19 +39,13 @@ export function createQueries(db: BetterSQLite3Database<typeof schema>) {
       db.select().from(schema.projects).where(eq(schema.projects.id, id)).all(),
 
     getProjectByName: (name: string) =>
-      db
-        .select()
-        .from(schema.projects)
-        .where(eq(schema.projects.name, name))
-        .all(),
+      db.select().from(schema.projects).where(eq(schema.projects.name, name)).all(),
 
     insertProject: (project: typeof schema.projects.$inferInsert) =>
       db.insert(schema.projects).values(project).run(),
 
-    updateProject: (
-      id: string,
-      data: Partial<typeof schema.projects.$inferInsert>,
-    ) => db.update(schema.projects).set(data).where(eq(schema.projects.id, id)).run(),
+    updateProject: (id: string, data: Partial<typeof schema.projects.$inferInsert>) =>
+      db.update(schema.projects).set(data).where(eq(schema.projects.id, id)).run(),
 
     deleteProject: (id: string) =>
       db.delete(schema.projects).where(eq(schema.projects.id, id)).run(),
@@ -67,11 +56,9 @@ export function createQueries(db: BetterSQLite3Database<typeof schema>) {
     getTagByName: (name: string) =>
       db.select().from(schema.tags).where(eq(schema.tags.name, name)).all(),
 
-    insertTag: (tag: typeof schema.tags.$inferInsert) =>
-      db.insert(schema.tags).values(tag).run(),
+    insertTag: (tag: typeof schema.tags.$inferInsert) => db.insert(schema.tags).values(tag).run(),
 
-    deleteTag: (id: string) =>
-      db.delete(schema.tags).where(eq(schema.tags.id, id)).run(),
+    deleteTag: (id: string) => db.delete(schema.tags).where(eq(schema.tags.id, id)).run(),
 
     // ── Plugin Settings ─────────────────────────────────
     loadPluginSettings: (pluginId: string) =>
@@ -94,11 +81,7 @@ export function createQueries(db: BetterSQLite3Database<typeof schema>) {
 
     // ── App Settings ──────────────────────────────────
     getAppSetting: (key: string) =>
-      db
-        .select()
-        .from(schema.appSettings)
-        .where(eq(schema.appSettings.key, key))
-        .get(),
+      db.select().from(schema.appSettings).where(eq(schema.appSettings.key, key)).get(),
 
     setAppSetting: (key: string, value: string) => {
       const now = new Date().toISOString();
@@ -112,10 +95,29 @@ export function createQueries(db: BetterSQLite3Database<typeof schema>) {
     },
 
     deleteAppSetting: (key: string) =>
+      db.delete(schema.appSettings).where(eq(schema.appSettings.key, key)).run(),
+
+    // ── Chat Messages ──────────────────────────────────
+    listChatMessages: (sessionId: string) =>
       db
-        .delete(schema.appSettings)
-        .where(eq(schema.appSettings.key, key))
-        .run(),
+        .select()
+        .from(schema.chatMessages)
+        .where(eq(schema.chatMessages.sessionId, sessionId))
+        .all(),
+
+    insertChatMessage: (msg: typeof schema.chatMessages.$inferInsert) =>
+      db.insert(schema.chatMessages).values(msg).run(),
+
+    deleteChatSession: (sessionId: string) =>
+      db.delete(schema.chatMessages).where(eq(schema.chatMessages.sessionId, sessionId)).run(),
+
+    getLatestSessionId: () =>
+      db
+        .select({ sessionId: schema.chatMessages.sessionId })
+        .from(schema.chatMessages)
+        .orderBy(desc(schema.chatMessages.id))
+        .limit(1)
+        .get(),
   };
 }
 

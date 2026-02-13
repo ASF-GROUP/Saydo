@@ -11,7 +11,11 @@ export function getToolDefinitions(): ToolDefinition[] {
         type: "object",
         properties: {
           title: { type: "string", description: "Task title (required)" },
-          priority: { type: "number", description: "Priority 1-4 (1=urgent, 4=low)", enum: [1, 2, 3, 4] },
+          priority: {
+            type: "number",
+            description: "Priority 1-4 (1=urgent, 4=low)",
+            enum: [1, 2, 3, 4],
+          },
           dueDate: { type: "string", description: "Due date as ISO 8601 string" },
           tags: { type: "array", items: { type: "string" }, description: "Tag names" },
           projectId: { type: "string", description: "Project ID to assign to" },
@@ -25,7 +29,11 @@ export function getToolDefinitions(): ToolDefinition[] {
       parameters: {
         type: "object",
         properties: {
-          status: { type: "string", description: "Filter by status", enum: ["pending", "completed", "cancelled"] },
+          status: {
+            type: "string",
+            description: "Filter by status",
+            enum: ["pending", "completed", "cancelled"],
+          },
           projectId: { type: "string", description: "Filter by project ID" },
           search: { type: "string", description: "Search tasks by title" },
         },
@@ -92,7 +100,10 @@ export async function executeTool(
         tags: (args.tags as string[]) ?? [],
         projectId: (args.projectId as string) ?? null,
       });
-      return JSON.stringify({ success: true, task: { id: task.id, title: task.title, status: task.status } });
+      return JSON.stringify({
+        success: true,
+        task: { id: task.id, title: task.title, status: task.status },
+      });
     }
 
     case "list_tasks": {
@@ -116,13 +127,19 @@ export async function executeTool(
 
     case "complete_task": {
       const task = await taskService.complete(args.taskId as string);
-      return JSON.stringify({ success: true, task: { id: task.id, title: task.title, status: task.status } });
+      return JSON.stringify({
+        success: true,
+        task: { id: task.id, title: task.title, status: task.status },
+      });
     }
 
     case "update_task": {
       const { taskId, ...updates } = args;
       const task = await taskService.update(taskId as string, updates);
-      return JSON.stringify({ success: true, task: { id: task.id, title: task.title, status: task.status } });
+      return JSON.stringify({
+        success: true,
+        task: { id: task.id, title: task.title, status: task.status },
+      });
     }
 
     case "delete_task": {

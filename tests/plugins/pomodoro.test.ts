@@ -201,7 +201,7 @@ describe("Pomodoro Plugin", () => {
   });
 
   describe("Settings integration", () => {
-    function executeCommand(name: string) {
+    function _executeCommand(name: string) {
       const cmd = mock.registeredCommands.find((c) => c.name === name);
       cmd?.callback();
     }

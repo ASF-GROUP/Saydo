@@ -36,7 +36,9 @@ export function TaskInput({ onSubmit, placeholder }: TaskInputProps) {
         <div className="flex flex-wrap gap-2 mt-1.5 px-1 text-xs">
           <span className="text-gray-600 dark:text-gray-400">{preview.title}</span>
           {preview.priority && (
-            <span className="text-orange-600 dark:text-orange-400 font-medium">P{preview.priority}</span>
+            <span className="text-orange-600 dark:text-orange-400 font-medium">
+              P{preview.priority}
+            </span>
           )}
           {preview.dueDate && (
             <span className="text-blue-600 dark:text-blue-400">
@@ -44,7 +46,9 @@ export function TaskInput({ onSubmit, placeholder }: TaskInputProps) {
             </span>
           )}
           {preview.tags.map((tag) => (
-            <span key={tag} className="text-purple-600 dark:text-purple-400">#{tag}</span>
+            <span key={tag} className="text-purple-600 dark:text-purple-400">
+              #{tag}
+            </span>
           ))}
           {preview.project && (
             <span className="text-green-600 dark:text-green-400">+{preview.project}</span>

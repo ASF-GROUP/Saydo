@@ -107,25 +107,25 @@ Two-week sprint cycles. Each sprint has a clear goal and pulls items from the [B
 
 | ID | Item | Size | Status |
 |----|------|------|--------|
-| PL-16 | Event bus for task lifecycle hooks | M | pending |
-| PL-04 | Plugin loader (discover + validate manifests) | L | pending |
-| PL-05 | Plugin lifecycle (load/unload, call onLoad/onUnload) | L | pending |
-| PL-06 | Plugin sandbox (restricted execution context) | XL | pending |
-| PL-07 | Plugin API surface (task read/write, events) | L | pending |
-| PL-17 | Plugin-specific isolated storage (persist to DB) | M | pending |
-| T-10 | Plugin loader integration tests | M | pending |
+| PL-16 | Event bus for task lifecycle hooks | M | done |
+| PL-04 | Plugin loader (discover + validate manifests) | L | done |
+| PL-05 | Plugin lifecycle (load/unload, call onLoad/onUnload) | L | done |
+| PL-06 | Plugin sandbox (restricted execution context) | XL | done |
+| PL-07 | Plugin API surface (task read/write, events) | L | done |
+| PL-17 | Plugin-specific isolated storage (persist to DB) | M | done |
+| T-10 | Plugin loader integration tests | M | done |
 
 **Capacity**: ~7 items but heavier (L/XL), fits a 2-week sprint.
 
 **Definition of Done**:
-- [ ] Drop a plugin folder into `plugins/` → Docket discovers it on startup
-- [ ] Invalid manifests are rejected with clear error messages
-- [ ] Plugin `onLoad()` and `onUnload()` are called correctly
-- [ ] Plugins can register commands via the API
-- [ ] Plugins receive `task:create` and `task:complete` events
-- [ ] Plugin storage persists across app restarts
-- [ ] Example plugin loads and shows task count in status bar
-- [ ] `pnpm check` passes
+- [x] Drop a plugin folder into `plugins/` → Docket discovers it on startup
+- [x] Invalid manifests are rejected with clear error messages
+- [x] Plugin `onLoad()` and `onUnload()` are called correctly
+- [x] Plugins can register commands via the API
+- [x] Plugins receive `task:create` and `task:complete` events
+- [x] Plugin storage persists across app restarts
+- [x] Example plugin loads and shows task count in status bar
+- [x] `pnpm check` passes
 
 ---
 
@@ -137,24 +137,24 @@ Two-week sprint cycles. Each sprint has a clear goal and pulls items from the [B
 
 | ID | Item | Size | Status |
 |----|------|------|--------|
-| PL-08 | Plugin UI extension: sidebar panels | L | pending |
-| PL-09 | Plugin UI extension: custom views | L | pending |
-| PL-10 | Plugin UI extension: status bar | M | pending |
-| PL-11 | Plugin commands integration with command palette | M | pending |
-| PL-12 | Plugin settings UI in Settings view | M | pending |
-| PL-13 | Plugin store view (browse sources.json) | M | pending |
-| PL-18 | Built-in Pomodoro plugin (fully functional) | L | pending |
+| PL-08 | Plugin UI extension: sidebar panels | L | done |
+| PL-09 | Plugin UI extension: custom views | L | done |
+| PL-10 | Plugin UI extension: status bar | M | done |
+| PL-11 | Plugin commands integration with command palette | M | done |
+| PL-12 | Plugin settings UI in Settings view | M | done |
+| PL-13 | Plugin store view (browse sources.json) | M | done |
+| PL-18 | Built-in Pomodoro plugin (fully functional) | L | done |
 
 **Capacity**: ~7 items (M/L), fits a 2-week sprint.
 
 **Definition of Done**:
-- [ ] Pomodoro plugin renders a sidebar panel with timer
-- [ ] Plugin-registered views appear in sidebar navigation
-- [ ] Status bar shows plugin-provided items
-- [ ] Plugin commands appear in the command palette
-- [ ] Plugin settings appear in Settings > Plugins
-- [ ] Plugin store lists plugins from sources.json
-- [ ] `pnpm check` passes
+- [x] Pomodoro plugin renders a sidebar panel with timer
+- [x] Plugin-registered views appear in sidebar navigation
+- [x] Status bar shows plugin-provided items
+- [x] Plugin commands appear in the command palette
+- [x] Plugin settings appear in Settings > Plugins
+- [x] Plugin store lists plugins from sources.json
+- [x] `pnpm check` passes
 
 ---
 
@@ -164,8 +164,6 @@ These will be planned as we get closer. See [BACKLOG.md](BACKLOG.md) for all ite
 
 | Sprint | Theme | Key Items |
 |--------|-------|-----------|
-| S5 | AI: Foundation | Provider abstraction, OpenAI/Anthropic providers, chat panel UI |
-| S6 | AI: Intelligence | Tool use (task CRUD), context injection, follow-up questions, voice input |
 | S7 | CI/CD & Release | GitHub Actions, ESLint/Prettier config, Tauri packaging |
 | S8 | Markdown Storage | Storage abstraction, Markdown backend, file-based projects |
 | S9 | Data Portability | Export (JSON/MD/CSV), import (Todoist), migration tools |
@@ -228,3 +226,74 @@ These will be planned as we get closer. See [BACKLOG.md](BACKLOG.md) for all ite
 | T-08, T-09 | CLI integration tests + component tests | done |
 
 **Result**: 7 new files, 20 modified files. 246 passing tests. Keyboard-driven workflow, persistent themes, project views, recurring tasks all working.
+
+### Sprint 3 — "Plugins: Foundation" (completed)
+
+**Goal**: Plugin loader works. Plugins can be discovered, validated, loaded, and unloaded. The event bus dispatches task lifecycle hooks. The example plugin actually runs.
+
+| ID | Item | Status |
+|----|------|--------|
+| PL-16 | Event bus for task lifecycle hooks | done |
+| PL-04 | Plugin loader (discover + validate manifests) | done |
+| PL-05 | Plugin lifecycle (load/unload, call onLoad/onUnload) | done |
+| PL-06 | Plugin sandbox (restricted execution context) | done |
+| PL-07 | Plugin API surface (task read/write, events) | done |
+| PL-17 | Plugin-specific isolated storage (persist to DB) | done |
+| T-10 | Plugin loader integration tests | done |
+
+**Result**: Full plugin system with loader, sandbox, lifecycle management, event bus, and per-plugin storage. 275 passing tests.
+
+### Sprint 4 — "Plugins: UI" (completed)
+
+**Goal**: Plugins can extend the UI. Sidebar panels, custom views, status bar items, settings tabs, command palette integration, plugin store, and a built-in Pomodoro plugin.
+
+| ID | Item | Status |
+|----|------|--------|
+| PL-08 | Plugin UI extension: sidebar panels | done |
+| PL-09 | Plugin UI extension: custom views | done |
+| PL-10 | Plugin UI extension: status bar | done |
+| PL-11 | Plugin commands integration with command palette | done |
+| PL-12 | Plugin settings UI in Settings view | done |
+| PL-13 | Plugin store view (browse sources.json) | done |
+| PL-18 | Built-in Pomodoro plugin (fully functional) | done |
+
+**Result**: Full plugin UI integration with sidebar panels, custom views, status bar, command palette, and settings. Built-in Pomodoro plugin with timer and configurable durations. 297 passing tests.
+
+### Sprint 5 — "AI: Foundation" (completed)
+
+**Goal**: AI assistant foundation. Provider abstraction with 5 implementations, streaming chat via SSE, tool calling for task CRUD, chat panel UI, and provider settings.
+
+| ID | Item | Status |
+|----|------|--------|
+| AI-01 | AI type definitions (ChatMessage, ToolCall, etc.) | done |
+| AI-02 | AIProvider interface + factory function | done |
+| AI-03 | OpenAI provider implementation | done |
+| AI-04 | Anthropic provider implementation | done |
+| AI-05 | OpenRouter/Ollama/LM Studio provider wrappers | done |
+| AI-06 | Tool definitions + execution (task CRUD) | done |
+| AI-07 | Chat session + manager | done |
+| AI-08 | Server API endpoints (SSE streaming) | done |
+| AI-09 | Frontend API + AIContext | done |
+| AI-10 | Chat panel UI component | done |
+| AI-11 | Provider settings UI | done |
+| AI-12 | AI provider/tools/chat tests | done |
+
+**Result**: 14 new files, 8 modified files. Full AI assistant with 5 provider implementations, SSE streaming, task CRUD tools, chat panel, and provider settings. 321 passing tests.
+
+### Sprint 6 — "AI: Intelligence" (completed)
+
+**Goal**: Make the AI smarter. Rich context injection (task counts, overdue items, projects), chat persistence to SQLite, enhanced system prompt (follow-up questions, daily planning, priority suggestions), voice input via Browser Speech API, and UI enhancements (tool call badges, suggestion chips, chat restoration).
+
+| ID | Item | Status |
+|----|------|--------|
+| AI-13 | Rich context injection in system message | done |
+| AI-14 | Chat history persistence (SQLite) | done |
+| AI-15 | Enhanced AI system prompt (follow-ups, planning) | done |
+| AI-16 | Voice input via Browser Speech API | done |
+| AI-17 | Tool call badges in chat UI | done |
+| AI-18 | Suggestion chips for quick actions | done |
+| AI-19 | Chat restoration from DB on page load | done |
+| AI-20 | Server endpoints for persistence + context | done |
+| AI-21 | Chat persistence + context tests | done |
+
+**Result**: 2 new files, 5 modified files. AI assistant now has live task context, persistent chat history, voice input, enhanced UX with tool call badges and suggestion chips. 333 passing tests.

@@ -51,9 +51,7 @@ export function PluginStore() {
                   </span>
                 )}
               </div>
-              <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
-                {plugin.description}
-              </p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">{plugin.description}</p>
               <div className="flex flex-wrap gap-1">
                 {plugin.tags.map((tag) => (
                   <span

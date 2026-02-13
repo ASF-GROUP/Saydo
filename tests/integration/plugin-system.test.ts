@@ -306,9 +306,7 @@ describe("Plugin System Integration", () => {
         settingDefinitions: [],
       });
 
-      expect(() => api.events.on("task:create", () => {})).toThrow(
-        /lacks "task:read" permission/,
-      );
+      expect(() => api.events.on("task:create", () => {})).toThrow(/lacks "task:read" permission/);
     });
   });
 
@@ -339,9 +337,7 @@ describe("Plugin System Integration", () => {
       const { queries } = createTestServices();
       const manager = new PluginSettingsManager(queries);
 
-      const defs = [
-        { id: "color", name: "Color", type: "text" as const, default: "red" },
-      ];
+      const defs = [{ id: "color", name: "Color", type: "text" as const, default: "red" }];
 
       expect(manager.get("test", "color", defs)).toBe("red");
     });
