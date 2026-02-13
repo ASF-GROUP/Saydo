@@ -7,17 +7,17 @@ Core task management without plugins. A usable task manager.
 - [x] Project scaffold (package.json, tsconfig, linting, formatting)
 - [x] Core infrastructure (logger, config, validation, ID generation)
 - [x] Database schema and migrations (Drizzle + SQLite)
-- [ ] Task CRUD (create, read, update, delete, complete)
-- [ ] Project management (create, list, archive)
-- [ ] Tag system (create, assign, filter)
+- [x] Task CRUD (create, read, update, delete, complete)
+- [x] Project management (create, list, archive)
+- [x] Tag system (create, assign, filter)
 - [x] Priority levels (P1–P4 with sorting)
-- [ ] Due dates with time support
+- [x] Due dates with time support
 - [x] Natural language task input (chrono-node + custom grammar)
 - [x] Basic React UI: inbox, today, upcoming views
 - [x] Sidebar navigation
-- [ ] Keyboard-first navigation
+- [x] Keyboard-first navigation
 - [x] Command palette (Ctrl+K)
-- [ ] Light/dark theme
+- [x] Light/dark theme
 - [x] CLI companion: `add`, `list`, `done`, `edit`, `delete` commands
 - [x] Unit tests for core logic and parser
 - [x] Documentation: all docs complete
@@ -26,11 +26,11 @@ Core task management without plugins. A usable task manager.
 
 Refinements to the core experience before plugins.
 
-- [ ] Recurring tasks (daily, weekly, monthly, custom)
-- [ ] Task search and filtering (by project, tag, priority, date range)
+- [x] Recurring tasks (daily, weekly, monthly, custom)
+- [x] Task search and filtering (by project, tag, priority, date range)
 - [ ] Bulk operations (complete all, move to project, tag multiple)
 - [ ] Drag-and-drop task reordering
-- [ ] Task descriptions (longer notes below the title)
+- [x] Task descriptions (longer notes below the title)
 - [ ] Undo/redo for task operations
 - [ ] Custom CSS theme support
 - [ ] Keyboard shortcut customization

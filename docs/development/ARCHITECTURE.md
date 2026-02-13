@@ -38,10 +38,28 @@ src/
 │   ├── settings.ts          # Per-plugin settings storage
 │   └── types.ts             # Plugin manifest and API types
 ├── ui/                      # React frontend
-│   ├── App.tsx              # Root component with routing
+│   ├── App.tsx              # Root component with routing, keyboard nav, command palette
+│   ├── main.tsx             # Entry point — renders App, initializes theme
+│   ├── api.ts               # HTTP client for Vite dev server API
+│   ├── context/
+│   │   └── TaskContext.tsx   # React context for task state (CRUD, refresh)
+│   ├── hooks/
+│   │   └── useKeyboardNavigation.ts  # j/k/Enter/Esc keyboard nav hook
 │   ├── components/          # Reusable UI components
+│   │   ├── TaskInput.tsx    # Natural language input with parser preview
+│   │   ├── TaskItem.tsx     # Single task row with selection highlight
+│   │   ├── TaskList.tsx     # Task list container
+│   │   ├── TaskDetailPanel.tsx  # Slide-over task editor (w-96, auto-save on blur)
+│   │   ├── Sidebar.tsx      # Navigation + project list
+│   │   └── CommandPalette.tsx   # Ctrl+K command palette with arrow nav
 │   ├── views/               # Main application views
-│   └── themes/              # Theme system
+│   │   ├── Inbox.tsx        # Default inbox (pending, no project)
+│   │   ├── Today.tsx        # Tasks due today
+│   │   ├── Upcoming.tsx     # Tasks with due dates, sorted
+│   │   ├── Project.tsx      # Single project filtered view
+│   │   └── Settings.tsx     # Theme toggle + placeholder sections
+│   └── themes/
+│       └── manager.ts       # ThemeManager singleton (localStorage persistence)
 ├── ai/                      # AI assistant layer (future)
 │   ├── provider.ts          # Provider abstraction interface
 │   ├── providers/           # Provider implementations (OpenAI, Anthropic, Ollama, etc.)
