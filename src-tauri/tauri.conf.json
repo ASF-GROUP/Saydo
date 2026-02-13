@@ -22,12 +22,5 @@
     "security": {
       "csp": null
     }
-  },
-  "plugins": {
-    "fs": {
-      "scope": {
-        "allow": ["$APPDATA/ASF Docket/**"]
-      }
-    }
   }
 }
