@@ -21,11 +21,14 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
     "cli": "tsx src/cli/index.ts",
-    "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test"
+    "check": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm test",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.74.0",
     "@tauri-apps/api": "^2.2.0",
+    "@tauri-apps/plugin-fs": "^2.4.5",
     "better-sqlite3": "^11.7.0",
     "chrono-node": "^2.7.0",
     "commander": "^13.1.0",
@@ -33,10 +36,13 @@
     "openai": "^6.21.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "sql.js": "^1.14.0",
     "zod": "^3.24.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
+    "@tailwindcss/vite": "^4.1.18",
+    "@tauri-apps/cli": "^2.10.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
@@ -44,6 +50,7 @@
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@types/sql.js": "^1.4.9",
     "@typescript-eslint/eslint-plugin": "^8.18.0",
     "@typescript-eslint/parser": "^8.18.0",
     "@vitejs/plugin-react": "^4.3.0",

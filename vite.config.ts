@@ -1,4 +1,5 @@
 import { defineConfig } from "vite";
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import fs from "node:fs";
 import path from "node:path";
@@ -488,11 +489,19 @@ function apiPlugin() {
   };
 }
 
-export default defineConfig({
-  plugins: [react(), apiPlugin()],
+export default defineConfig(({ command }) => ({
+  plugins: [tailwindcss(), react(), ...(command === "serve" ? [apiPlugin()] : [])],
   resolve: {
     alias: {
       "@": "/src",
     },
   },
-});
+  build: {
+    rollupOptions: {
+      external: ["better-sqlite3"],
+    },
+  },
+  optimizeDeps: {
+    exclude: ["sql.js"],
+  },
+}));

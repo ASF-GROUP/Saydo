@@ -1,8 +1,8 @@
 import { eq, desc } from "drizzle-orm";
-import type { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import type { BaseSQLiteDatabase } from "drizzle-orm/sqlite-core";
 import * as schema from "./schema.js";
 
-export function createQueries(db: BetterSQLite3Database<typeof schema>) {
+export function createQueries(db: BaseSQLiteDatabase<"sync", any, typeof schema>) {
   return {
     // ── Tasks ────────────────────────────────────────────
     listTasks: () => db.select().from(schema.tasks).all(),

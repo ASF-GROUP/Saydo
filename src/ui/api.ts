@@ -1,6 +1,23 @@
 import type { Task, CreateTaskInput, UpdateTaskInput, Project } from "../core/types.js";
+import type { TaskFilter } from "../core/filters.js";
 
 const BASE = "/api";
+
+function isTauri(): boolean {
+  return typeof window !== "undefined" && "__TAURI__" in window;
+}
+
+// Lazy-loaded services for Tauri mode
+type WebServices = Awaited<ReturnType<typeof import("../bootstrap-web.js").bootstrapWeb>>;
+let _services: WebServices | null = null;
+
+async function getServices(): Promise<WebServices> {
+  if (!_services) {
+    const { bootstrapWeb } = await import("../bootstrap-web.js");
+    _services = await bootstrapWeb();
+  }
+  return _services;
+}
 
 export const api = {
   async listTasks(params?: {
@@ -8,6 +25,12 @@ export const api = {
     projectId?: string;
     status?: string;
   }): Promise<Task[]> {
+    if (isTauri()) {
+      const svc = await getServices();
+      return svc.taskService.list(
+        params && Object.keys(params).length > 0 ? (params as TaskFilter) : undefined,
+      );
+    }
     const url = new URL(`${BASE}/tasks`, window.location.origin);
     if (params?.search) url.searchParams.set("search", params.search);
     if (params?.projectId) url.searchParams.set("projectId", params.projectId);
@@ -17,6 +40,12 @@ export const api = {
   },
 
   async createTask(input: CreateTaskInput): Promise<Task> {
+    if (isTauri()) {
+      const svc = await getServices();
+      const task = await svc.taskService.create(input);
+      svc.save();
+      return task;
+    }
     const res = await fetch(`${BASE}/tasks`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -26,6 +55,12 @@ export const api = {
   },
 
   async completeTask(id: string): Promise<Task> {
+    if (isTauri()) {
+      const svc = await getServices();
+      const task = await svc.taskService.complete(id);
+      svc.save();
+      return task;
+    }
     const res = await fetch(`${BASE}/tasks/${id}/complete`, {
       method: "POST",
     });
@@ -33,6 +68,12 @@ export const api = {
   },
 
   async updateTask(id: string, input: UpdateTaskInput): Promise<Task> {
+    if (isTauri()) {
+      const svc = await getServices();
+      const task = await svc.taskService.update(id, input);
+      svc.save();
+      return task;
+    }
     const res = await fetch(`${BASE}/tasks/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -42,10 +83,20 @@ export const api = {
   },
 
   async deleteTask(id: string): Promise<void> {
+    if (isTauri()) {
+      const svc = await getServices();
+      await svc.taskService.delete(id);
+      svc.save();
+      return;
+    }
     await fetch(`${BASE}/tasks/${id}`, { method: "DELETE" });
   },
 
   async listProjects(): Promise<Project[]> {
+    if (isTauri()) {
+      const svc = await getServices();
+      return svc.projectService.list();
+    }
     const res = await fetch(`${BASE}/projects`);
     return res.json();
   },
@@ -53,16 +104,30 @@ export const api = {
   // Plugin APIs
 
   async listPlugins(): Promise<PluginInfo[]> {
+    if (isTauri()) {
+      // No plugin loader in Tauri mode (deferred)
+      return [];
+    }
     const res = await fetch(`${BASE}/plugins`);
     return res.json();
   },
 
   async getPluginSettings(pluginId: string): Promise<Record<string, unknown>> {
+    if (isTauri()) {
+      const svc = await getServices();
+      return svc.settingsManager.getAll(pluginId);
+    }
     const res = await fetch(`${BASE}/plugins/${pluginId}/settings`);
     return res.json();
   },
 
   async updatePluginSetting(pluginId: string, key: string, value: unknown): Promise<void> {
+    if (isTauri()) {
+      const svc = await getServices();
+      await svc.settingsManager.set(pluginId, key, value);
+      svc.save();
+      return;
+    }
     await fetch(`${BASE}/plugins/${pluginId}/settings`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -71,38 +136,84 @@ export const api = {
   },
 
   async listPluginCommands(): Promise<PluginCommandInfo[]> {
+    if (isTauri()) {
+      const svc = await getServices();
+      return svc.commandRegistry.getAll().map((c) => ({
+        id: c.id,
+        name: c.name,
+        hotkey: c.hotkey,
+      }));
+    }
     const res = await fetch(`${BASE}/plugins/commands`);
     return res.json();
   },
 
   async executePluginCommand(id: string): Promise<void> {
+    if (isTauri()) {
+      const svc = await getServices();
+      svc.commandRegistry.execute(id);
+      return;
+    }
     await fetch(`${BASE}/plugins/commands/${encodeURIComponent(id)}`, {
       method: "POST",
     });
   },
 
   async getStatusBarItems(): Promise<StatusBarItemInfo[]> {
+    if (isTauri()) {
+      const svc = await getServices();
+      return svc.uiRegistry.getStatusBarItems().map((item) => ({
+        id: item.id,
+        text: item.text,
+        icon: item.icon,
+      }));
+    }
     const res = await fetch(`${BASE}/plugins/ui/status-bar`);
     return res.json();
   },
 
   async getPluginPanels(): Promise<PanelInfo[]> {
+    if (isTauri()) {
+      const svc = await getServices();
+      return svc.uiRegistry.getPanels().map((panel) => ({
+        id: panel.id,
+        title: panel.title,
+        icon: panel.icon,
+        content: svc.uiRegistry.getPanelContent(panel.id) ?? "",
+      }));
+    }
     const res = await fetch(`${BASE}/plugins/ui/panels`);
     return res.json();
   },
 
   async getPluginViews(): Promise<ViewInfo[]> {
+    if (isTauri()) {
+      const svc = await getServices();
+      return svc.uiRegistry.getViews().map((view) => ({
+        id: view.id,
+        name: view.name,
+        icon: view.icon,
+      }));
+    }
     const res = await fetch(`${BASE}/plugins/ui/views`);
     return res.json();
   },
 
   async getPluginViewContent(viewId: string): Promise<string> {
+    if (isTauri()) {
+      const svc = await getServices();
+      return svc.uiRegistry.getViewContent(viewId) ?? "";
+    }
     const res = await fetch(`${BASE}/plugins/ui/views/${encodeURIComponent(viewId)}/content`);
     const data = await res.json();
     return data.content;
   },
 
   async getPluginStore(): Promise<{ plugins: StorePluginInfo[] }> {
+    if (isTauri()) {
+      // Plugin store not available in Tauri mode (deferred)
+      return { plugins: [] };
+    }
     const res = await fetch(`${BASE}/plugins/store`);
     return res.json();
   },
@@ -110,6 +221,19 @@ export const api = {
   // AI APIs
 
   async getAIConfig(): Promise<AIConfigInfo> {
+    if (isTauri()) {
+      const svc = await getServices();
+      const providerSetting = svc.queries.getAppSetting("ai_provider");
+      const modelSetting = svc.queries.getAppSetting("ai_model");
+      const baseUrlSetting = svc.queries.getAppSetting("ai_base_url");
+      const apiKeySetting = svc.queries.getAppSetting("ai_api_key");
+      return {
+        provider: providerSetting?.value ?? null,
+        model: modelSetting?.value ?? null,
+        baseUrl: baseUrlSetting?.value ?? null,
+        hasApiKey: !!apiKeySetting?.value,
+      };
+    }
     const res = await fetch(`${BASE}/ai/config`);
     return res.json();
   },
@@ -120,6 +244,28 @@ export const api = {
     model?: string;
     baseUrl?: string;
   }): Promise<void> {
+    if (isTauri()) {
+      const svc = await getServices();
+      if (config.provider) svc.queries.setAppSetting("ai_provider", config.provider);
+      if (config.apiKey) svc.queries.setAppSetting("ai_api_key", config.apiKey);
+      if (config.model !== undefined) {
+        if (config.model) {
+          svc.queries.setAppSetting("ai_model", config.model);
+        } else {
+          svc.queries.deleteAppSetting("ai_model");
+        }
+      }
+      if (config.baseUrl !== undefined) {
+        if (config.baseUrl) {
+          svc.queries.setAppSetting("ai_base_url", config.baseUrl);
+        } else {
+          svc.queries.deleteAppSetting("ai_base_url");
+        }
+      }
+      svc.chatManager.clearSession(svc.queries);
+      svc.save();
+      return;
+    }
     await fetch(`${BASE}/ai/config`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -128,6 +274,89 @@ export const api = {
   },
 
   async sendChatMessage(message: string): Promise<ReadableStream<Uint8Array> | null> {
+    if (isTauri()) {
+      const svc = await getServices();
+      const providerSetting = svc.queries.getAppSetting("ai_provider");
+      if (!providerSetting?.value) {
+        // Return a stream with an error event, matching SSE format
+        const encoder = new TextEncoder();
+        return new ReadableStream({
+          start(controller) {
+            controller.enqueue(
+              encoder.encode(
+                `data: ${JSON.stringify({ type: "error", data: "No AI provider configured. Go to Settings to set one up." })}\n\n`,
+              ),
+            );
+            controller.close();
+          },
+        });
+      }
+
+      try {
+        const { createProvider } = await import("../ai/provider.js");
+        const { gatherContext } = await import("../ai/chat.js");
+        const apiKeySetting = svc.queries.getAppSetting("ai_api_key");
+        const modelSetting = svc.queries.getAppSetting("ai_model");
+        const baseUrlSetting = svc.queries.getAppSetting("ai_base_url");
+
+        const provider = createProvider({
+          provider: providerSetting.value as
+            | "openai"
+            | "anthropic"
+            | "openrouter"
+            | "ollama"
+            | "lmstudio",
+          apiKey: apiKeySetting?.value,
+          model: modelSetting?.value,
+          baseUrl: baseUrlSetting?.value,
+        });
+
+        const toolServices = {
+          taskService: svc.taskService,
+          projectService: svc.projectService,
+        };
+
+        const contextBlock = await gatherContext(toolServices);
+        const session = svc.chatManager.getOrCreateSession(
+          provider,
+          toolServices,
+          svc.queries,
+          contextBlock,
+        );
+
+        session.addUserMessage(message);
+
+        const encoder = new TextEncoder();
+        return new ReadableStream({
+          async start(controller) {
+            try {
+              for await (const event of session.run()) {
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+              }
+            } catch (err: unknown) {
+              const errorMsg = err instanceof Error ? err.message : "Unknown error";
+              controller.enqueue(
+                encoder.encode(`data: ${JSON.stringify({ type: "error", data: errorMsg })}\n\n`),
+              );
+            }
+            svc.save();
+            controller.close();
+          },
+        });
+      } catch (err: unknown) {
+        const encoder = new TextEncoder();
+        const errorMsg = err instanceof Error ? err.message : "Unknown error";
+        return new ReadableStream({
+          start(controller) {
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ type: "error", data: errorMsg })}\n\n`),
+            );
+            controller.close();
+          },
+        });
+      }
+    }
+
     const res = await fetch(`${BASE}/ai/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -137,11 +366,56 @@ export const api = {
   },
 
   async getChatMessages(): Promise<AIChatMessage[]> {
+    if (isTauri()) {
+      const svc = await getServices();
+      let session = svc.chatManager.getSession();
+
+      if (!session) {
+        try {
+          const providerSetting = svc.queries.getAppSetting("ai_provider");
+          if (providerSetting?.value) {
+            const { createProvider } = await import("../ai/provider.js");
+            const apiKeySetting = svc.queries.getAppSetting("ai_api_key");
+            const modelSetting = svc.queries.getAppSetting("ai_model");
+            const baseUrlSetting = svc.queries.getAppSetting("ai_base_url");
+
+            const provider = createProvider({
+              provider: providerSetting.value as
+                | "openai"
+                | "anthropic"
+                | "openrouter"
+                | "ollama"
+                | "lmstudio",
+              apiKey: apiKeySetting?.value,
+              model: modelSetting?.value,
+              baseUrl: baseUrlSetting?.value,
+            });
+
+            session = svc.chatManager.restoreSession(
+              provider,
+              { taskService: svc.taskService, projectService: svc.projectService },
+              svc.queries,
+            );
+          }
+        } catch {
+          // Non-critical
+        }
+      }
+
+      return session ? (session.getMessages() as AIChatMessage[]) : [];
+    }
+
     const res = await fetch(`${BASE}/ai/messages`);
     return res.json();
   },
 
   async clearChat(): Promise<void> {
+    if (isTauri()) {
+      const svc = await getServices();
+      svc.chatManager.clearSession(svc.queries);
+      svc.save();
+      return;
+    }
     await fetch(`${BASE}/ai/clear`, { method: "POST" });
   },
 };

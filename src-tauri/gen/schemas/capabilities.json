@@ -1,0 +1,1 @@
+{"default":{"identifier":"default","description":"Default capabilities for ASF Docket","local":true,"windows":["main"],"permissions":["core:default","fs:default","fs:allow-exists","fs:allow-read-file","fs:allow-write-file","fs:allow-mkdir",{"identifier":"fs:scope","allow":[{"path":"$APPDATA/ASF Docket/**"}]}]}}
