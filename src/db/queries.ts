@@ -91,6 +91,31 @@ export function createQueries(db: BetterSQLite3Database<typeof schema>) {
         })
         .run();
     },
+
+    // ── App Settings ──────────────────────────────────
+    getAppSetting: (key: string) =>
+      db
+        .select()
+        .from(schema.appSettings)
+        .where(eq(schema.appSettings.key, key))
+        .get(),
+
+    setAppSetting: (key: string, value: string) => {
+      const now = new Date().toISOString();
+      db.insert(schema.appSettings)
+        .values({ key, value, updatedAt: now })
+        .onConflictDoUpdate({
+          target: schema.appSettings.key,
+          set: { value, updatedAt: now },
+        })
+        .run();
+    },
+
+    deleteAppSetting: (key: string) =>
+      db
+        .delete(schema.appSettings)
+        .where(eq(schema.appSettings.key, key))
+        .run(),
   };
 }
 

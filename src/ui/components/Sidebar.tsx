@@ -9,6 +9,8 @@ interface SidebarProps {
   panels?: PanelInfo[];
   pluginViews?: ViewInfo[];
   selectedPluginViewId?: string | null;
+  onToggleChat?: () => void;
+  chatOpen?: boolean;
 }
 
 const NAV_ITEMS = [
@@ -27,6 +29,8 @@ export function Sidebar({
   panels = [],
   pluginViews = [],
   selectedPluginViewId,
+  onToggleChat,
+  chatOpen,
 }: SidebarProps) {
   return (
     <aside className="w-56 border-r border-gray-200 dark:border-gray-700 p-4 flex flex-col overflow-auto">
@@ -128,6 +132,18 @@ export function Sidebar({
           </>
         )}
       </nav>
+      {onToggleChat && (
+        <button
+          onClick={onToggleChat}
+          className={`mx-3 mb-3 mt-2 px-3 py-2 rounded-lg text-sm flex items-center gap-2 ${
+            chatOpen
+              ? "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 font-medium"
+              : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+          }`}
+        >
+          AI Chat
+        </button>
+      )}
     </aside>
   );
 }

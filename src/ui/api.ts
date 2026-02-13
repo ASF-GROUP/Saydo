@@ -102,6 +102,44 @@ export const api = {
     const res = await fetch(`${BASE}/plugins/store`);
     return res.json();
   },
+
+  // AI APIs
+
+  async getAIConfig(): Promise<AIConfigInfo> {
+    const res = await fetch(`${BASE}/ai/config`);
+    return res.json();
+  },
+
+  async updateAIConfig(config: {
+    provider?: string;
+    apiKey?: string;
+    model?: string;
+    baseUrl?: string;
+  }): Promise<void> {
+    await fetch(`${BASE}/ai/config`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(config),
+    });
+  },
+
+  async sendChatMessage(message: string): Promise<ReadableStream<Uint8Array> | null> {
+    const res = await fetch(`${BASE}/ai/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message }),
+    });
+    return res.body;
+  },
+
+  async getChatMessages(): Promise<AIChatMessage[]> {
+    const res = await fetch(`${BASE}/ai/messages`);
+    return res.json();
+  },
+
+  async clearChat(): Promise<void> {
+    await fetch(`${BASE}/ai/clear`, { method: "POST" });
+  },
 };
 
 export interface PluginInfo {
@@ -161,4 +199,18 @@ export interface StorePluginInfo {
   repository: string;
   tags: string[];
   minDocketVersion: string;
+}
+
+export interface AIConfigInfo {
+  provider: string | null;
+  model: string | null;
+  baseUrl: string | null;
+  hasApiKey: boolean;
+}
+
+export interface AIChatMessage {
+  role: "user" | "assistant" | "tool";
+  content: string;
+  toolCallId?: string;
+  toolCalls?: { id: string; name: string; arguments: string }[];
 }

@@ -250,6 +250,155 @@ function apiPlugin() {
         }
       });
 
+      // ── AI Endpoints ──────────────────────────────────
+
+      // GET/PUT /api/ai/config
+      server.middlewares.use(async (req, res, next) => {
+        if (!req.url?.startsWith("/api/ai/config")) return next();
+
+        const svc = await getServices();
+
+        if (req.method === "GET") {
+          const providerSetting = svc.queries.getAppSetting("ai_provider");
+          const modelSetting = svc.queries.getAppSetting("ai_model");
+          const baseUrlSetting = svc.queries.getAppSetting("ai_base_url");
+          const apiKeySetting = svc.queries.getAppSetting("ai_api_key");
+          res.setHeader("Content-Type", "application/json");
+          res.end(
+            JSON.stringify({
+              provider: providerSetting?.value ?? null,
+              model: modelSetting?.value ?? null,
+              baseUrl: baseUrlSetting?.value ?? null,
+              hasApiKey: !!apiKeySetting?.value,
+            }),
+          );
+          return;
+        }
+
+        if (req.method === "PUT") {
+          const body = await parseBody(req);
+          const { provider, apiKey, model, baseUrl } = body as {
+            provider?: string;
+            apiKey?: string;
+            model?: string;
+            baseUrl?: string;
+          };
+          if (provider) svc.queries.setAppSetting("ai_provider", provider);
+          if (apiKey) svc.queries.setAppSetting("ai_api_key", apiKey);
+          if (model !== undefined) {
+            if (model) {
+              svc.queries.setAppSetting("ai_model", model);
+            } else {
+              svc.queries.deleteAppSetting("ai_model");
+            }
+          }
+          if (baseUrl !== undefined) {
+            if (baseUrl) {
+              svc.queries.setAppSetting("ai_base_url", baseUrl);
+            } else {
+              svc.queries.deleteAppSetting("ai_base_url");
+            }
+          }
+          // Reset chat session when provider config changes
+          svc.chatManager.clearSession();
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ ok: true }));
+          return;
+        }
+
+        next();
+      });
+
+      // POST /api/ai/chat — SSE streaming chat
+      server.middlewares.use(async (req, res, next) => {
+        if (req.url !== "/api/ai/chat" || req.method !== "POST") return next();
+
+        const svc = await getServices();
+        const body = await parseBody(req);
+        const message = (body as { message: string }).message;
+
+        if (!message) {
+          res.statusCode = 400;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ error: "message is required" }));
+          return;
+        }
+
+        // Load provider config
+        const providerSetting = svc.queries.getAppSetting("ai_provider");
+        if (!providerSetting?.value) {
+          res.setHeader("Content-Type", "text/event-stream");
+          res.setHeader("Cache-Control", "no-cache");
+          res.setHeader("Connection", "keep-alive");
+          res.write(
+            `data: ${JSON.stringify({ type: "error", data: "No AI provider configured. Go to Settings to set one up." })}\n\n`,
+          );
+          res.end();
+          return;
+        }
+
+        try {
+          const { createProvider } = await import("./src/ai/provider.js");
+          const apiKeySetting = svc.queries.getAppSetting("ai_api_key");
+          const modelSetting = svc.queries.getAppSetting("ai_model");
+          const baseUrlSetting = svc.queries.getAppSetting("ai_base_url");
+
+          const provider = createProvider({
+            provider: providerSetting.value as any,
+            apiKey: apiKeySetting?.value,
+            model: modelSetting?.value,
+            baseUrl: baseUrlSetting?.value,
+          });
+
+          const session = svc.chatManager.getOrCreateSession(provider, {
+            taskService: svc.taskService,
+            projectService: svc.projectService,
+          });
+
+          session.addUserMessage(message);
+
+          // SSE response
+          res.setHeader("Content-Type", "text/event-stream");
+          res.setHeader("Cache-Control", "no-cache");
+          res.setHeader("Connection", "keep-alive");
+
+          for await (const event of session.run()) {
+            res.write(`data: ${JSON.stringify(event)}\n\n`);
+          }
+
+          res.end();
+        } catch (err: any) {
+          res.setHeader("Content-Type", "text/event-stream");
+          res.setHeader("Cache-Control", "no-cache");
+          res.setHeader("Connection", "keep-alive");
+          res.write(
+            `data: ${JSON.stringify({ type: "error", data: err.message ?? "Unknown error" })}\n\n`,
+          );
+          res.end();
+        }
+      });
+
+      // GET /api/ai/messages — current chat history
+      server.middlewares.use(async (req, res, next) => {
+        if (req.url !== "/api/ai/messages" || req.method !== "GET") return next();
+
+        const svc = await getServices();
+        const session = svc.chatManager.getSession();
+        const messages = session ? session.getMessages() : [];
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify(messages));
+      });
+
+      // POST /api/ai/clear — reset chat session
+      server.middlewares.use(async (req, res, next) => {
+        if (req.url !== "/api/ai/clear" || req.method !== "POST") return next();
+
+        const svc = await getServices();
+        svc.chatManager.clearSession();
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({ ok: true }));
+      });
+
       // /api/tasks/:id/complete and /api/tasks/:id
       server.middlewares.use(async (req, res, next) => {
         const match = req.url?.match(/^\/api\/tasks\/([^/]+)\/complete$/);

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { themeManager } from "../themes/manager.js";
 import { usePluginContext } from "../context/PluginContext.js";
+import { useAIContext } from "../context/AIContext.js";
 import { api, type PluginInfo, type SettingDefinitionInfo } from "../api.js";
 
 export function Settings() {
@@ -42,6 +43,8 @@ export function Settings() {
           </button>
         </div>
       </section>
+
+      <AIAssistantSettings />
 
       <section className="mb-8">
         <h2 className="text-lg font-semibold mb-3">Plugins</h2>
@@ -122,6 +125,162 @@ function PluginCard({
         </div>
       )}
     </div>
+  );
+}
+
+const PROVIDERS = [
+  { value: "", label: "None (disabled)" },
+  { value: "openai", label: "OpenAI" },
+  { value: "anthropic", label: "Anthropic" },
+  { value: "openrouter", label: "OpenRouter" },
+  { value: "ollama", label: "Ollama (local)" },
+  { value: "lmstudio", label: "LM Studio (local)" },
+] as const;
+
+const PROVIDER_DEFAULTS: Record<string, { model: string; baseUrl?: string; needsKey: boolean }> = {
+  openai: { model: "gpt-4o", needsKey: true },
+  anthropic: { model: "claude-sonnet-4-5-20250929", needsKey: true },
+  openrouter: { model: "anthropic/claude-sonnet-4-5-20250929", needsKey: true },
+  ollama: { model: "llama3.2", baseUrl: "http://localhost:11434", needsKey: false },
+  lmstudio: { model: "default", baseUrl: "http://localhost:1234", needsKey: false },
+};
+
+function AIAssistantSettings() {
+  const { config, isConfigured, updateConfig, refreshConfig } = useAIContext();
+  const [provider, setProvider] = useState("");
+  const [apiKey, setApiKey] = useState("");
+  const [model, setModel] = useState("");
+  const [baseUrl, setBaseUrl] = useState("");
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (config && !loaded) {
+      setProvider(config.provider ?? "");
+      setModel(config.model ?? "");
+      setBaseUrl(config.baseUrl ?? "");
+      setLoaded(true);
+    }
+  }, [config, loaded]);
+
+  const handleProviderChange = async (newProvider: string) => {
+    setProvider(newProvider);
+    setApiKey("");
+    const defaults = PROVIDER_DEFAULTS[newProvider];
+    const newModel = defaults?.model ?? "";
+    const newBaseUrl = defaults?.baseUrl ?? "";
+    setModel(newModel);
+    setBaseUrl(newBaseUrl);
+
+    if (!newProvider) {
+      // Clearing provider
+      await updateConfig({ provider: "", apiKey: "", model: "", baseUrl: "" });
+    }
+  };
+
+  const handleSave = async () => {
+    await updateConfig({
+      provider: provider || undefined,
+      apiKey: apiKey || undefined,
+      model: model || undefined,
+      baseUrl: baseUrl || undefined,
+    });
+    setApiKey(""); // Clear the key field after saving
+    await refreshConfig();
+  };
+
+  const needsKey = PROVIDER_DEFAULTS[provider]?.needsKey ?? false;
+  const showBaseUrl = provider === "ollama" || provider === "lmstudio";
+
+  return (
+    <section className="mb-8">
+      <h2 className="text-lg font-semibold mb-3">AI Assistant</h2>
+
+      <div className="space-y-4 max-w-md">
+        {/* Provider selector */}
+        <div>
+          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+            Provider
+          </label>
+          <select
+            value={provider}
+            onChange={(e) => handleProviderChange(e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+          >
+            {PROVIDERS.map((p) => (
+              <option key={p.value} value={p.value}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {provider && (
+          <>
+            {/* API Key */}
+            {needsKey && (
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  API Key
+                  {config?.hasApiKey && (
+                    <span className="font-normal text-green-500 ml-2">Saved</span>
+                  )}
+                </label>
+                <input
+                  type="password"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder={config?.hasApiKey ? "Enter new key to update" : "Enter API key"}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                />
+              </div>
+            )}
+
+            {/* Model */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Model
+              </label>
+              <input
+                type="text"
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                placeholder={PROVIDER_DEFAULTS[provider]?.model ?? ""}
+                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+              />
+            </div>
+
+            {/* Base URL (for local providers) */}
+            {showBaseUrl && (
+              <div>
+                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Base URL
+                </label>
+                <input
+                  type="text"
+                  value={baseUrl}
+                  onChange={(e) => setBaseUrl(e.target.value)}
+                  placeholder={PROVIDER_DEFAULTS[provider]?.baseUrl ?? ""}
+                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                />
+              </div>
+            )}
+
+            {/* Save button */}
+            <button
+              onClick={handleSave}
+              className="px-4 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+            >
+              Save
+            </button>
+
+            {/* Status */}
+            <p className={`text-xs ${isConfigured ? "text-green-500" : "text-gray-400"}`}>
+              {isConfigured ? "Connected" : "Not configured"}
+            </p>
+          </>
+        )}
+      </div>
+    </section>
   );
 }
 

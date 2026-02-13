@@ -5,6 +5,8 @@ import { StatusBar } from "./components/StatusBar.js";
 import { TaskDetailPanel } from "./components/TaskDetailPanel.js";
 import { TaskProvider, useTaskContext } from "./context/TaskContext.js";
 import { PluginProvider, usePluginContext } from "./context/PluginContext.js";
+import { AIProvider } from "./context/AIContext.js";
+import { AIChatPanel } from "./components/AIChatPanel.js";
 import { useKeyboardNavigation } from "./hooks/useKeyboardNavigation.js";
 import { themeManager } from "./themes/manager.js";
 import { Inbox } from "./views/Inbox.js";
@@ -25,6 +27,7 @@ function AppContent() {
   const [selectedPluginViewId, setSelectedPluginViewId] = useState<string | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [chatPanelOpen, setChatPanelOpen] = useState(false);
   const [projects, setProjects] = useState<ProjectType[]>([]);
   const { state, createTask, updateTask, completeTask, deleteTask } = useTaskContext();
   const { commands: pluginCommands, panels, views: pluginViews, executeCommand } = usePluginContext();
@@ -153,6 +156,7 @@ function AppContent() {
       { id: "theme-toggle", name: "Toggle Dark Mode", callback: () => themeManager.toggle() },
       { id: "theme-light", name: "Switch to Light Theme", callback: () => themeManager.setTheme("light") },
       { id: "theme-dark", name: "Switch to Dark Theme", callback: () => themeManager.setTheme("dark") },
+      { id: "ai-chat-toggle", name: "Toggle AI Chat", callback: () => setChatPanelOpen((o) => !o) },
     ];
 
     for (const project of projects) {
@@ -249,6 +253,8 @@ function AppContent() {
           panels={panels}
           pluginViews={pluginViews}
           selectedPluginViewId={selectedPluginViewId}
+          onToggleChat={() => setChatPanelOpen((o) => !o)}
+          chatOpen={chatPanelOpen}
         />
         <main className="flex-1 overflow-auto p-6">
           {state.loading ? (
@@ -267,6 +273,15 @@ function AppContent() {
             onClose={handleCloseDetail}
           />
         )}
+        {chatPanelOpen && (
+          <AIChatPanel
+            onClose={() => setChatPanelOpen(false)}
+            onOpenSettings={() => {
+              handleNavigate("settings");
+              setChatPanelOpen(false);
+            }}
+          />
+        )}
       </div>
       <StatusBar />
       <CommandPalette
@@ -282,7 +297,9 @@ export function App() {
   return (
     <TaskProvider>
       <PluginProvider>
-        <AppContent />
+        <AIProvider>
+          <AppContent />
+        </AIProvider>
       </PluginProvider>
     </TaskProvider>
   );

@@ -11,7 +11,9 @@ import { PluginLoader } from "./plugins/loader.js";
 import { PluginSettingsManager } from "./plugins/settings.js";
 import { CommandRegistry } from "./plugins/command-registry.js";
 import { UIRegistry } from "./plugins/ui-registry.js";
+import { ChatManager } from "./ai/chat.js";
 import { loadEnv } from "./config/env.js";
+import type { Queries } from "./db/queries.js";
 
 export interface AppServices {
   taskService: TaskService;
@@ -22,6 +24,8 @@ export interface AppServices {
   settingsManager: PluginSettingsManager;
   commandRegistry: CommandRegistry;
   uiRegistry: UIRegistry;
+  chatManager: ChatManager;
+  queries: Queries;
 }
 
 export function bootstrap(dbPath?: string): AppServices {
@@ -47,6 +51,7 @@ export function bootstrap(dbPath?: string): AppServices {
   const settingsManager = new PluginSettingsManager(queries);
   const commandRegistry = new CommandRegistry();
   const uiRegistry = new UIRegistry();
+  const chatManager = new ChatManager();
 
   const pluginDir = path.resolve(env.PLUGIN_DIR);
   const pluginLoader = new PluginLoader(pluginDir, {
@@ -66,5 +71,7 @@ export function bootstrap(dbPath?: string): AppServices {
     settingsManager,
     commandRegistry,
     uiRegistry,
+    chatManager,
+    queries,
   };
 }
