@@ -8,6 +8,9 @@ dist-cli/
 # Tauri build
 src-tauri/target/
 
+# Tauri signing keys (private key must never be committed)
+src-tauri/keys/update.key
+
 # Environment
 .env
 .env.local

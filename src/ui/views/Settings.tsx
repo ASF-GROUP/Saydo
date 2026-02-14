@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { isTauri } from "../../utils/tauri.js";
 import {
   Settings as SettingsIcon,
   Palette,
@@ -1093,7 +1094,7 @@ function AboutSection() {
     "idle" | "checking" | "available" | "up-to-date" | "error"
   >("idle");
   const [updateVersion, setUpdateVersion] = useState("");
-  const isTauriApp = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+  const isTauriApp = isTauri();
 
   const handleCheckUpdate = async () => {
     setUpdateStatus("checking");

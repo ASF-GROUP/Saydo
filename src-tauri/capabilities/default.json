@@ -10,9 +10,16 @@
     "fs:allow-read-file",
     "fs:allow-write-file",
     "fs:allow-mkdir",
+    "fs:allow-remove",
+    "fs:allow-read-dir",
+    "updater:default",
     {
       "identifier": "fs:scope",
-      "allow": [{ "path": "$APPDATA/ASF Docket/**" }]
+      "allow": [
+        { "path": "$APPDATA/ASF Docket/**" },
+        { "path": "$DOCUMENT/**" },
+        { "path": "$DOWNLOAD/**" }
+      ]
     }
   ]
 }

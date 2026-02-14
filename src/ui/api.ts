@@ -10,6 +10,8 @@ import type {
 import type { TaskFilter } from "../core/filters.js";
 import type { ImportedTask, ImportResult } from "../core/import.js";
 
+import { isTauri } from "../utils/tauri.js";
+
 const BASE = "/api";
 
 async function handleResponse<T>(res: Response): Promise<T> {
@@ -37,10 +39,6 @@ async function handleVoidResponse(res: Response): Promise<void> {
     }
     throw new Error(message);
   }
-}
-
-function isTauri(): boolean {
-  return typeof window !== "undefined" && "__TAURI__" in window;
 }
 
 // Lazy-loaded services for Tauri mode
