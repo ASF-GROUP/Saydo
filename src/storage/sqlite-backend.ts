@@ -10,6 +10,7 @@ import type {
   PluginSettingsRow,
   AppSettingRow,
   ChatMessageRow,
+  TemplateRow,
   MutationResult,
 } from "./interface.js";
 
@@ -178,5 +179,27 @@ export class SQLiteBackend implements IStorage {
 
   deletePluginPermissions(pluginId: string): MutationResult {
     return this.q.deletePluginPermissions(pluginId);
+  }
+
+  // ── Task Templates ──
+
+  listTemplates(): TemplateRow[] {
+    return this.q.listTemplates() as unknown as TemplateRow[];
+  }
+
+  getTemplate(id: string): TemplateRow | undefined {
+    return this.q.getTemplate(id) as TemplateRow | undefined;
+  }
+
+  insertTemplate(template: TemplateRow): MutationResult {
+    return this.q.insertTemplate(template as any);
+  }
+
+  updateTemplate(id: string, data: Partial<TemplateRow>): MutationResult {
+    return this.q.updateTemplate(id, data as any);
+  }
+
+  deleteTemplate(id: string): MutationResult {
+    return this.q.deleteTemplate(id);
   }
 }

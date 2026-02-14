@@ -1,4 +1,12 @@
-import type { Task, CreateTaskInput, UpdateTaskInput, Project } from "../core/types.js";
+import type {
+  Task,
+  CreateTaskInput,
+  UpdateTaskInput,
+  Project,
+  TaskTemplate,
+  CreateTemplateInput,
+  UpdateTemplateInput,
+} from "../core/types.js";
 import type { TaskFilter } from "../core/filters.js";
 import type { ImportedTask, ImportResult } from "../core/import.js";
 
@@ -166,6 +174,46 @@ export const api = {
     return handleResponse<Task[]>(res);
   },
 
+  async listTaskTree(): Promise<Task[]> {
+    if (isTauri()) {
+      const svc = await getServices();
+      return svc.taskService.listTree();
+    }
+    const res = await fetch(`${BASE}/tasks/tree`);
+    return handleResponse<Task[]>(res);
+  },
+
+  async getChildren(parentId: string): Promise<Task[]> {
+    if (isTauri()) {
+      const svc = await getServices();
+      return svc.taskService.getChildren(parentId);
+    }
+    const res = await fetch(`${BASE}/tasks/${parentId}/children`);
+    return handleResponse<Task[]>(res);
+  },
+
+  async indentTask(id: string): Promise<Task> {
+    if (isTauri()) {
+      const svc = await getServices();
+      const task = await svc.taskService.indent(id);
+      svc.save();
+      return task;
+    }
+    const res = await fetch(`${BASE}/tasks/${id}/indent`, { method: "POST" });
+    return handleResponse<Task>(res);
+  },
+
+  async outdentTask(id: string): Promise<Task> {
+    if (isTauri()) {
+      const svc = await getServices();
+      const task = await svc.taskService.outdent(id);
+      svc.save();
+      return task;
+    }
+    const res = await fetch(`${BASE}/tasks/${id}/outdent`, { method: "POST" });
+    return handleResponse<Task>(res);
+  },
+
   async reorderTasks(orderedIds: string[]): Promise<void> {
     if (isTauri()) {
       const svc = await getServices();
@@ -229,6 +277,72 @@ export const api = {
       body: JSON.stringify({ tasks }),
     });
     return handleResponse<ImportResult>(res);
+  },
+
+  // ── Templates ──
+
+  async listTemplates(): Promise<TaskTemplate[]> {
+    if (isTauri()) {
+      const svc = await getServices();
+      return svc.templateService.list();
+    }
+    const res = await fetch(`${BASE}/templates`);
+    return handleResponse<TaskTemplate[]>(res);
+  },
+
+  async createTemplate(input: CreateTemplateInput): Promise<TaskTemplate> {
+    if (isTauri()) {
+      const svc = await getServices();
+      const template = await svc.templateService.create(input);
+      svc.save();
+      return template;
+    }
+    const res = await fetch(`${BASE}/templates`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    return handleResponse<TaskTemplate>(res);
+  },
+
+  async updateTemplate(id: string, input: UpdateTemplateInput): Promise<TaskTemplate> {
+    if (isTauri()) {
+      const svc = await getServices();
+      const template = await svc.templateService.update(id, input);
+      svc.save();
+      return template;
+    }
+    const res = await fetch(`${BASE}/templates/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    return handleResponse<TaskTemplate>(res);
+  },
+
+  async deleteTemplate(id: string): Promise<void> {
+    if (isTauri()) {
+      const svc = await getServices();
+      await svc.templateService.delete(id);
+      svc.save();
+      return;
+    }
+    await handleVoidResponse(await fetch(`${BASE}/templates/${id}`, { method: "DELETE" }));
+  },
+
+  async instantiateTemplate(id: string, variables?: Record<string, string>): Promise<Task> {
+    if (isTauri()) {
+      const svc = await getServices();
+      const task = await svc.templateService.instantiate(id, variables);
+      svc.save();
+      return task;
+    }
+    const res = await fetch(`${BASE}/templates/${id}/instantiate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ variables: variables ?? {} }),
+    });
+    return handleResponse<Task>(res);
   },
 
   async listProjects(): Promise<Project[]> {

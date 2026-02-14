@@ -63,6 +63,7 @@ export function parseTaskFile(
     completedAt: string | null;
     projectId: string | null;
     recurrence: string | null;
+    parentId: string | null;
     sortOrder: number;
     createdAt: string;
     updatedAt: string;
@@ -96,6 +97,7 @@ export function parseTaskFile(
       completedAt: frontmatter.completedAt != null ? String(frontmatter.completedAt) : null,
       projectId,
       recurrence: frontmatter.recurrence != null ? String(frontmatter.recurrence) : null,
+      parentId: frontmatter.parentId != null ? String(frontmatter.parentId) : null,
       sortOrder: Number(frontmatter.sortOrder ?? 0),
       createdAt: String(frontmatter.createdAt ?? new Date().toISOString()),
       updatedAt: String(frontmatter.updatedAt ?? new Date().toISOString()),
@@ -117,6 +119,7 @@ export function serializeTaskFile(
     dueTime: boolean;
     completedAt: string | null;
     recurrence: string | null;
+    parentId?: string | null;
     sortOrder: number;
     createdAt: string;
     updatedAt: string;
@@ -133,6 +136,7 @@ export function serializeTaskFile(
     dueTime: task.dueTime,
     completedAt: task.completedAt,
     recurrence: task.recurrence,
+    parentId: task.parentId ?? null,
     sortOrder: task.sortOrder,
     createdAt: task.createdAt,
     updatedAt: task.updatedAt,

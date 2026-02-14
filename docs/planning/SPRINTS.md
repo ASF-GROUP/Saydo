@@ -193,7 +193,7 @@ These will be planned as we get closer. See [BACKLOG.md](BACKLOG.md) for all ite
 
 | Sprint | Theme | Key Items |
 |--------|-------|-----------|
-| S14 | Docket Sync | Sync server, user accounts, E2E encryption |
+| S17 | Docket Sync | Sync server, user accounts, E2E encryption |
 
 ---
 
@@ -431,3 +431,63 @@ These will be planned as we get closer. See [BACKLOG.md](BACKLOG.md) for all ite
 | DOC-14 | Update ROADMAP, SPRINTS, BACKLOG for v1.0 | done |
 
 **Result**: 3 new files, 13+ modified files. Plugin API frozen at v1.0.0 (stable) with semver versioning and manifest targetApiVersion field. Tauri auto-updater configured. Multi-platform release workflow via GitHub Actions. Version bumped to 1.0.0 across all config files. 549+ passing tests.
+
+### Sprint 14 — "Design System & UI Overhaul" (completed)
+
+**Goal**: Replace all hardcoded Tailwind color classes with a semantic token system that works with the theme engine. Redesign every component for visual polish. Split Settings into tabs. Add Lucide icons throughout.
+
+| ID | Item | Status |
+|----|------|--------|
+| U-19 | Design token system via Tailwind 4 `@theme` | done |
+| — | Migrate Sidebar to tokens + Lucide icons | done |
+| — | Migrate TaskItem to tokens + priority stripe + tag pills | done |
+| — | Migrate TaskInput, TaskDetailPanel, TaskList, CommandPalette to tokens | done |
+| — | Migrate BulkActionBar, Toast, StatusBar, AIChatPanel, PermissionDialog to tokens | done |
+| U-20 | Split Settings into 6-tab layout (General, AI, Plugins, Keyboard, Data, About) | done |
+| — | Migrate all views (Inbox, Today, Upcoming, Project, PluginStore, PluginView) to tokens | done |
+| — | Migrate App.tsx layout to tokens | done |
+| — | Update ThemeEditor and THEME_VARIABLES for new token set | done |
+
+**Result**: All 20 UI components migrated from hardcoded Tailwind classes (`bg-gray-100 dark:bg-gray-800`) to semantic tokens (`bg-surface`, `text-on-surface`, `border-border`). Custom themes now actually affect the UI. Settings split into tabbed layout. Lucide icons in sidebar and throughout. 549 passing tests.
+
+### Sprint 15 — "Sub-tasks & Focus Mode" (completed)
+
+**Goal**: Add hierarchical sub-tasks with indent/outdent, completion blocking, cascade delete. Add a distraction-free focus mode for working through tasks one at a time.
+
+| ID | Item | Status |
+|----|------|--------|
+| C-14 | Add `parentId` column to tasks schema + migration | done |
+| — | Update IStorage interface, SQLite/Markdown backends | done |
+| — | TaskService: tree assembly, indent/outdent, cascade complete | done |
+| — | API routes for sub-task operations | done |
+| — | UI: TaskItem indentation + expand/collapse | done |
+| — | UI: TaskList tree rendering | done |
+| — | UI: TaskDetailPanel hierarchy controls + sub-tasks list | done |
+| U-18 | FocusMode overlay: single task display, keyboard shortcuts | done |
+| — | FocusMode integration (Sidebar button, command palette) | done |
+| — | Integration tests for sub-tasks (17 tests) | done |
+| — | UI tests for FocusMode (8 tests) | done |
+
+**Result**: Self-referencing FK on tasks with CASCADE delete. Tree rendering with expand/collapse in TaskList. Indent/outdent via service + API + UI. Completing a parent cascades to children. Full-screen FocusMode with Space=complete, N=next, P=previous, Esc=exit. 574 passing tests.
+
+### Sprint 16 — "Templates & NL Queries" (completed)
+
+**Goal**: Add reusable task templates with variable substitution. Add a natural language query bar for filtering tasks by conversational input.
+
+| ID | Item | Status |
+|----|------|--------|
+| C-15 | Add `task_templates` table to schema + migration | done |
+| — | Template types (Zod + TS) in core/types.ts | done |
+| — | Update IStorage for template CRUD (SQLite + Markdown backends) | done |
+| — | TemplateService: CRUD + instantiate() with {{variable}} substitution | done |
+| — | Template API routes (GET/POST/PATCH/DELETE + instantiate) | done |
+| U-23 | TemplateSelector modal (template picker + variable form) | done |
+| U-20 | Templates tab in Settings (CRUD management UI) | done |
+| — | Command palette: "Create Task from Template" | done |
+| P-07 | NL query parser (priority, status, tags, dates via chrono-node) | done |
+| U-22 | QueryBar component (debounced search, suggestions) | done |
+| — | QueryBar integrated into Inbox view with filterTasks | done |
+| — | Template integration tests (15 tests) | done |
+| — | Query parser unit tests (21 tests) | done |
+
+**Result**: TemplateService with full CRUD and `instantiate()` supporting `{{variable}}` substitution in title and description. TemplateSelector modal for quick task creation. Template management in Settings. Natural language query parser handles priority, status, tags, overdue, due dates (today/tomorrow/this week/next week + chrono-node). QueryBar with debounced filtering and suggestion dropdown. 610 passing tests.

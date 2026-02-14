@@ -169,6 +169,21 @@ export function createQueries(db: BaseSQLiteDatabase<"sync", any, typeof schema>
         .delete(schema.appSettings)
         .where(eq(schema.appSettings.key, `plugin_permissions:${pluginId}`))
         .run(),
+
+    // ── Task Templates ────────────────────────────────
+    listTemplates: () => db.select().from(schema.taskTemplates).all(),
+
+    getTemplate: (id: string) =>
+      db.select().from(schema.taskTemplates).where(eq(schema.taskTemplates.id, id)).get(),
+
+    insertTemplate: (template: typeof schema.taskTemplates.$inferInsert) =>
+      db.insert(schema.taskTemplates).values(template).run(),
+
+    updateTemplate: (id: string, data: Partial<typeof schema.taskTemplates.$inferInsert>) =>
+      db.update(schema.taskTemplates).set(data).where(eq(schema.taskTemplates.id, id)).run(),
+
+    deleteTemplate: (id: string) =>
+      db.delete(schema.taskTemplates).where(eq(schema.taskTemplates.id, id)).run(),
   };
 }
 

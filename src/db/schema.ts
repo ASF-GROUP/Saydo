@@ -13,6 +13,7 @@ export const tasks = sqliteTable("tasks", {
   completedAt: text("completed_at"),
   projectId: text("project_id").references(() => projects.id, { onDelete: "set null" }),
   recurrence: text("recurrence"),
+  parentId: text("parent_id").references((): any => tasks.id, { onDelete: "cascade" }),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
@@ -56,6 +57,20 @@ export const pluginSettings = sqliteTable("plugin_settings", {
 export const appSettings = sqliteTable("app_settings", {
   key: text("key").primaryKey(),
   value: text("value").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const taskTemplates = sqliteTable("task_templates", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  title: text("title").notNull(),
+  description: text("description"),
+  priority: integer("priority"),
+  tags: text("tags"),
+  projectId: text("project_id").references(() => projects.id),
+  recurrence: text("recurrence"),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });
 

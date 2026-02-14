@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { X, Send, Mic, MicOff, Bot, Trash2, Settings } from "lucide-react";
 import { useAIContext } from "../context/AIContext.js";
 import type { AIChatMessage } from "../api.js";
 
@@ -47,29 +48,30 @@ export function AIChatPanel({ onClose, onOpenSettings }: AIChatPanelProps) {
 
   if (!isConfigured) {
     return (
-      <aside className="w-80 border-l border-gray-200 dark:border-gray-700 flex flex-col bg-white dark:bg-gray-900">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-          <h3 className="font-semibold text-sm">AI Chat</h3>
+      <aside className="w-80 border-l border-border flex flex-col bg-surface">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <h3 className="font-semibold text-sm text-on-surface">AI Chat</h3>
           <button
             onClick={onClose}
             aria-label="Close AI chat"
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-lg"
+            className="text-on-surface-muted hover:text-on-surface-secondary transition-colors p-1 rounded-md hover:bg-surface-tertiary"
           >
-            &times;
+            <X size={18} />
           </button>
         </div>
         <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-          <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mb-4">
-            <span className="text-2xl">&#x1f916;</span>
+          <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center mb-4">
+            <Bot size={24} className="text-accent" />
           </div>
-          <h4 className="font-medium text-sm mb-2">AI Assistant</h4>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+          <h4 className="font-medium text-sm text-on-surface mb-2">AI Assistant</h4>
+          <p className="text-xs text-on-surface-muted mb-4">
             Configure an AI provider in Settings to start chatting.
           </p>
           <button
             onClick={onOpenSettings}
-            className="px-4 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+            className="px-4 py-2 text-sm bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors flex items-center gap-2"
           >
+            <Settings size={14} />
             Open Settings
           </button>
         </div>
@@ -78,24 +80,27 @@ export function AIChatPanel({ onClose, onOpenSettings }: AIChatPanelProps) {
   }
 
   return (
-    <aside className="w-80 border-l border-gray-200 dark:border-gray-700 flex flex-col bg-white dark:bg-gray-900">
+    <aside className="w-80 border-l border-border flex flex-col bg-surface">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-        <h3 className="font-semibold text-sm">AI Chat</h3>
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <h3 className="font-semibold text-sm text-on-surface flex items-center gap-2">
+          <Bot size={16} className="text-accent" />
+          AI Chat
+        </h3>
+        <div className="flex items-center gap-1">
           <button
             onClick={clearChat}
             title="Clear chat"
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xs"
+            className="text-on-surface-muted hover:text-on-surface-secondary p-1 rounded-md hover:bg-surface-tertiary transition-colors"
           >
-            Clear
+            <Trash2 size={14} />
           </button>
           <button
             onClick={onClose}
             aria-label="Close AI chat"
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-lg"
+            className="text-on-surface-muted hover:text-on-surface-secondary p-1 rounded-md hover:bg-surface-tertiary transition-colors"
           >
-            &times;
+            <X size={18} />
           </button>
         </div>
       </div>
@@ -104,14 +109,14 @@ export function AIChatPanel({ onClose, onOpenSettings }: AIChatPanelProps) {
       <div className="flex-1 overflow-auto p-4 space-y-3">
         {messages.length === 0 && (
           <div className="text-center mt-8 space-y-2">
-            <p className="text-xs text-gray-400">Ask me anything about your tasks!</p>
+            <p className="text-xs text-on-surface-muted">Ask me anything about your tasks!</p>
             <div className="flex flex-wrap gap-1.5 justify-center mt-3">
               {["What tasks do I have?", "Plan my day", "What's overdue?"].map((suggestion) => (
                 <button
                   key={suggestion}
                   onClick={() => sendMessage(suggestion)}
                   disabled={isStreaming}
-                  className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50"
+                  className="px-2 py-1 text-xs bg-surface-tertiary text-on-surface-secondary rounded-md hover:bg-border disabled:opacity-50 transition-colors"
                 >
                   {suggestion}
                 </button>
@@ -123,17 +128,17 @@ export function AIChatPanel({ onClose, onOpenSettings }: AIChatPanelProps) {
           <MessageBubble key={i} message={msg} />
         ))}
         {isStreaming && messages[messages.length - 1]?.role !== "assistant" && (
-          <div className="flex items-center gap-1.5 text-gray-400 text-sm">
+          <div className="flex items-center gap-1.5 text-on-surface-muted text-sm">
             <span
-              className="inline-block w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
+              className="inline-block w-1.5 h-1.5 bg-accent rounded-full animate-bounce"
               style={{ animationDelay: "0ms" }}
             />
             <span
-              className="inline-block w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
+              className="inline-block w-1.5 h-1.5 bg-accent rounded-full animate-bounce"
               style={{ animationDelay: "150ms" }}
             />
             <span
-              className="inline-block w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce"
+              className="inline-block w-1.5 h-1.5 bg-accent rounded-full animate-bounce"
               style={{ animationDelay: "300ms" }}
             />
           </div>
@@ -142,7 +147,7 @@ export function AIChatPanel({ onClose, onOpenSettings }: AIChatPanelProps) {
       </div>
 
       {/* Input */}
-      <form onSubmit={handleSubmit} className="p-3 border-t border-gray-200 dark:border-gray-700">
+      <form onSubmit={handleSubmit} className="p-3 border-t border-border">
         <div className="flex gap-2">
           <input
             ref={inputRef}
@@ -151,15 +156,15 @@ export function AIChatPanel({ onClose, onOpenSettings }: AIChatPanelProps) {
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask about your tasks..."
             disabled={isStreaming}
-            className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+            className="flex-1 px-3 py-2 text-sm border border-border rounded-lg bg-surface text-on-surface placeholder-on-surface-muted focus:outline-none focus:ring-2 focus:ring-accent disabled:opacity-50"
           />
           <VoiceButton onResult={handleVoiceResult} disabled={isStreaming} />
           <button
             type="submit"
             disabled={isStreaming || !input.trim()}
-            className="px-3 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-2 text-sm bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            Send
+            <Send size={16} />
           </button>
         </div>
       </form>
@@ -190,9 +195,7 @@ function MessageBubble({ message }: { message: AIChatMessage }) {
         {message.content && (
           <div
             className={`px-3 py-2 rounded-lg text-sm whitespace-pre-wrap ${
-              isUser
-                ? "bg-blue-500 text-white"
-                : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+              isUser ? "bg-accent text-white" : "bg-surface-tertiary text-on-surface"
             }`}
           >
             {message.content}
@@ -214,8 +217,8 @@ function ToolCallBadge({ name, args }: { name: string; args: string }) {
   }
 
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full">
-      <span className="w-1.5 h-1.5 bg-blue-400 rounded-full" />
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs bg-accent/10 text-accent rounded-full">
+      <span className="w-1.5 h-1.5 bg-accent rounded-full" />
       {label}
     </span>
   );
@@ -283,30 +286,13 @@ function VoiceButton({
       onClick={toggleListening}
       disabled={disabled}
       title={listening ? "Stop listening" : "Voice input"}
-      className={`px-2 py-2 text-sm rounded-lg border disabled:opacity-50 ${
+      className={`px-2 py-2 text-sm rounded-lg border disabled:opacity-50 transition-colors ${
         listening
-          ? "bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700 text-red-500"
-          : "border-gray-300 dark:border-gray-600 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800"
+          ? "bg-error/10 border-error/30 text-error"
+          : "border-border text-on-surface-muted hover:bg-surface-secondary"
       }`}
     >
-      {listening ? (
-        <svg className="w-4 h-4 animate-pulse" viewBox="0 0 24 24" fill="currentColor">
-          <circle cx="12" cy="12" r="6" />
-        </svg>
-      ) : (
-        <svg
-          className="w-4 h-4"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-        >
-          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-          <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-          <line x1="12" y1="19" x2="12" y2="23" />
-          <line x1="8" y1="23" x2="16" y2="23" />
-        </svg>
-      )}
+      {listening ? <MicOff size={16} className="animate-pulse" /> : <Mic size={16} />}
     </button>
   );
 }

@@ -11,6 +11,7 @@ export interface TaskRow {
   completedAt: string | null;
   projectId: string | null;
   recurrence: string | null;
+  parentId: string | null;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
@@ -57,6 +58,20 @@ export interface ChatMessageRow {
   toolCallId: string | null;
   toolCalls: string | null;
   createdAt: string;
+}
+
+export interface TemplateRow {
+  id: string;
+  name: string;
+  title: string;
+  description: string | null;
+  priority: number | null;
+  tags: string | null;
+  projectId: string | null;
+  recurrence: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 /** Result type for mutations that report affected row count. */
@@ -119,4 +134,11 @@ export interface IStorage {
   getPluginPermissions(pluginId: string): string[] | null;
   setPluginPermissions(pluginId: string, permissions: string[]): void;
   deletePluginPermissions(pluginId: string): MutationResult;
+
+  // ── Task Templates ──
+  listTemplates(): TemplateRow[];
+  getTemplate(id: string): TemplateRow | undefined;
+  insertTemplate(template: TemplateRow): MutationResult;
+  updateTemplate(id: string, data: Partial<TemplateRow>): MutationResult;
+  deleteTemplate(id: string): MutationResult;
 }

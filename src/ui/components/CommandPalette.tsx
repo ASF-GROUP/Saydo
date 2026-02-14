@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { Search } from "lucide-react";
 
 interface Command {
   id: string;
@@ -76,24 +77,27 @@ export function CommandPalette({ commands, isOpen, onClose }: CommandPaletteProp
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg bg-white dark:bg-gray-800 rounded-xl shadow-2xl overflow-hidden"
+        className="w-full max-w-lg bg-surface rounded-xl shadow-2xl overflow-hidden border border-border"
         onClick={(e) => e.stopPropagation()}
         onKeyDown={handleKeyDown}
       >
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Type a command..."
-          className="w-full px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-transparent focus:outline-none"
-          autoFocus
-          role="combobox"
-          aria-expanded={filtered.length > 0}
-          aria-controls="command-palette-list"
-          aria-activedescendant={
-            filtered[selectedIndex] ? `cmd-${filtered[selectedIndex].id}` : undefined
-          }
-        />
+        <div className="flex items-center gap-3 px-4 border-b border-border">
+          <Search size={16} className="text-on-surface-muted flex-shrink-0" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Type a command..."
+            className="w-full py-3 bg-transparent text-on-surface placeholder-on-surface-muted focus:outline-none"
+            autoFocus
+            role="combobox"
+            aria-expanded={filtered.length > 0}
+            aria-controls="command-palette-list"
+            aria-activedescendant={
+              filtered[selectedIndex] ? `cmd-${filtered[selectedIndex].id}` : undefined
+            }
+          />
+        </div>
         <ul
           id="command-palette-list"
           role="listbox"
@@ -110,19 +114,23 @@ export function CommandPalette({ commands, isOpen, onClose }: CommandPaletteProp
               <button
                 onClick={() => handleSelect(cmd)}
                 tabIndex={-1}
-                className={`w-full text-left px-4 py-2 flex justify-between ${
+                className={`w-full text-left px-4 py-2 flex justify-between text-sm transition-colors ${
                   index === selectedIndex
-                    ? "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                    : "hover:bg-gray-100 dark:hover:bg-gray-700"
+                    ? "bg-accent/10 text-accent"
+                    : "text-on-surface hover:bg-surface-secondary"
                 }`}
               >
                 <span>{cmd.name}</span>
-                {cmd.hotkey && <span className="text-xs text-gray-400">{cmd.hotkey}</span>}
+                {cmd.hotkey && (
+                  <kbd className="text-xs text-on-surface-muted bg-surface-tertiary px-1.5 py-0.5 rounded">
+                    {cmd.hotkey}
+                  </kbd>
+                )}
               </button>
             </li>
           ))}
           {filtered.length === 0 && (
-            <li className="px-4 py-2 text-gray-400">No matching commands</li>
+            <li className="px-4 py-2 text-sm text-on-surface-muted">No matching commands</li>
           )}
         </ul>
       </div>

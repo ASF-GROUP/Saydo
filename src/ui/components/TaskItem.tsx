@@ -1,4 +1,5 @@
 import React from "react";
+import { Calendar, ChevronDown, ChevronRight, GripVertical, Repeat } from "lucide-react";
 import type { Task } from "../../core/types.js";
 import { getPriority } from "../../core/priorities.js";
 
@@ -16,7 +17,18 @@ interface TaskItemProps {
   dragHandleProps?: Record<string, unknown>;
   style?: React.CSSProperties;
   innerRef?: React.Ref<HTMLDivElement>;
+  depth?: number;
+  childCount?: number;
+  expanded?: boolean;
+  onToggleExpand?: (id: string) => void;
 }
+
+const PRIORITY_BORDER: Record<number, string> = {
+  1: "border-l-priority-1",
+  2: "border-l-priority-2",
+  3: "border-l-priority-3",
+  4: "border-l-priority-4",
+};
 
 export const TaskItem = React.memo(function TaskItem({
   task,
@@ -29,8 +41,14 @@ export const TaskItem = React.memo(function TaskItem({
   dragHandleProps,
   style,
   innerRef,
+  depth = 0,
+  childCount = 0,
+  expanded,
+  onToggleExpand,
 }: TaskItemProps) {
   const priority = task.priority ? getPriority(task.priority) : null;
+  const isOverdue =
+    task.dueDate && task.status === "pending" && new Date(task.dueDate) < new Date();
 
   const handleClick = (e: React.MouseEvent) => {
     if (onMultiSelect && (e.ctrlKey || e.metaKey || e.shiftKey)) {
@@ -41,36 +59,54 @@ export const TaskItem = React.memo(function TaskItem({
     onSelect(task.id);
   };
 
+  const indentPadding = depth > 0 ? { paddingLeft: `${depth * 1.5 + 0.75}rem` } : undefined;
+
   return (
     <div
       ref={innerRef}
-      style={style}
+      style={{ ...style, ...indentPadding }}
       role="button"
       tabIndex={0}
-      aria-label={`Task: ${task.title}`}
+      aria-label={`Task: ${task.title}${depth > 0 ? ` (sub-task, level ${depth})` : ""}`}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           onSelect(task.id);
         }
       }}
-      className={`flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer ${
+      className={`group flex items-center gap-3 px-3 py-2.5 rounded-lg border-l-3 cursor-pointer transition-colors ${
+        task.priority
+          ? (PRIORITY_BORDER[task.priority] ?? "border-l-transparent")
+          : "border-l-transparent"
+      } ${
         isMultiSelected
-          ? "bg-blue-100 dark:bg-blue-900/40 ring-1 ring-blue-400 dark:ring-blue-600"
+          ? "bg-accent/10 ring-1 ring-accent"
           : isSelected
-            ? "bg-blue-50 dark:bg-blue-900/30 ring-1 ring-blue-300 dark:ring-blue-700"
-            : "hover:bg-gray-50 dark:hover:bg-gray-800"
+            ? "bg-accent/5 ring-1 ring-accent/50"
+            : "hover:bg-surface-secondary"
       }`}
       onClick={handleClick}
     >
+      {childCount > 0 && onToggleExpand && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleExpand(task.id);
+          }}
+          aria-label={expanded ? "Collapse sub-tasks" : `Expand ${childCount} sub-tasks`}
+          className="text-on-surface-muted hover:text-on-surface-secondary flex-shrink-0 -ml-1"
+        >
+          {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+        </button>
+      )}
       {dragHandleProps && (
         <span
           {...dragHandleProps}
           role="img"
           aria-label="Drag to reorder"
-          className="cursor-grab text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 select-none"
+          className="cursor-grab text-on-surface-muted hover:text-on-surface-secondary select-none opacity-0 group-hover:opacity-100 transition-opacity"
         >
-          ⠿
+          <GripVertical size={16} />
         </span>
       )}
       {showCheckbox && (
@@ -82,7 +118,7 @@ export const TaskItem = React.memo(function TaskItem({
             onMultiSelect?.(task.id, { ctrlKey: true, metaKey: false, shiftKey: false });
           }}
           onClick={(e) => e.stopPropagation()}
-          className="w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-500 flex-shrink-0"
+          className="w-4 h-4 rounded border-border text-accent flex-shrink-0"
         />
       )}
       <button
@@ -95,28 +131,43 @@ export const TaskItem = React.memo(function TaskItem({
             ? "Mark task incomplete"
             : `Complete task${priority ? ` (${priority.label})` : ""}`
         }
-        className={`w-5 h-5 rounded-full border-2 flex-shrink-0 ${
+        className={`w-5 h-5 rounded-full border-2 flex-shrink-0 transition-colors ${
           task.status === "completed"
-            ? "bg-green-500 border-green-500"
+            ? "bg-success border-success"
             : priority
-              ? `border-[${priority.color}]`
-              : "border-gray-300 dark:border-gray-600"
+              ? `border-priority-${task.priority}`
+              : "border-on-surface-muted"
         }`}
       />
       {priority && <span className="sr-only">{priority.label}</span>}
-      <span className={task.status === "completed" ? "line-through text-gray-400" : ""}>
+      <span
+        className={`flex-1 text-sm ${
+          task.status === "completed" ? "line-through text-on-surface-muted" : "text-on-surface"
+        }`}
+      >
         {task.title}
       </span>
+      {task.recurrence && <Repeat size={14} className="text-on-surface-muted flex-shrink-0" />}
       {task.tags.map((tag) => (
         <span
           key={tag.id}
-          className="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
+          className="text-xs px-1.5 py-0.5 rounded-md bg-surface-tertiary text-on-surface-secondary"
         >
           {tag.name}
         </span>
       ))}
+      {childCount > 0 && !expanded && (
+        <span className="text-xs px-1.5 py-0.5 rounded-md bg-accent/10 text-accent font-medium flex-shrink-0">
+          {childCount}
+        </span>
+      )}
       {task.dueDate && (
-        <span className="text-xs text-gray-500 ml-auto">
+        <span
+          className={`text-xs flex items-center gap-1 ml-auto flex-shrink-0 ${
+            isOverdue ? "text-error font-medium" : "text-on-surface-muted"
+          }`}
+        >
+          <Calendar size={12} />
           {new Date(task.dueDate).toLocaleDateString()}
         </span>
       )}

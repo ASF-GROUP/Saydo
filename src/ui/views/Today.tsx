@@ -1,3 +1,4 @@
+import { CalendarDays } from "lucide-react";
 import { TaskList } from "../components/TaskList.js";
 import type { Task } from "../../core/types.js";
 
@@ -28,7 +29,17 @@ export function Today({
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-4">Today</h1>
+      <div className="flex items-center gap-3 mb-6">
+        <CalendarDays size={24} className="text-accent" />
+        <h1 className="text-2xl font-bold text-on-surface">Today</h1>
+        <span className="text-sm text-on-surface-muted">
+          {new Date().toLocaleDateString(undefined, {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+          })}
+        </span>
+      </div>
       <TaskList
         tasks={todayTasks}
         onToggle={onToggleTask}

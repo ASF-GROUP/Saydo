@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import { THEME_VARIABLES, BUILT_IN_THEMES, type CustomTheme } from "../../src/config/themes.js";
 
 describe("THEME_VARIABLES", () => {
-  it("has all 18 entries", () => {
-    expect(THEME_VARIABLES).toHaveLength(18);
+  it("has all 19 entries", () => {
+    expect(THEME_VARIABLES).toHaveLength(19);
   });
 
   it("all entries have required fields", () => {
@@ -56,10 +56,10 @@ describe("CustomTheme import/export roundtrip", () => {
       name: "My Test Theme",
       type: "dark",
       variables: {
-        "--color-bg": "#1a1a1a",
-        "--color-text": "#ffffff",
+        "--color-surface": "#1a1a1a",
+        "--color-on-surface": "#ffffff",
         "--color-accent": "#3b82f6",
-        "--radius": "0.75rem",
+        "--radius-md": "0.75rem",
       },
     };
 

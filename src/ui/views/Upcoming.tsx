@@ -1,3 +1,4 @@
+import { Clock } from "lucide-react";
 import { TaskList } from "../components/TaskList.js";
 import type { Task } from "../../core/types.js";
 
@@ -29,7 +30,11 @@ export function Upcoming({
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-4">Upcoming</h1>
+      <div className="flex items-center gap-3 mb-6">
+        <Clock size={24} className="text-accent" />
+        <h1 className="text-2xl font-bold text-on-surface">Upcoming</h1>
+        <span className="text-sm text-on-surface-muted">{upcomingTasks.length} tasks</span>
+      </div>
       <TaskList
         tasks={upcomingTasks}
         onToggle={onToggleTask}

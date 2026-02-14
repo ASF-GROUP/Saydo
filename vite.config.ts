@@ -214,6 +214,97 @@ function apiPlugin() {
         }
       });
 
+      // ── Templates ─────────────────────────────────────
+
+      // GET/POST /api/templates
+      server.middlewares.use(async (req, res, next) => {
+        if (req.url !== "/api/templates") return next();
+        try {
+          const svc = await getServices();
+          const { TemplateService } = await import("./src/core/templates.js");
+          const templateService = new TemplateService(svc.storage, svc.taskService);
+
+          if (req.method === "GET") {
+            const templates = await templateService.list();
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify(templates));
+            return;
+          }
+
+          if (req.method === "POST") {
+            const body = await parseBody(req);
+            const template = await templateService.create(body as any);
+            res.setHeader("Content-Type", "application/json");
+            res.statusCode = 201;
+            res.end(JSON.stringify(template));
+            return;
+          }
+
+          next();
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : "Internal server error";
+          res.statusCode = 500;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ error: message }));
+        }
+      });
+
+      // PATCH/DELETE /api/templates/:id and POST /api/templates/:id/instantiate
+      server.middlewares.use(async (req, res, next) => {
+        const instantiateMatch = req.url?.match(/^\/api\/templates\/([^/]+)\/instantiate$/);
+        if (instantiateMatch && req.method === "POST") {
+          try {
+            const svc = await getServices();
+            const { TemplateService } = await import("./src/core/templates.js");
+            const templateService = new TemplateService(svc.storage, svc.taskService);
+            const body = await parseBody(req);
+            const task = await templateService.instantiate(
+              instantiateMatch[1],
+              (body as any).variables,
+            );
+            res.setHeader("Content-Type", "application/json");
+            res.statusCode = 201;
+            res.end(JSON.stringify(task));
+          } catch (err: any) {
+            res.statusCode = err.name === "NotFoundError" ? 404 : 500;
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ error: err.message }));
+          }
+          return;
+        }
+
+        const match = req.url?.match(/^\/api\/templates\/([^/]+)$/);
+        if (!match) return next();
+
+        try {
+          const svc = await getServices();
+          const { TemplateService } = await import("./src/core/templates.js");
+          const templateService = new TemplateService(svc.storage, svc.taskService);
+          const id = match[1];
+
+          if (req.method === "PATCH") {
+            const body = await parseBody(req);
+            const template = await templateService.update(id, body as any);
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify(template));
+            return;
+          }
+
+          if (req.method === "DELETE") {
+            await templateService.delete(id);
+            res.statusCode = 204;
+            res.end();
+            return;
+          }
+
+          next();
+        } catch (err: any) {
+          res.statusCode = err.name === "NotFoundError" ? 404 : 500;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ error: err.message }));
+        }
+      });
+
       // GET /api/projects
       server.middlewares.use(async (req, res, next) => {
         if (req.url !== "/api/projects" || req.method !== "GET") return next();
@@ -871,6 +962,73 @@ function apiPlugin() {
         svc.chatManager.clearSession(svc.storage);
         res.setHeader("Content-Type", "application/json");
         res.end(JSON.stringify({ ok: true }));
+      });
+
+      // GET /api/tasks/tree — list tasks as nested tree
+      server.middlewares.use(async (req, res, next) => {
+        if (req.url !== "/api/tasks/tree" || req.method !== "GET") return next();
+        try {
+          const svc = await getServices();
+          const tree = await svc.taskService.listTree();
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify(tree));
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : "Internal server error";
+          res.statusCode = 500;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ error: message }));
+        }
+      });
+
+      // POST /api/tasks/:id/indent and /api/tasks/:id/outdent
+      server.middlewares.use(async (req, res, next) => {
+        const indentMatch = req.url?.match(/^\/api\/tasks\/([^/]+)\/indent$/);
+        if (indentMatch && req.method === "POST") {
+          try {
+            const svc = await getServices();
+            const task = await svc.taskService.indent(indentMatch[1]);
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify(task));
+          } catch (err: any) {
+            res.statusCode = err.name === "NotFoundError" ? 404 : 500;
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ error: err.message }));
+          }
+          return;
+        }
+
+        const outdentMatch = req.url?.match(/^\/api\/tasks\/([^/]+)\/outdent$/);
+        if (outdentMatch && req.method === "POST") {
+          try {
+            const svc = await getServices();
+            const task = await svc.taskService.outdent(outdentMatch[1]);
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify(task));
+          } catch (err: any) {
+            res.statusCode = err.name === "NotFoundError" ? 404 : 500;
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ error: err.message }));
+          }
+          return;
+        }
+
+        // GET /api/tasks/:id/children — get children of a task
+        const childrenMatch = req.url?.match(/^\/api\/tasks\/([^/]+)\/children$/);
+        if (childrenMatch && req.method === "GET") {
+          try {
+            const svc = await getServices();
+            const children = await svc.taskService.getChildren(childrenMatch[1]);
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify(children));
+          } catch (err: any) {
+            res.statusCode = err.name === "NotFoundError" ? 404 : 500;
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ error: err.message }));
+          }
+          return;
+        }
+
+        next();
       });
 
       // /api/tasks/:id/complete and /api/tasks/:id

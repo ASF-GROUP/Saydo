@@ -1,17 +1,44 @@
 import { useState, useEffect, useCallback } from "react";
+import {
+  Settings as SettingsIcon,
+  Palette,
+  Bot,
+  Puzzle,
+  Keyboard,
+  Database,
+  Info,
+  FileText,
+  Plus,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { themeManager } from "../themes/manager.js";
 import { useTaskContext } from "../context/TaskContext.js";
 import { usePluginContext } from "../context/PluginContext.js";
 import { useAIContext } from "../context/AIContext.js";
 import { PermissionDialog } from "../components/PermissionDialog.js";
 import { api, type PluginInfo, type SettingDefinitionInfo, type AIProviderInfo } from "../api.js";
+import type { TaskTemplate, CreateTemplateInput } from "../../core/types.js";
 import { exportJSON, exportCSV, exportMarkdown, type ExportData } from "../../core/export.js";
 import { parseImport, type ImportPreview } from "../../core/import.js";
 import { THEME_VARIABLES, type CustomTheme } from "../../config/themes.js";
 import { generateId } from "../../utils/ids.js";
 import { shortcutManager } from "../App.js";
 
+type SettingsTab = "general" | "ai" | "plugins" | "templates" | "keyboard" | "data" | "about";
+
+const TABS: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
+  { id: "general", label: "General", icon: <Palette className="w-4 h-4" /> },
+  { id: "ai", label: "AI Assistant", icon: <Bot className="w-4 h-4" /> },
+  { id: "plugins", label: "Plugins", icon: <Puzzle className="w-4 h-4" /> },
+  { id: "templates", label: "Templates", icon: <FileText className="w-4 h-4" /> },
+  { id: "keyboard", label: "Keyboard", icon: <Keyboard className="w-4 h-4" /> },
+  { id: "data", label: "Data", icon: <Database className="w-4 h-4" /> },
+  { id: "about", label: "About", icon: <Info className="w-4 h-4" /> },
+];
+
 export function Settings() {
+  const [activeTab, setActiveTab] = useState<SettingsTab>("general");
   const [currentTheme, setCurrentTheme] = useState(themeManager.getCurrent());
   const [allThemes, setAllThemes] = useState(themeManager.listThemes());
   const { plugins, refreshPlugins } = usePluginContext();
@@ -122,115 +149,148 @@ export function Settings() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-4">Settings</h1>
+      <h1 className="text-2xl font-bold mb-6 flex items-center gap-2 text-on-surface">
+        <SettingsIcon className="w-6 h-6" />
+        Settings
+      </h1>
 
-      <section className="mb-8">
-        <h2 className="text-lg font-semibold mb-3">Appearance</h2>
-
-        <div className="flex items-center gap-3 mb-4">
-          <select
-            value={currentTheme}
-            onChange={(e) => handleThemeChange(e.target.value)}
-            className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-          >
-            {allThemes.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name} ({t.type})
-              </option>
-            ))}
-          </select>
-
+      {/* Tab bar */}
+      <div className="flex gap-1 border-b border-border mb-6">
+        {TABS.map((tab) => (
           <button
-            onClick={handleCreateTheme}
-            className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === tab.id
+                ? "border-accent text-accent"
+                : "border-transparent text-on-surface-secondary hover:text-on-surface hover:bg-surface-secondary"
+            }`}
           >
-            Create Custom Theme
+            {tab.icon}
+            {tab.label}
           </button>
+        ))}
+      </div>
 
-          <label className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer">
-            Import Theme
-            <input type="file" accept=".json" onChange={handleImportTheme} className="hidden" />
-          </label>
-        </div>
+      {/* Tab content */}
+      {activeTab === "general" && (
+        <>
+          <section className="mb-8">
+            <h2 className="text-lg font-semibold mb-3 text-on-surface">Appearance</h2>
 
-        {/* Custom theme management */}
-        {themeManager.customThemes.length > 0 && !editingTheme && (
-          <div className="space-y-2 mb-4">
-            {themeManager.customThemes.map((ct) => (
-              <div
-                key={ct.id}
-                className="flex items-center justify-between p-2 border border-gray-200 dark:border-gray-700 rounded-lg"
+            <div className="flex items-center gap-3 mb-4">
+              <select
+                value={currentTheme}
+                onChange={(e) => handleThemeChange(e.target.value)}
+                className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-on-surface"
               >
-                <span className="text-sm">
-                  {ct.name} <span className="text-gray-400 text-xs">({ct.type})</span>
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleEditTheme(ct)}
-                    className="text-xs text-blue-500 hover:text-blue-600"
+                {allThemes.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} ({t.type})
+                  </option>
+                ))}
+              </select>
+
+              <button
+                onClick={handleCreateTheme}
+                className="px-3 py-2 text-sm border border-border rounded-lg hover:bg-surface-secondary"
+              >
+                Create Custom Theme
+              </button>
+
+              <label className="px-3 py-2 text-sm border border-border rounded-lg hover:bg-surface-secondary cursor-pointer">
+                Import Theme
+                <input type="file" accept=".json" onChange={handleImportTheme} className="hidden" />
+              </label>
+            </div>
+
+            {/* Custom theme management */}
+            {themeManager.customThemes.length > 0 && !editingTheme && (
+              <div className="space-y-2 mb-4">
+                {themeManager.customThemes.map((ct) => (
+                  <div
+                    key={ct.id}
+                    className="flex items-center justify-between p-2 border border-border rounded-lg"
                   >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleExportTheme(ct)}
-                    className="text-xs text-gray-500 hover:text-gray-600"
-                  >
-                    Export
-                  </button>
-                  <button
-                    onClick={() => handleDeleteTheme(ct.id)}
-                    className="text-xs text-red-500 hover:text-red-600"
-                  >
-                    Delete
-                  </button>
-                </div>
+                    <span className="text-sm text-on-surface">
+                      {ct.name} <span className="text-on-surface-muted text-xs">({ct.type})</span>
+                    </span>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleEditTheme(ct)}
+                        className="text-xs text-accent hover:text-accent-hover"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleExportTheme(ct)}
+                        className="text-xs text-on-surface-muted hover:text-on-surface-secondary"
+                      >
+                        Export
+                      </button>
+                      <button
+                        onClick={() => handleDeleteTheme(ct.id)}
+                        className="text-xs text-error hover:text-error"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        )}
+            )}
 
-        {/* Inline theme editor */}
-        {editingTheme && (
-          <ThemeEditor
-            theme={editingTheme}
-            isNew={creatingTheme}
-            onSave={handleSaveTheme}
-            onCancel={handleCancelThemeEdit}
-          />
-        )}
-      </section>
-
-      <AIAssistantSettings />
-
-      <StorageSection />
-
-      <section className="mb-8">
-        <h2 className="text-lg font-semibold mb-3">Plugins</h2>
-        {plugins.length === 0 ? (
-          <p className="text-gray-500">No plugins installed.</p>
-        ) : (
-          <div className="space-y-3">
-            {plugins.map((plugin) => (
-              <PluginCard
-                key={plugin.id}
-                plugin={plugin}
-                expanded={expandedPlugin === plugin.id}
-                onToggleExpand={() =>
-                  setExpandedPlugin(expandedPlugin === plugin.id ? null : plugin.id)
-                }
-                onRequestApproval={() => setPermissionPlugin(plugin)}
-                onRevoke={() => handleRevoke(plugin.id)}
+            {/* Inline theme editor */}
+            {editingTheme && (
+              <ThemeEditor
+                theme={editingTheme}
+                isNew={creatingTheme}
+                onSave={handleSaveTheme}
+                onCancel={handleCancelThemeEdit}
               />
-            ))}
-          </div>
-        )}
-      </section>
+            )}
+          </section>
+        </>
+      )}
 
-      <KeyboardShortcutsSection />
+      {activeTab === "ai" && <AIAssistantSettings />}
 
-      <DataSection />
+      {activeTab === "plugins" && (
+        <section className="mb-8">
+          <h2 className="text-lg font-semibold mb-3 text-on-surface">Plugins</h2>
+          {plugins.length === 0 ? (
+            <p className="text-on-surface-muted">No plugins installed.</p>
+          ) : (
+            <div className="space-y-3">
+              {plugins.map((plugin) => (
+                <PluginCard
+                  key={plugin.id}
+                  plugin={plugin}
+                  expanded={expandedPlugin === plugin.id}
+                  onToggleExpand={() =>
+                    setExpandedPlugin(expandedPlugin === plugin.id ? null : plugin.id)
+                  }
+                  onRequestApproval={() => setPermissionPlugin(plugin)}
+                  onRevoke={() => handleRevoke(plugin.id)}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
-      <AboutSection />
+      {activeTab === "templates" && <TemplatesSection />}
+
+      {activeTab === "keyboard" && <KeyboardShortcutsSection />}
+
+      {activeTab === "data" && (
+        <>
+          <StorageSection />
+          <DataSection />
+        </>
+      )}
+
+      {activeTab === "about" && <AboutSection />}
 
       {permissionPlugin && (
         <PermissionDialog
@@ -260,50 +320,48 @@ function PluginCard({
   const isPending = !plugin.enabled && plugin.permissions.length > 0;
 
   return (
-    <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+    <div className="border border-border rounded-lg overflow-hidden">
       <button
         onClick={onToggleExpand}
-        className="w-full text-left px-4 py-3 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800"
+        className="w-full text-left px-4 py-3 flex items-center justify-between hover:bg-surface-secondary"
       >
         <div>
           <div className="flex items-center gap-2">
-            <span className="font-medium text-sm">{plugin.name}</span>
-            <span className="text-xs text-gray-400">v{plugin.version}</span>
+            <span className="font-medium text-sm text-on-surface">{plugin.name}</span>
+            <span className="text-xs text-on-surface-muted">v{plugin.version}</span>
             {isPending ? (
-              <span className="text-xs px-1.5 py-0.5 rounded bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400">
+              <span className="text-xs px-1.5 py-0.5 rounded bg-warning/10 text-warning">
                 Needs Approval
               </span>
             ) : (
               <span
                 className={`text-xs px-1.5 py-0.5 rounded ${
                   plugin.enabled
-                    ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400"
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-500"
+                    ? "bg-success/10 text-success"
+                    : "bg-surface-tertiary text-on-surface-muted"
                 }`}
               >
                 {plugin.enabled ? "Active" : "Inactive"}
               </span>
             )}
           </div>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <p className="text-xs text-on-surface-muted mt-0.5">
             by {plugin.author} — {plugin.description}
           </p>
         </div>
-        <span className="text-gray-400 text-sm">{expanded ? "▲" : "▼"}</span>
+        <span className="text-on-surface-muted text-sm">{expanded ? "▲" : "▼"}</span>
       </button>
 
       {expanded && (
-        <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 space-y-3">
+        <div className="px-4 py-3 border-t border-border space-y-3">
           {plugin.permissions.length > 0 && (
             <div>
-              <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
-                Permissions:
-              </p>
+              <p className="text-xs font-medium text-on-surface-secondary mb-1">Permissions:</p>
               <div className="flex flex-wrap gap-1">
                 {plugin.permissions.map((p) => (
                   <span
                     key={p}
-                    className="text-xs font-mono px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
+                    className="text-xs font-mono px-1.5 py-0.5 rounded bg-surface-tertiary text-on-surface-secondary"
                   >
                     {p}
                   </span>
@@ -318,7 +376,7 @@ function PluginCard({
                 e.stopPropagation();
                 onRequestApproval();
               }}
-              className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+              className="px-3 py-1 text-xs bg-accent text-white rounded hover:bg-accent-hover"
             >
               Approve Permissions
             </button>
@@ -330,7 +388,7 @@ function PluginCard({
                 e.stopPropagation();
                 onRevoke();
               }}
-              className="px-3 py-1 text-xs text-red-500 border border-red-300 dark:border-red-700 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
+              className="px-3 py-1 text-xs text-error border border-error/30 rounded hover:bg-error/10"
             >
               Revoke Permissions
             </button>
@@ -339,7 +397,7 @@ function PluginCard({
           {plugin.settings.length > 0 ? (
             <PluginSettings pluginId={plugin.id} definitions={plugin.settings} />
           ) : (
-            <p className="text-xs text-gray-400">No configurable settings.</p>
+            <p className="text-xs text-on-surface-muted">No configurable settings.</p>
           )}
         </div>
       )}
@@ -399,17 +457,17 @@ function AIAssistantSettings() {
 
   return (
     <section className="mb-8">
-      <h2 className="text-lg font-semibold mb-3">AI Assistant</h2>
+      <h2 className="text-lg font-semibold mb-3 text-on-surface">AI Assistant</h2>
 
       <div className="space-y-4 max-w-md">
         <div>
-          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label className="block text-xs font-medium text-on-surface-secondary mb-1">
             Provider
           </label>
           <select
             value={provider}
             onChange={(e) => handleProviderChange(e.target.value)}
-            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+            className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-on-surface"
           >
             <option value="">None (disabled)</option>
             {providers.map((p) => (
@@ -425,10 +483,10 @@ function AIAssistantSettings() {
           <>
             {currentProvider?.needsApiKey && (
               <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-xs font-medium text-on-surface-secondary mb-1">
                   API Key
                   {config?.hasApiKey && (
-                    <span className="font-normal text-green-500 ml-2">Saved</span>
+                    <span className="font-normal text-success ml-2">Saved</span>
                   )}
                 </label>
                 <input
@@ -436,13 +494,13 @@ function AIAssistantSettings() {
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
                   placeholder={config?.hasApiKey ? "Enter new key to update" : "Enter API key"}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-on-surface"
                 />
               </div>
             )}
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+              <label className="block text-xs font-medium text-on-surface-secondary mb-1">
                 Model
               </label>
               <input
@@ -450,13 +508,13 @@ function AIAssistantSettings() {
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
                 placeholder={currentProvider?.defaultModel ?? ""}
-                className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-on-surface"
               />
             </div>
 
             {currentProvider?.showBaseUrl && (
               <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                <label className="block text-xs font-medium text-on-surface-secondary mb-1">
                   Base URL
                 </label>
                 <input
@@ -464,19 +522,19 @@ function AIAssistantSettings() {
                   value={baseUrl}
                   onChange={(e) => setBaseUrl(e.target.value)}
                   placeholder={currentProvider?.defaultBaseUrl ?? ""}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                  className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-on-surface"
                 />
               </div>
             )}
 
             <button
               onClick={handleSave}
-              className="px-4 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+              className="px-4 py-2 text-sm bg-accent text-white rounded-lg hover:bg-accent-hover"
             >
               Save
             </button>
 
-            <p className={`text-xs ${isConfigured ? "text-green-500" : "text-gray-400"}`}>
+            <p className={`text-xs ${isConfigured ? "text-success" : "text-on-surface-muted"}`}>
               {isConfigured ? "Connected" : "Not configured"}
             </p>
           </>
@@ -534,24 +592,24 @@ function KeyboardShortcutsSection() {
 
   return (
     <section className="mb-8">
-      <h2 className="text-lg font-semibold mb-3">Keyboard Shortcuts</h2>
+      <h2 className="text-lg font-semibold mb-3 text-on-surface">Keyboard Shortcuts</h2>
       <div className="space-y-2 max-w-lg">
         {shortcuts.map((s) => (
           <div key={s.id} className="flex items-center justify-between py-1.5">
-            <span className="text-sm text-gray-700 dark:text-gray-300">{s.description}</span>
+            <span className="text-sm text-on-surface-secondary">{s.description}</span>
             <div className="flex items-center gap-2">
               <kbd
                 className={`px-2 py-0.5 text-xs rounded border ${
                   recordingId === s.id
-                    ? "border-blue-400 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 animate-pulse"
-                    : "border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400"
+                    ? "border-accent bg-accent/10 text-accent animate-pulse"
+                    : "border-border bg-surface-secondary text-on-surface-secondary"
                 }`}
               >
                 {recordingId === s.id ? "Press keys..." : s.currentKey}
               </kbd>
               <button
                 onClick={() => setRecordingId(recordingId === s.id ? null : s.id)}
-                className="text-xs text-blue-500 hover:text-blue-600"
+                className="text-xs text-accent hover:text-accent-hover"
               >
                 {recordingId === s.id ? "Cancel" : "Edit"}
               </button>
@@ -562,7 +620,7 @@ function KeyboardShortcutsSection() {
                     const json = shortcutManager.toJSON();
                     api.setAppSetting("keyboard_shortcuts", JSON.stringify(json));
                   }}
-                  className="text-xs text-gray-400 hover:text-gray-600"
+                  className="text-xs text-on-surface-muted hover:text-on-surface-secondary"
                 >
                   Reset
                 </button>
@@ -587,33 +645,33 @@ function StorageSection() {
 
   return (
     <section className="mb-8">
-      <h2 className="text-lg font-semibold mb-3">Storage</h2>
+      <h2 className="text-lg font-semibold mb-3 text-on-surface">Storage</h2>
       {storageInfo ? (
         <div className="space-y-2 max-w-md">
           <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-700 dark:text-gray-300">Mode:</span>
-            <span className="text-sm font-mono px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
+            <span className="text-sm text-on-surface-secondary">Mode:</span>
+            <span className="text-sm font-mono px-2 py-0.5 rounded bg-surface-secondary text-on-surface-secondary">
               {storageInfo.mode === "markdown" ? "Markdown Files" : "SQLite"}
             </span>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-700 dark:text-gray-300">Path:</span>
-            <span className="text-sm font-mono px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
+            <span className="text-sm text-on-surface-secondary">Path:</span>
+            <span className="text-sm font-mono px-2 py-0.5 rounded bg-surface-secondary text-on-surface-secondary">
               {storageInfo.path}
             </span>
           </div>
-          <p className="text-xs text-gray-400 mt-2">
+          <p className="text-xs text-on-surface-muted mt-2">
             {storageInfo.mode === "markdown"
               ? "Tasks are stored as .md files with YAML frontmatter. Git-friendly and human-readable."
               : "Tasks are stored in a local SQLite database. Fast queries and structured data."}
           </p>
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-on-surface-muted">
             Storage mode is set via the STORAGE_MODE environment variable. Switching modes requires
             restart. Data is not automatically migrated — use Export then Import to transfer.
           </p>
         </div>
       ) : (
-        <p className="text-sm text-gray-400">Loading storage info...</p>
+        <p className="text-sm text-on-surface-muted">Loading storage info...</p>
       )}
     </section>
   );
@@ -720,29 +778,29 @@ function DataSection() {
 
   return (
     <section className="mb-8">
-      <h2 className="text-lg font-semibold mb-3">Data</h2>
+      <h2 className="text-lg font-semibold mb-3 text-on-surface">Data</h2>
 
       <div className="mb-4">
-        <h3 className="text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Export</h3>
+        <h3 className="text-sm font-medium mb-2 text-on-surface-secondary">Export</h3>
         <div className="flex gap-3">
           <button
             onClick={() => handleExport("json")}
             disabled={exporting}
-            className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
+            className="px-4 py-2 text-sm border border-border rounded-lg hover:bg-surface-secondary disabled:opacity-50"
           >
             Export JSON
           </button>
           <button
             onClick={() => handleExport("csv")}
             disabled={exporting}
-            className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
+            className="px-4 py-2 text-sm border border-border rounded-lg hover:bg-surface-secondary disabled:opacity-50"
           >
             Export CSV
           </button>
           <button
             onClick={() => handleExport("markdown")}
             disabled={exporting}
-            className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
+            className="px-4 py-2 text-sm border border-border rounded-lg hover:bg-surface-secondary disabled:opacity-50"
           >
             Export Markdown
           </button>
@@ -750,11 +808,11 @@ function DataSection() {
       </div>
 
       <div>
-        <h3 className="text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">Import</h3>
+        <h3 className="text-sm font-medium mb-2 text-on-surface-secondary">Import</h3>
 
         {importState === "idle" && (
           <div>
-            <label className="inline-block px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer">
+            <label className="inline-block px-4 py-2 text-sm border border-border rounded-lg hover:bg-surface-secondary cursor-pointer">
               Choose File
               <input
                 type="file"
@@ -763,20 +821,22 @@ function DataSection() {
                 className="hidden"
               />
             </label>
-            <span className="ml-2 text-xs text-gray-400">
+            <span className="ml-2 text-xs text-on-surface-muted">
               Supports Docket JSON, Todoist JSON, and Markdown/text
             </span>
-            {importError && <p className="mt-2 text-xs text-red-500">{importError}</p>}
+            {importError && <p className="mt-2 text-xs text-error">{importError}</p>}
           </div>
         )}
 
         {importState === "previewing" && importPreview && (
-          <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 max-w-md">
-            <p className="text-sm font-medium mb-2">
+          <div className="border border-border rounded-lg p-4 max-w-md">
+            <p className="text-sm font-medium mb-2 text-on-surface">
               Import Preview
-              <span className="font-normal text-gray-400 ml-2">({importPreview.format})</span>
+              <span className="font-normal text-on-surface-muted ml-2">
+                ({importPreview.format})
+              </span>
             </p>
-            <div className="space-y-1 text-xs text-gray-600 dark:text-gray-400 mb-3">
+            <div className="space-y-1 text-xs text-on-surface-secondary mb-3">
               <p>
                 {importPreview.tasks.length} task{importPreview.tasks.length !== 1 ? "s" : ""}
               </p>
@@ -797,7 +857,7 @@ function DataSection() {
             {importPreview.warnings.length > 0 && (
               <div className="mb-3">
                 {importPreview.warnings.map((w, i) => (
-                  <p key={i} className="text-xs text-yellow-600 dark:text-yellow-400">
+                  <p key={i} className="text-xs text-warning">
                     {w}
                   </p>
                 ))}
@@ -806,13 +866,13 @@ function DataSection() {
             <div className="flex gap-2">
               <button
                 onClick={handleImport}
-                className="px-4 py-1.5 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                className="px-4 py-1.5 text-sm bg-accent text-white rounded-lg hover:bg-accent-hover"
               >
                 Import
               </button>
               <button
                 onClick={handleImportReset}
-                className="px-4 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+                className="px-4 py-1.5 text-sm border border-border rounded-lg hover:bg-surface-secondary"
               >
                 Cancel
               </button>
@@ -820,18 +880,20 @@ function DataSection() {
           </div>
         )}
 
-        {importState === "importing" && <p className="text-sm text-gray-500">Importing tasks...</p>}
+        {importState === "importing" && (
+          <p className="text-sm text-on-surface-muted">Importing tasks...</p>
+        )}
 
         {importState === "done" && importResult && (
-          <div className="border border-green-200 dark:border-green-800 rounded-lg p-4 max-w-md">
-            <p className="text-sm text-green-600 dark:text-green-400 font-medium">
+          <div className="border border-success/30 rounded-lg p-4 max-w-md">
+            <p className="text-sm text-success font-medium">
               Successfully imported {importResult.imported} task
               {importResult.imported !== 1 ? "s" : ""}
             </p>
             {importResult.errors.length > 0 && (
               <div className="mt-2">
                 {importResult.errors.map((e, i) => (
-                  <p key={i} className="text-xs text-red-500">
+                  <p key={i} className="text-xs text-error">
                     {e}
                   </p>
                 ))}
@@ -839,7 +901,7 @@ function DataSection() {
             )}
             <button
               onClick={handleImportReset}
-              className="mt-2 text-xs text-blue-500 hover:text-blue-600"
+              className="mt-2 text-xs text-accent hover:text-accent-hover"
             >
               Import another file
             </button>
@@ -886,25 +948,23 @@ function ThemeEditor({
   const isColorVar = (key: string) => key.startsWith("--color-");
 
   return (
-    <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-      <h3 className="text-sm font-medium mb-3">
+    <div className="border border-border rounded-lg p-4">
+      <h3 className="text-sm font-medium mb-3 text-on-surface">
         {isNew ? "Create Custom Theme" : `Edit: ${theme.name}`}
       </h3>
 
       <div className="flex gap-4 mb-4">
         <div>
-          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Name
-          </label>
+          <label className="block text-xs font-medium text-on-surface-secondary mb-1">Name</label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+            className="px-2 py-1 text-sm border border-border rounded bg-surface text-on-surface"
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+          <label className="block text-xs font-medium text-on-surface-secondary mb-1">
             Base Type
           </label>
           <div className="flex gap-2">
@@ -912,8 +972,8 @@ function ThemeEditor({
               onClick={() => setType("light")}
               className={`px-3 py-1 text-xs rounded border ${
                 type === "light"
-                  ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-600"
-                  : "border-gray-300 dark:border-gray-600 text-gray-500"
+                  ? "border-accent bg-accent/10 text-accent"
+                  : "border-border text-on-surface-muted"
               }`}
             >
               Light
@@ -922,8 +982,8 @@ function ThemeEditor({
               onClick={() => setType("dark")}
               className={`px-3 py-1 text-xs rounded border ${
                 type === "dark"
-                  ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30 text-blue-600"
-                  : "border-gray-300 dark:border-gray-600 text-gray-500"
+                  ? "border-accent bg-accent/10 text-accent"
+                  : "border-border text-on-surface-muted"
               }`}
             >
               Dark
@@ -935,7 +995,7 @@ function ThemeEditor({
       <div className="space-y-4 mb-4">
         {[...groups.entries()].map(([group, vars]) => (
           <div key={group}>
-            <p className="text-xs font-medium text-gray-500 mb-2">{group}</p>
+            <p className="text-xs font-medium text-on-surface-muted mb-2">{group}</p>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {vars.map((v) => (
                 <div key={v.key} className="flex items-center gap-2">
@@ -944,17 +1004,17 @@ function ThemeEditor({
                       type="color"
                       value={variables[v.key] || "#000000"}
                       onChange={(e) => handleVariableChange(v.key, e.target.value)}
-                      className="w-8 h-8 rounded border border-gray-300 dark:border-gray-600 cursor-pointer"
+                      className="w-8 h-8 rounded border border-border cursor-pointer"
                     />
                   ) : (
                     <input
                       type="text"
                       value={variables[v.key] || ""}
                       onChange={(e) => handleVariableChange(v.key, e.target.value)}
-                      className="w-20 px-1 py-0.5 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                      className="w-20 px-1 py-0.5 text-xs border border-border rounded bg-surface text-on-surface"
                     />
                   )}
-                  <span className="text-xs text-gray-600 dark:text-gray-400">{v.label}</span>
+                  <span className="text-xs text-on-surface-secondary">{v.label}</span>
                 </div>
               ))}
             </div>
@@ -966,13 +1026,13 @@ function ThemeEditor({
         <button
           onClick={handleSave}
           disabled={!name.trim()}
-          className="px-4 py-1.5 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
+          className="px-4 py-1.5 text-sm bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-50"
         >
           Save
         </button>
         <button
           onClick={onCancel}
-          className="px-4 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+          className="px-4 py-1.5 text-sm border border-border rounded-lg hover:bg-surface-secondary"
         >
           Cancel
         </button>
@@ -1011,7 +1071,7 @@ function PluginSettings({
   };
 
   if (!loaded) {
-    return <p className="text-xs text-gray-400">Loading settings...</p>;
+    return <p className="text-xs text-on-surface-muted">Loading settings...</p>;
   }
 
   return (
@@ -1067,12 +1127,12 @@ function AboutSection() {
 
   return (
     <section className="mb-8">
-      <h2 className="text-lg font-semibold mb-3">About</h2>
+      <h2 className="text-lg font-semibold mb-3 text-on-surface">About</h2>
       <div className="space-y-2 max-w-md">
-        <p className="text-sm text-gray-700 dark:text-gray-300">
-          ASF Docket <span className="font-mono text-gray-500">v1.0.0</span>
+        <p className="text-sm text-on-surface-secondary">
+          ASF Docket <span className="font-mono text-on-surface-muted">v1.0.0</span>
         </p>
-        <p className="text-xs text-gray-400">
+        <p className="text-xs text-on-surface-muted">
           Open-source, AI-native task manager with an Obsidian-style plugin system.
         </p>
         {isTauriApp && (
@@ -1080,28 +1140,26 @@ function AboutSection() {
             <button
               onClick={handleCheckUpdate}
               disabled={updateStatus === "checking"}
-              className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
+              className="px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-surface-secondary disabled:opacity-50"
             >
               {updateStatus === "checking" ? "Checking..." : "Check for Updates"}
             </button>
             {updateStatus === "available" && (
               <div className="mt-2">
-                <p className="text-sm text-green-600 dark:text-green-400">
-                  Update available: v{updateVersion}
-                </p>
+                <p className="text-sm text-success">Update available: v{updateVersion}</p>
                 <button
                   onClick={handleInstallUpdate}
-                  className="mt-1 px-3 py-1.5 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                  className="mt-1 px-3 py-1.5 text-sm bg-accent text-white rounded-lg hover:bg-accent-hover"
                 >
                   Install and Restart
                 </button>
               </div>
             )}
             {updateStatus === "up-to-date" && (
-              <p className="mt-2 text-sm text-gray-500">You're up to date!</p>
+              <p className="mt-2 text-sm text-on-surface-muted">You're up to date!</p>
             )}
             {updateStatus === "error" && (
-              <p className="mt-2 text-sm text-red-500">Update check failed.</p>
+              <p className="mt-2 text-sm text-error">Update check failed.</p>
             )}
           </div>
         )}
@@ -1121,10 +1179,10 @@ function SettingField({
 }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+      <label className="block text-xs font-medium text-on-surface-secondary mb-1">
         {definition.name}
         {definition.description && (
-          <span className="font-normal text-gray-400 ml-1">— {definition.description}</span>
+          <span className="font-normal text-on-surface-muted ml-1">— {definition.description}</span>
         )}
       </label>
       {definition.type === "text" && (
@@ -1133,7 +1191,7 @@ function SettingField({
           value={String(value ?? "")}
           placeholder={definition.placeholder}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+          className="w-full px-2 py-1 text-sm border border-border rounded bg-surface text-on-surface"
         />
       )}
       {definition.type === "number" && (
@@ -1143,14 +1201,14 @@ function SettingField({
           min={definition.min}
           max={definition.max}
           onChange={(e) => onChange(Number(e.target.value))}
-          className="w-24 px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+          className="w-24 px-2 py-1 text-sm border border-border rounded bg-surface text-on-surface"
         />
       )}
       {definition.type === "boolean" && (
         <button
           onClick={() => onChange(!value)}
           className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-            value ? "bg-blue-500" : "bg-gray-300 dark:bg-gray-600"
+            value ? "bg-accent" : "bg-surface-tertiary"
           }`}
         >
           <span
@@ -1164,7 +1222,7 @@ function SettingField({
         <select
           value={String(value ?? "")}
           onChange={(e) => onChange(e.target.value)}
-          className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+          className="px-2 py-1 text-sm border border-border rounded bg-surface text-on-surface"
         >
           {definition.options?.map((opt) => (
             <option key={opt} value={opt}>
@@ -1174,5 +1232,292 @@ function SettingField({
         </select>
       )}
     </div>
+  );
+}
+
+// ── Templates Section ──
+
+function TemplatesSection() {
+  const [templates, setTemplates] = useState<TaskTemplate[]>([]);
+  const [editing, setEditing] = useState<TaskTemplate | null>(null);
+  const [creating, setCreating] = useState(false);
+
+  const loadTemplates = useCallback(() => {
+    api.listTemplates().then(setTemplates).catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    loadTemplates();
+  }, [loadTemplates]);
+
+  const handleDelete = async (id: string) => {
+    await api.deleteTemplate(id);
+    loadTemplates();
+  };
+
+  return (
+    <section className="mb-8">
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-lg font-semibold text-on-surface">Task Templates</h2>
+        <button
+          onClick={() => {
+            setCreating(true);
+            setEditing(null);
+          }}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          New Template
+        </button>
+      </div>
+
+      <p className="text-sm text-on-surface-muted mb-4">
+        Templates let you quickly create tasks with predefined fields. Use {"{{variable}}"} syntax
+        in title and description for dynamic values.
+      </p>
+
+      {(creating || editing) && (
+        <TemplateForm
+          template={editing}
+          onSave={() => {
+            setCreating(false);
+            setEditing(null);
+            loadTemplates();
+          }}
+          onCancel={() => {
+            setCreating(false);
+            setEditing(null);
+          }}
+        />
+      )}
+
+      {templates.length === 0 && !creating ? (
+        <p className="text-on-surface-muted text-sm py-4">
+          No templates yet. Click &quot;New Template&quot; to create one.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {templates.map((t) => (
+            <div
+              key={t.id}
+              className="flex items-center justify-between px-4 py-3 border border-border rounded-lg bg-surface-secondary"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-on-surface">{t.name}</div>
+                <div className="text-sm text-on-surface-secondary truncate">{t.title}</div>
+                <div className="flex gap-1.5 mt-1">
+                  {t.priority && (
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-warning/10 text-warning">
+                      P{t.priority}
+                    </span>
+                  )}
+                  {t.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="text-xs px-1.5 py-0.5 rounded bg-accent/10 text-accent"
+                    >
+                      #{tag}
+                    </span>
+                  ))}
+                  {t.recurrence && (
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-success/10 text-success">
+                      {t.recurrence}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-1 ml-3">
+                <button
+                  onClick={() => {
+                    setEditing(t);
+                    setCreating(false);
+                  }}
+                  className="p-1.5 text-on-surface-muted hover:text-on-surface rounded hover:bg-surface-tertiary"
+                  title="Edit template"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => handleDelete(t.id)}
+                  className="p-1.5 text-on-surface-muted hover:text-error rounded hover:bg-surface-tertiary"
+                  title="Delete template"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function TemplateForm({
+  template,
+  onSave,
+  onCancel,
+}: {
+  template: TaskTemplate | null;
+  onSave: () => void;
+  onCancel: () => void;
+}) {
+  const [name, setName] = useState(template?.name ?? "");
+  const [title, setTitle] = useState(template?.title ?? "");
+  const [description, setDescription] = useState(template?.description ?? "");
+  const [priority, setPriority] = useState<string>(
+    template?.priority ? String(template.priority) : "",
+  );
+  const [tags, setTags] = useState(template?.tags.join(", ") ?? "");
+  const [recurrence, setRecurrence] = useState(template?.recurrence ?? "");
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !title.trim()) return;
+
+    setSaving(true);
+    try {
+      const input: CreateTemplateInput = {
+        name: name.trim(),
+        title: title.trim(),
+        description: description.trim() || undefined,
+        priority: priority ? Number(priority) : undefined,
+        tags: tags
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean),
+        recurrence: recurrence.trim() || undefined,
+      };
+
+      if (template) {
+        await api.updateTemplate(template.id, input);
+      } else {
+        await api.createTemplate(input);
+      }
+      onSave();
+    } catch (err) {
+      console.error("Failed to save template:", err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="mb-4 p-4 border border-accent/30 rounded-lg bg-surface space-y-3"
+    >
+      <h3 className="font-medium text-on-surface">{template ? "Edit Template" : "New Template"}</h3>
+
+      <div>
+        <label className="block text-sm font-medium text-on-surface-secondary mb-1">Name</label>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="e.g., Bug Report"
+          className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-on-surface placeholder-on-surface-muted focus:outline-none focus:ring-2 focus:ring-accent"
+          required
+          autoFocus
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-on-surface-secondary mb-1">
+          Title Template
+        </label>
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder={"e.g., Fix: {{issue}}"}
+          className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-on-surface placeholder-on-surface-muted focus:outline-none focus:ring-2 focus:ring-accent"
+          required
+        />
+        <p className="text-xs text-on-surface-muted mt-1">
+          Use {"{{variable}}"} for dynamic values
+        </p>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-on-surface-secondary mb-1">
+          Description (optional)
+        </label>
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Task description..."
+          rows={2}
+          className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-on-surface placeholder-on-surface-muted focus:outline-none focus:ring-2 focus:ring-accent resize-none"
+        />
+      </div>
+
+      <div className="flex gap-3">
+        <div className="flex-1">
+          <label className="block text-sm font-medium text-on-surface-secondary mb-1">
+            Priority
+          </label>
+          <select
+            value={priority}
+            onChange={(e) => setPriority(e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-on-surface"
+          >
+            <option value="">None</option>
+            <option value="1">P1 - Urgent</option>
+            <option value="2">P2 - High</option>
+            <option value="3">P3 - Medium</option>
+            <option value="4">P4 - Low</option>
+          </select>
+        </div>
+
+        <div className="flex-1">
+          <label className="block text-sm font-medium text-on-surface-secondary mb-1">
+            Recurrence
+          </label>
+          <select
+            value={recurrence}
+            onChange={(e) => setRecurrence(e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-on-surface"
+          >
+            <option value="">None</option>
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+            <option value="yearly">Yearly</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-on-surface-secondary mb-1">
+          Tags (comma-separated)
+        </label>
+        <input
+          type="text"
+          value={tags}
+          onChange={(e) => setTags(e.target.value)}
+          placeholder="e.g., bug, frontend"
+          className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-on-surface placeholder-on-surface-muted focus:outline-none focus:ring-2 focus:ring-accent"
+        />
+      </div>
+
+      <div className="flex justify-end gap-2 pt-1">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-3 py-1.5 text-sm text-on-surface-secondary hover:text-on-surface rounded-lg hover:bg-surface-secondary transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          type="submit"
+          disabled={saving || !name.trim() || !title.trim()}
+          className="px-4 py-1.5 text-sm bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-50 transition-colors"
+        >
+          {saving ? "Saving..." : template ? "Update" : "Create"}
+        </button>
+      </div>
+    </form>
   );
 }

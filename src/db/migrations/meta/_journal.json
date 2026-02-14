@@ -15,6 +15,20 @@
       "when": 1770948529576,
       "tag": "0001_cool_rictor",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1771027200000,
+      "tag": "0002_add_parent_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1771030800000,
+      "tag": "0003_add_task_templates",
+      "breakpoints": true
     }
   ]
 }

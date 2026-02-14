@@ -40,6 +40,7 @@
     "chrono-node": "^2.7.0",
     "commander": "^13.1.0",
     "drizzle-orm": "^0.45.1",
+    "lucide-react": "^0.564.0",
     "openai": "^6.21.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

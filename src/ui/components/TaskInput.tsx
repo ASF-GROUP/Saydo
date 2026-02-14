@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { Plus } from "lucide-react";
 import { parseTask } from "../../parser/task-parser.js";
 
 interface TaskInputProps {
@@ -25,34 +26,33 @@ export function TaskInput({ onSubmit, placeholder }: TaskInputProps) {
 
   return (
     <form onSubmit={handleSubmit} className="mb-4">
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        placeholder={placeholder ?? 'Add a task... (e.g., "buy milk tomorrow p1 #groceries")'}
-        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-      />
+      <div className="relative">
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-muted">
+          <Plus size={18} />
+        </div>
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder={placeholder ?? 'Add a task... (e.g., "buy milk tomorrow p1 #groceries")'}
+          className="w-full pl-10 pr-4 py-2.5 border border-border rounded-lg bg-surface text-on-surface placeholder-on-surface-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent transition-shadow"
+        />
+      </div>
       {preview && (
         <div className="flex flex-wrap gap-2 mt-1.5 px-1 text-xs">
-          <span className="text-gray-600 dark:text-gray-400">{preview.title}</span>
+          <span className="text-on-surface-secondary">{preview.title}</span>
           {preview.priority && (
-            <span className="text-orange-600 dark:text-orange-400 font-medium">
-              P{preview.priority}
-            </span>
+            <span className="text-warning font-medium">P{preview.priority}</span>
           )}
           {preview.dueDate && (
-            <span className="text-blue-600 dark:text-blue-400">
-              {preview.dueDate.toLocaleDateString()}
-            </span>
+            <span className="text-accent">{preview.dueDate.toLocaleDateString()}</span>
           )}
           {preview.tags.map((tag) => (
-            <span key={tag} className="text-purple-600 dark:text-purple-400">
+            <span key={tag} className="text-purple-500">
               #{tag}
             </span>
           ))}
-          {preview.project && (
-            <span className="text-green-600 dark:text-green-400">+{preview.project}</span>
-          )}
+          {preview.project && <span className="text-success">+{preview.project}</span>}
         </div>
       )}
     </form>

@@ -44,6 +44,7 @@ export class TaskService {
       completedAt: null,
       projectId: input.projectId ?? null,
       recurrence: input.recurrence ?? null,
+      parentId: input.parentId ?? null,
       sortOrder: 0,
       createdAt: now,
       updatedAt: now,
@@ -65,6 +66,7 @@ export class TaskService {
       completedAt: null,
       projectId: input.projectId ?? null,
       recurrence: input.recurrence ?? null,
+      parentId: input.parentId ?? null,
       tags,
       sortOrder: 0,
       createdAt: now,
@@ -91,6 +93,7 @@ export class TaskService {
     const tasks: Task[] = rows.map((row) => ({
       ...row,
       dueTime: row.dueTime ?? false,
+      parentId: row.parentId ?? null,
       tags: tagsByTaskId.get(row.id) ?? [],
     }));
 
@@ -111,7 +114,7 @@ export class TaskService {
     const tagRows = this.queries.getTaskTags(id);
     const tags = tagRows.map((r) => r.tags);
 
-    return { ...row, dueTime: row.dueTime ?? false, tags };
+    return { ...row, dueTime: row.dueTime ?? false, parentId: row.parentId ?? null, tags };
   }
 
   async update(id: string, input: UpdateTaskInput): Promise<Task> {
@@ -149,6 +152,14 @@ export class TaskService {
       completedAt: now,
       updatedAt: now,
     });
+
+    // Cascade-complete children
+    const children = await this.getChildren(id);
+    for (const child of children) {
+      if (child.status === "pending") {
+        await this.complete(child.id);
+      }
+    }
 
     // Create next occurrence for recurring tasks
     if (existing.recurrence) {
@@ -255,6 +266,7 @@ export class TaskService {
       completedAt: task.completedAt,
       projectId: task.projectId,
       recurrence: task.recurrence,
+      parentId: task.parentId,
       sortOrder: task.sortOrder,
       createdAt: task.createdAt,
       updatedAt: task.updatedAt,
@@ -275,5 +287,89 @@ export class TaskService {
       this.queries.updateTask(orderedIds[i], { sortOrder: i });
     }
     this.eventBus?.emit("task:reorder", orderedIds);
+  }
+
+  // ── Sub-task methods ──
+
+  /** Get direct children of a task. */
+  async getChildren(parentId: string): Promise<Task[]> {
+    const allTasks = await this.list();
+    return allTasks.filter((t) => t.parentId === parentId);
+  }
+
+  /** List tasks as a nested tree (top-level tasks with children populated). */
+  async listTree(filter?: TaskFilter): Promise<Task[]> {
+    const allTasks = await this.list(filter);
+
+    // Build parent → children map
+    const childMap = new Map<string, Task[]>();
+    const topLevel: Task[] = [];
+
+    for (const task of allTasks) {
+      if (task.parentId) {
+        if (!childMap.has(task.parentId)) childMap.set(task.parentId, []);
+        childMap.get(task.parentId)!.push(task);
+      } else {
+        topLevel.push(task);
+      }
+    }
+
+    // Recursively attach children
+    function attachChildren(task: Task): Task {
+      const children = childMap.get(task.id);
+      if (children && children.length > 0) {
+        return { ...task, children: children.map(attachChildren) };
+      }
+      return { ...task, children: [] };
+    }
+
+    return topLevel.map(attachChildren);
+  }
+
+  /**
+   * Indent a task: make it a child of its previous sibling.
+   * Tasks are ordered by sortOrder. The previous sibling is the nearest task
+   * with the same parentId and a lower sortOrder.
+   */
+  async indent(id: string): Promise<Task> {
+    const task = await this.get(id);
+    if (!task) throw new NotFoundError("Task", id);
+
+    // Find siblings (tasks with same parentId)
+    const allTasks = await this.list();
+    const siblings = allTasks
+      .filter((t) => t.parentId === task.parentId && t.id !== id)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+
+    // Find the previous sibling by sortOrder
+    const prevSibling = siblings.filter((s) => s.sortOrder < task.sortOrder).pop();
+
+    if (!prevSibling) {
+      // No previous sibling — cannot indent
+      return task;
+    }
+
+    // Make this task a child of prevSibling
+    return this.update(id, { parentId: prevSibling.id } as any);
+  }
+
+  /**
+   * Outdent a task: make it a sibling of its parent.
+   * Moves the task up one level in the hierarchy.
+   */
+  async outdent(id: string): Promise<Task> {
+    const task = await this.get(id);
+    if (!task) throw new NotFoundError("Task", id);
+
+    if (!task.parentId) {
+      // Already at top level — cannot outdent
+      return task;
+    }
+
+    const parent = await this.get(task.parentId);
+    if (!parent) throw new NotFoundError("Task", task.parentId);
+
+    // Move to parent's parent (or top level if parent is top level)
+    return this.update(id, { parentId: parent.parentId } as any);
   }
 }

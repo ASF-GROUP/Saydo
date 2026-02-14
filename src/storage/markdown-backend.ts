@@ -12,6 +12,7 @@ import type {
   PluginSettingsRow,
   AppSettingRow,
   ChatMessageRow,
+  TemplateRow,
   MutationResult,
 } from "./interface.js";
 
@@ -37,6 +38,7 @@ export class MarkdownBackend implements IStorage {
   private pluginSettingsMap = new Map<string, PluginSettingsRow>();
   private pluginPermissions = new Map<string, string[]>();
   private chatMessages = new Map<string, ChatMessageRow[]>(); // sessionId → messages
+  private templateIndex = new Map<string, TemplateRow>();
 
   constructor(basePath: string) {
     this.basePath = basePath;
@@ -76,6 +78,9 @@ export class MarkdownBackend implements IStorage {
 
     // 6. Read _chat/*.yaml
     this.loadChatData();
+
+    // 7. Read _templates.yaml
+    this.loadTemplates();
   }
 
   // ── Tasks ──
@@ -465,6 +470,37 @@ export class MarkdownBackend implements IStorage {
     return had ? OK : NOOP;
   }
 
+  // ── Task Templates ──
+
+  listTemplates(): TemplateRow[] {
+    return Array.from(this.templateIndex.values());
+  }
+
+  getTemplate(id: string): TemplateRow | undefined {
+    return this.templateIndex.get(id);
+  }
+
+  insertTemplate(template: TemplateRow): MutationResult {
+    this.templateIndex.set(template.id, template);
+    this.persistTemplates();
+    return OK;
+  }
+
+  updateTemplate(id: string, data: Partial<TemplateRow>): MutationResult {
+    const existing = this.templateIndex.get(id);
+    if (!existing) return NOOP;
+    this.templateIndex.set(id, { ...existing, ...data });
+    this.persistTemplates();
+    return OK;
+  }
+
+  deleteTemplate(id: string): MutationResult {
+    const had = this.templateIndex.has(id);
+    this.templateIndex.delete(id);
+    this.persistTemplates();
+    return had ? OK : NOOP;
+  }
+
   // ── Private helpers ──
 
   private getTaskDir(projectId: string | null): string {
@@ -545,6 +581,18 @@ export class MarkdownBackend implements IStorage {
     const filePath = path.join(this.basePath, "_chat", `${sessionId}.yaml`);
     try {
       fs.writeFileSync(filePath, YAML.stringify(messages), "utf-8");
+    } catch (err) {
+      throw new StorageError(`write ${filePath}`, err instanceof Error ? err : undefined);
+    }
+  }
+
+  private persistTemplates(): void {
+    const templates = Array.from(this.templateIndex.values()).sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
+    const filePath = path.join(this.basePath, "_templates.yaml");
+    try {
+      fs.writeFileSync(filePath, YAML.stringify(templates), "utf-8");
     } catch (err) {
       throw new StorageError(`write ${filePath}`, err instanceof Error ? err : undefined);
     }
@@ -684,6 +732,19 @@ export class MarkdownBackend implements IStorage {
         for (const [id, perms] of Object.entries(obj)) {
           this.pluginPermissions.set(id, perms as string[]);
         }
+      }
+    }
+  }
+
+  private loadTemplates(): void {
+    const filePath = path.join(this.basePath, "_templates.yaml");
+    if (!fs.existsSync(filePath)) return;
+
+    const content = fs.readFileSync(filePath, "utf-8");
+    const templates = YAML.parse(content);
+    if (Array.isArray(templates)) {
+      for (const t of templates) {
+        this.templateIndex.set(t.id, t as TemplateRow);
       }
     }
   }

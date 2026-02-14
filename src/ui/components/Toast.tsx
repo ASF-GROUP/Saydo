@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { X } from "lucide-react";
 
 interface ToastProps {
   message: string;
@@ -18,13 +19,13 @@ export function Toast({ message, actionLabel, onAction, onDismiss, duration = 50
     <div
       role="alert"
       aria-live="assertive"
-      className="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2.5 bg-gray-800 dark:bg-gray-700 text-white rounded-lg shadow-lg text-sm"
+      className="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2.5 bg-on-surface text-surface rounded-lg shadow-lg text-sm"
     >
       <span>{message}</span>
       {actionLabel && onAction && (
         <button
           onClick={onAction}
-          className="font-medium text-blue-300 hover:text-blue-200 underline"
+          className="font-medium text-accent hover:text-accent-hover underline"
         >
           {actionLabel}
         </button>
@@ -32,9 +33,9 @@ export function Toast({ message, actionLabel, onAction, onDismiss, duration = 50
       <button
         onClick={onDismiss}
         aria-label="Dismiss notification"
-        className="ml-1 text-gray-400 hover:text-gray-200"
+        className="ml-1 text-surface/60 hover:text-surface transition-colors"
       >
-        ×
+        <X size={14} />
       </button>
     </div>
   );

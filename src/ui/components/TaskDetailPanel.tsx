@@ -1,33 +1,44 @@
 import { useState } from "react";
+import {
+  X,
+  Trash2,
+  Calendar,
+  Tag,
+  Repeat,
+  ChevronRight,
+  ArrowRight,
+  ArrowLeft,
+} from "lucide-react";
 import type { Task, UpdateTaskInput } from "../../core/types.js";
 
 interface TaskDetailPanelProps {
   task: Task;
+  allTasks?: Task[];
   onUpdate: (id: string, input: UpdateTaskInput) => void;
   onDelete: (id: string) => void;
   onClose: () => void;
+  onIndent?: (id: string) => void;
+  onOutdent?: (id: string) => void;
+  onSelect?: (id: string) => void;
 }
 
 const PRIORITIES = [
-  { value: 1, label: "P1", color: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
-  {
-    value: 2,
-    label: "P2",
-    color: "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400",
-  },
-  {
-    value: 3,
-    label: "P3",
-    color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
-  },
-  {
-    value: 4,
-    label: "P4",
-    color: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400",
-  },
+  { value: 1, label: "P1", activeClass: "bg-priority-1/15 text-priority-1" },
+  { value: 2, label: "P2", activeClass: "bg-priority-2/15 text-priority-2" },
+  { value: 3, label: "P3", activeClass: "bg-priority-3/15 text-priority-3" },
+  { value: 4, label: "P4", activeClass: "bg-priority-4/15 text-priority-4" },
 ];
 
-export function TaskDetailPanel({ task, onUpdate, onDelete, onClose }: TaskDetailPanelProps) {
+export function TaskDetailPanel({
+  task,
+  allTasks = [],
+  onUpdate,
+  onDelete,
+  onClose,
+  onIndent,
+  onOutdent,
+  onSelect,
+}: TaskDetailPanelProps) {
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description ?? "");
 
@@ -54,16 +65,16 @@ export function TaskDetailPanel({ task, onUpdate, onDelete, onClose }: TaskDetai
     <div
       role="complementary"
       aria-label="Task details"
-      className="w-96 border-l border-gray-200 dark:border-gray-700 flex flex-col bg-white dark:bg-gray-900 overflow-auto"
+      className="w-96 border-l border-border flex flex-col bg-surface overflow-auto"
     >
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-        <span className="text-xs text-gray-400 font-mono">{task.id.slice(0, 8)}</span>
+      <div className="flex items-center justify-between p-4 border-b border-border">
+        <span className="text-xs text-on-surface-muted font-mono">{task.id.slice(0, 8)}</span>
         <button
           onClick={onClose}
           aria-label="Close task details"
-          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-lg"
+          className="text-on-surface-muted hover:text-on-surface-secondary transition-colors p-1 rounded-md hover:bg-surface-tertiary"
         >
-          &times;
+          <X size={18} />
         </button>
       </div>
 
@@ -73,11 +84,11 @@ export function TaskDetailPanel({ task, onUpdate, onDelete, onClose }: TaskDetai
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           onBlur={handleTitleBlur}
-          className="w-full text-lg font-semibold bg-transparent border-none focus:outline-none focus:ring-0"
+          className="w-full text-lg font-semibold bg-transparent border-none focus:outline-none focus:ring-0 text-on-surface"
         />
 
         <div>
-          <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+          <label className="text-xs font-medium text-on-surface-muted uppercase tracking-wider">
             Priority
           </label>
           <div className="flex gap-2 mt-1">
@@ -85,10 +96,10 @@ export function TaskDetailPanel({ task, onUpdate, onDelete, onClose }: TaskDetai
               <button
                 key={p.value}
                 onClick={() => handlePriorityClick(p.value)}
-                className={`px-3 py-1 rounded text-sm font-medium ${
+                className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
                   task.priority === p.value
-                    ? p.color
-                    : "bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-500"
+                    ? p.activeClass
+                    : "bg-surface-tertiary text-on-surface-muted hover:text-on-surface-secondary"
                 }`}
               >
                 {p.label}
@@ -98,7 +109,7 @@ export function TaskDetailPanel({ task, onUpdate, onDelete, onClose }: TaskDetai
         </div>
 
         <div>
-          <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+          <label className="text-xs font-medium text-on-surface-muted uppercase tracking-wider">
             Description
           </label>
           <textarea
@@ -106,29 +117,31 @@ export function TaskDetailPanel({ task, onUpdate, onDelete, onClose }: TaskDetai
             onChange={(e) => setDescription(e.target.value)}
             onBlur={handleDescriptionBlur}
             placeholder="Add a description..."
-            className="w-full mt-1 p-2 text-sm bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 min-h-[80px] resize-y"
+            className="w-full mt-1 p-2 text-sm bg-surface-secondary border border-border rounded-md text-on-surface placeholder-on-surface-muted focus:outline-none focus:ring-1 focus:ring-accent min-h-[80px] resize-y"
           />
         </div>
 
         {task.dueDate && (
           <div>
-            <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Due Date
+            <label className="text-xs font-medium text-on-surface-muted uppercase tracking-wider flex items-center gap-1.5">
+              <Calendar size={12} /> Due Date
             </label>
-            <p className="text-sm mt-1">{new Date(task.dueDate).toLocaleDateString()}</p>
+            <p className="text-sm mt-1 text-on-surface">
+              {new Date(task.dueDate).toLocaleDateString()}
+            </p>
           </div>
         )}
 
         {task.tags.length > 0 && (
           <div>
-            <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Tags
+            <label className="text-xs font-medium text-on-surface-muted uppercase tracking-wider flex items-center gap-1.5">
+              <Tag size={12} /> Tags
             </label>
             <div className="flex gap-1.5 mt-1 flex-wrap">
               {task.tags.map((tag) => (
                 <span
                   key={tag.id}
-                  className="text-xs px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
+                  className="text-xs px-2 py-0.5 rounded-md bg-surface-tertiary text-on-surface-secondary"
                 >
                   #{tag.name}
                 </span>
@@ -139,26 +152,106 @@ export function TaskDetailPanel({ task, onUpdate, onDelete, onClose }: TaskDetai
 
         {task.recurrence && (
           <div>
-            <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
-              Recurrence
+            <label className="text-xs font-medium text-on-surface-muted uppercase tracking-wider flex items-center gap-1.5">
+              <Repeat size={12} /> Recurrence
             </label>
-            <p className="text-sm mt-1">{task.recurrence}</p>
+            <p className="text-sm mt-1 text-on-surface">{task.recurrence}</p>
+          </div>
+        )}
+
+        {/* Sub-task hierarchy controls */}
+        {(onIndent || onOutdent) && (
+          <div>
+            <label className="text-xs font-medium text-on-surface-muted uppercase tracking-wider">
+              Hierarchy
+            </label>
+            <div className="flex gap-2 mt-1">
+              {onIndent && (
+                <button
+                  onClick={() => onIndent(task.id)}
+                  className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-surface-tertiary text-on-surface-secondary hover:text-on-surface transition-colors"
+                  title="Make sub-task of previous sibling"
+                >
+                  <ArrowRight size={12} /> Indent
+                </button>
+              )}
+              {onOutdent && task.parentId && (
+                <button
+                  onClick={() => onOutdent(task.id)}
+                  className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-surface-tertiary text-on-surface-secondary hover:text-on-surface transition-colors"
+                  title="Move up one level"
+                >
+                  <ArrowLeft size={12} /> Outdent
+                </button>
+              )}
+            </div>
+            {task.parentId && (
+              <p className="text-xs text-on-surface-muted mt-1">
+                Sub-task of{" "}
+                <button
+                  className="text-accent hover:underline"
+                  onClick={() => onSelect?.(task.parentId!)}
+                >
+                  {allTasks.find((t) => t.id === task.parentId)?.title ?? task.parentId.slice(0, 8)}
+                </button>
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Sub-tasks list */}
+        {allTasks.filter((t) => t.parentId === task.id).length > 0 && (
+          <div>
+            <label className="text-xs font-medium text-on-surface-muted uppercase tracking-wider flex items-center gap-1.5">
+              <ChevronRight size={12} /> Sub-tasks
+            </label>
+            <div className="mt-1 space-y-1">
+              {allTasks
+                .filter((t) => t.parentId === task.id)
+                .map((child) => (
+                  <button
+                    key={child.id}
+                    onClick={() => onSelect?.(child.id)}
+                    className="w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-tertiary transition-colors"
+                  >
+                    <span
+                      className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 ${
+                        child.status === "completed"
+                          ? "bg-success border-success"
+                          : "border-on-surface-muted"
+                      }`}
+                    />
+                    <span
+                      className={`text-sm ${
+                        child.status === "completed"
+                          ? "line-through text-on-surface-muted"
+                          : "text-on-surface"
+                      }`}
+                    >
+                      {child.title}
+                    </span>
+                  </button>
+                ))}
+            </div>
           </div>
         )}
 
         <div>
-          <label className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+          <label className="text-xs font-medium text-on-surface-muted uppercase tracking-wider">
             Created
           </label>
-          <p className="text-sm mt-1 text-gray-500">{new Date(task.createdAt).toLocaleString()}</p>
+          <p className="text-sm mt-1 text-on-surface-muted">
+            {new Date(task.createdAt).toLocaleString()}
+          </p>
         </div>
       </div>
 
-      <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+      <div className="p-4 border-t border-border">
         <button
           onClick={() => onDelete(task.id)}
-          className="text-sm text-red-500 hover:text-red-700 dark:hover:text-red-400"
+          className="text-sm text-error hover:text-error/80 flex items-center gap-1.5 transition-colors"
         >
+          <Trash2 size={14} />
           Delete task
         </button>
       </div>

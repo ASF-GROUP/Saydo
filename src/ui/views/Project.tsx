@@ -39,9 +39,13 @@ export function Project({
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-4">
-        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: project.color }} />
-        <h1 className="text-2xl font-bold">{project.name}</h1>
+      <div className="flex items-center gap-3 mb-6">
+        <div
+          className="w-4 h-4 rounded-full flex-shrink-0"
+          style={{ backgroundColor: project.color }}
+        />
+        <h1 className="text-2xl font-bold text-on-surface">{project.name}</h1>
+        <span className="text-sm text-on-surface-muted">{projectTasks.length} tasks</span>
       </div>
       <TaskInput onSubmit={onCreateTask} placeholder={`Add a task to ${project.name}...`} />
       <TaskList

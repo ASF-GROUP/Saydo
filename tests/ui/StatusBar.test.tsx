@@ -9,10 +9,11 @@ vi.mock("../../src/ui/context/PluginContext.js", () => ({
 }));
 
 describe("StatusBar", () => {
-  it("renders nothing when no status bar items", () => {
+  it("renders empty state when no status bar items", () => {
     mockUsePluginContext.mockReturnValue({ statusBarItems: [] });
     const { container } = render(<StatusBar />);
-    expect(container.firstChild).toBeNull();
+    // Always renders the bar for consistent layout; content is invisible
+    expect(container.firstChild).not.toBeNull();
   });
 
   it("renders status bar items with icon and text", () => {

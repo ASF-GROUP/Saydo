@@ -1,5 +1,10 @@
+import { useState, useMemo } from "react";
+import { Inbox as InboxIcon } from "lucide-react";
 import { TaskInput } from "../components/TaskInput.js";
 import { TaskList } from "../components/TaskList.js";
+import { QueryBar } from "../components/QueryBar.js";
+import { filterTasks } from "../../core/filters.js";
+import type { ParsedQuery } from "../../core/query-parser.js";
 import type { Task } from "../../core/types.js";
 
 interface InboxProps {
@@ -33,18 +38,33 @@ export function Inbox({
   onMultiSelect,
   onReorder,
 }: InboxProps) {
-  const inboxTasks = tasks.filter((t) => t.status === "pending" && !t.projectId);
+  const [query, setQuery] = useState<ParsedQuery | null>(null);
+
+  const inboxTasks = useMemo(() => {
+    const base = tasks.filter((t) => t.status === "pending" && !t.projectId);
+    if (!query) return base;
+    return filterTasks(base, query.filter);
+  }, [tasks, query]);
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-4">Inbox</h1>
+      <div className="flex items-center gap-3 mb-6">
+        <InboxIcon size={24} className="text-accent" />
+        <h1 className="text-2xl font-bold text-on-surface">Inbox</h1>
+        <span className="text-sm text-on-surface-muted">{inboxTasks.length} tasks</span>
+      </div>
       <TaskInput onSubmit={onCreateTask} />
+      <div className="mb-3">
+        <QueryBar onQueryChange={setQuery} />
+      </div>
       <TaskList
         tasks={inboxTasks}
         onToggle={onToggleTask}
         onSelect={onSelectTask}
         selectedTaskId={selectedTaskId}
-        emptyMessage="Your inbox is empty. Add a task above!"
+        emptyMessage={
+          query ? "No tasks match your query." : "Your inbox is empty. Add a task above!"
+        }
         selectedTaskIds={selectedTaskIds}
         onMultiSelect={onMultiSelect}
         onReorder={onReorder}

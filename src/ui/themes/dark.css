@@ -1,19 +1,18 @@
-/* ASF Docket — Dark Theme */
+/* ASF Docket — Dark Theme (overrides) */
 
 .dark {
-  --color-bg: #111827;
-  --color-bg-secondary: #1f2937;
-  --color-bg-tertiary: #374151;
-  --color-text: #f9fafb;
-  --color-text-secondary: #9ca3af;
-  --color-text-muted: #6b7280;
+  --color-surface: #111827;
+  --color-surface-secondary: #1f2937;
+  --color-surface-tertiary: #374151;
+  --color-on-surface: #f9fafb;
+  --color-on-surface-secondary: #9ca3af;
+  --color-on-surface-muted: #6b7280;
   --color-border: #374151;
   --color-accent: #60a5fa;
   --color-accent-hover: #3b82f6;
   --color-success: #34d399;
   --color-warning: #fbbf24;
   --color-error: #f87171;
-
   --color-priority-1: #f87171;
   --color-priority-2: #fbbf24;
   --color-priority-3: #60a5fa;

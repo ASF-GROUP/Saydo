@@ -32,7 +32,7 @@ export function PluginView({ viewId }: PluginViewProps) {
 
   return (
     <div>
-      <pre className="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-300 font-mono">
+      <pre className="whitespace-pre-wrap text-sm text-on-surface-secondary font-mono">
         {content}
       </pre>
     </div>

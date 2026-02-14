@@ -50,7 +50,8 @@ All work items for ASF Docket, organized by area and prioritized within each sec
 | C-11 | Recurring task creation on completion | done | S2 | Recurrence logic exists |
 | C-12 | Task search (full-text across title + description) | done | S2 | |
 | C-13 | Bulk operations (complete all, move, tag multiple) | done | S9 | Multi-select + bulk complete/move/tag/delete |
-| C-14 | Sub-tasks (nested hierarchy) | idea | — | Future |
+| C-14 | Sub-tasks (nested hierarchy with parentId) | done | S15 | Self-ref FK, cascade delete/complete, indent/outdent |
+| C-15 | Task templates (reusable with {{variables}}) | done | S16 | TemplateService, instantiate with substitution |
 
 ## Parser & NLP
 
@@ -62,7 +63,7 @@ All work items for ASF Docket, organized by area and prioritized within each sec
 | P-04 | Project extraction (+project) | done | — | Tested, 6 tests |
 | P-05 | Integrated task parser | done | — | Tested, 11 tests |
 | P-06 | Parser inline preview (show parsed result as user types) | done | S2 | UI feature |
-| P-07 | Natural language queries ("what's due this week?") | idea | — | Future |
+| P-07 | Natural language queries ("what's due this week?") | done | S16 | query-parser.ts + QueryBar component |
 
 ## UI — Views & Components
 
@@ -85,7 +86,12 @@ All work items for ASF Docket, organized by area and prioritized within each sec
 | U-15 | Light/dark theme switching | done | S2 | CSS exists, needs toggle wiring |
 | U-16 | Drag-and-drop task reordering | done | S9 | @dnd-kit/core + sortable |
 | U-17 | Undo/redo for task operations | done | S9 | UndoManager with Ctrl+Z/Ctrl+Shift+Z |
-| U-18 | Focus mode (hide everything except current task) | idea | — | |
+| U-18 | Focus mode (full-screen overlay, keyboard-driven) | done | S15 | FocusMode.tsx, Space/N/P/Esc shortcuts |
+| U-19 | Design token system (@theme, semantic classes) | done | S14 | Tailwind 4 @theme, all components migrated |
+| U-20 | Settings tabbed layout | done | S14 | 7 tabs: General, AI, Plugins, Templates, Keyboard, Data, About |
+| U-21 | Lucide icons throughout | done | S14 | Sidebar, views, components |
+| U-22 | QueryBar with NL filtering | done | S16 | Debounced search, suggestions, filterTasks integration |
+| U-23 | TemplateSelector modal | done | S16 | Template picker with variable form |
 
 ## CLI
 

@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import {
   DndContext,
   closestCenter,
@@ -15,6 +15,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { ClipboardList } from "lucide-react";
 import type { Task } from "../../core/types.js";
 import { TaskItem } from "./TaskItem.js";
 
@@ -40,6 +41,10 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
   isMultiSelected,
   showCheckbox,
   onMultiSelect,
+  depth,
+  childCount,
+  expanded,
+  onToggleExpand,
 }: {
   task: Task;
   onToggle: (id: string) => void;
@@ -51,6 +56,10 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
     id: string,
     event: { ctrlKey: boolean; metaKey: boolean; shiftKey: boolean },
   ) => void;
+  depth?: number;
+  childCount?: number;
+  expanded?: boolean;
+  onToggleExpand?: (id: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: task.id });
 
@@ -71,9 +80,25 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
       dragHandleProps={{ ...attributes, ...listeners }}
       style={style}
       innerRef={setNodeRef}
+      depth={depth}
+      childCount={childCount}
+      expanded={expanded}
+      onToggleExpand={onToggleExpand}
     />
   );
 });
+
+/** Build a parent→children map and count from a flat task list. */
+function buildChildMap(tasks: Task[]): Map<string, Task[]> {
+  const map = new Map<string, Task[]>();
+  for (const t of tasks) {
+    if (t.parentId) {
+      if (!map.has(t.parentId)) map.set(t.parentId, []);
+      map.get(t.parentId)!.push(t);
+    }
+  }
+  return map;
+}
 
 export function TaskList({
   tasks,
@@ -85,6 +110,8 @@ export function TaskList({
   onMultiSelect,
   onReorder,
 }: TaskListProps) {
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -107,22 +134,53 @@ export function TaskList({
     [tasks, onReorder],
   );
 
+  const handleToggleExpand = useCallback((id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
   if (tasks.length === 0) {
     return (
-      <div role="status" className="text-center py-8 text-gray-400">
-        {emptyMessage ?? "No tasks yet. Add one above!"}
+      <div
+        role="status"
+        className="flex flex-col items-center justify-center py-12 text-on-surface-muted"
+      >
+        <ClipboardList size={40} strokeWidth={1.25} className="mb-3 opacity-50" />
+        <p className="text-sm">{emptyMessage ?? "No tasks yet. Add one above!"}</p>
       </div>
     );
   }
 
+  // Build tree structure from flat list
+  const childMap = buildChildMap(tasks);
+  const topLevel = tasks.filter((t) => !t.parentId);
+
+  // Flatten visible tree for DnD ordering
+  function flattenVisible(items: Task[], depth: number): Array<{ task: Task; depth: number }> {
+    const result: Array<{ task: Task; depth: number }> = [];
+    for (const item of items) {
+      result.push({ task: item, depth });
+      const children = childMap.get(item.id);
+      if (children && expandedIds.has(item.id)) {
+        result.push(...flattenVisible(children, depth + 1));
+      }
+    }
+    return result;
+  }
+
+  const visibleTasks = flattenVisible(topLevel, 0);
   const isMultiSelectActive = selectedTaskIds && selectedTaskIds.size > 0;
-  const taskIds = tasks.map((t) => t.id);
+  const taskIds = visibleTasks.map((v) => v.task.id);
 
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
-        <div role="list" aria-label="Tasks" className="space-y-1">
-          {tasks.map((task) => (
+        <div role="list" aria-label="Tasks" className="space-y-0.5">
+          {visibleTasks.map(({ task, depth }) => (
             <SortableTaskItem
               key={task.id}
               task={task}
@@ -132,6 +190,10 @@ export function TaskList({
               isMultiSelected={selectedTaskIds?.has(task.id) ?? false}
               showCheckbox={!!isMultiSelectActive || !!onMultiSelect}
               onMultiSelect={onMultiSelect}
+              depth={depth}
+              childCount={childMap.get(task.id)?.length ?? 0}
+              expanded={expandedIds.has(task.id)}
+              onToggleExpand={handleToggleExpand}
             />
           ))}
         </div>

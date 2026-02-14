@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { CheckCircle, Trash2, FolderOpen, Tag, X } from "lucide-react";
 import type { Project } from "../../core/types.js";
 
 interface BulkActionBarProps {
@@ -27,38 +28,39 @@ export function BulkActionBar({
   if (selectedCount === 0) return null;
 
   return (
-    <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-2 mb-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-      <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-        {selectedCount} selected
-      </span>
+    <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-2 mb-2 bg-accent/10 border border-accent/20 rounded-lg">
+      <span className="text-sm font-medium text-accent">{selectedCount} selected</span>
       <div className="flex items-center gap-1 ml-auto">
         <button
           onClick={onCompleteAll}
-          className="px-3 py-1 text-xs rounded bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50"
+          className="px-3 py-1 text-xs rounded-md bg-success/10 text-success hover:bg-success/20 flex items-center gap-1.5 transition-colors"
         >
-          Complete All
+          <CheckCircle size={14} />
+          Complete
         </button>
         <button
           onClick={onDeleteAll}
-          className="px-3 py-1 text-xs rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50"
+          className="px-3 py-1 text-xs rounded-md bg-error/10 text-error hover:bg-error/20 flex items-center gap-1.5 transition-colors"
         >
-          Delete All
+          <Trash2 size={14} />
+          Delete
         </button>
         <div className="relative">
           <button
             onClick={() => setShowProjectMenu((v) => !v)}
-            className="px-3 py-1 text-xs rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+            className="px-3 py-1 text-xs rounded-md bg-surface-tertiary text-on-surface-secondary hover:bg-border flex items-center gap-1.5 transition-colors"
           >
-            Move to Project
+            <FolderOpen size={14} />
+            Move
           </button>
           {showProjectMenu && (
-            <div className="absolute top-full left-0 mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-20">
+            <div className="absolute top-full left-0 mt-1 w-48 bg-surface border border-border rounded-lg shadow-lg z-20">
               <button
                 onClick={() => {
                   onMoveToProject(null);
                   setShowProjectMenu(false);
                 }}
-                className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-500"
+                className="w-full text-left px-3 py-2 text-xs hover:bg-surface-secondary text-on-surface-muted"
               >
                 No Project (Inbox)
               </button>
@@ -69,7 +71,7 @@ export function BulkActionBar({
                     onMoveToProject(p.id);
                     setShowProjectMenu(false);
                   }}
-                  className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-gray-700"
+                  className="w-full text-left px-3 py-2 text-xs text-on-surface hover:bg-surface-secondary"
                 >
                   {p.name}
                 </button>
@@ -95,7 +97,7 @@ export function BulkActionBar({
               onChange={(e) => setTagInput(e.target.value)}
               placeholder="Tag name"
               autoFocus
-              className="w-24 px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800"
+              className="w-24 px-2 py-1 text-xs border border-border rounded bg-surface text-on-surface"
               onBlur={() => {
                 if (!tagInput) setShowTagInput(false);
               }}
@@ -104,16 +106,17 @@ export function BulkActionBar({
         ) : (
           <button
             onClick={() => setShowTagInput(true)}
-            className="px-3 py-1 text-xs rounded bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+            className="px-3 py-1 text-xs rounded-md bg-surface-tertiary text-on-surface-secondary hover:bg-border flex items-center gap-1.5 transition-colors"
           >
-            Add Tag
+            <Tag size={14} />
+            Tag
           </button>
         )}
         <button
           onClick={onClear}
-          className="px-3 py-1 text-xs rounded text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+          className="px-2 py-1 text-xs rounded-md text-on-surface-muted hover:text-on-surface-secondary hover:bg-surface-tertiary transition-colors"
         >
-          Clear
+          <X size={14} />
         </button>
       </div>
     </div>

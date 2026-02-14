@@ -10,6 +10,8 @@ import { PluginProvider, usePluginContext } from "./context/PluginContext.js";
 import { AIProvider } from "./context/AIContext.js";
 import { UndoProvider, useUndoContext } from "./context/UndoContext.js";
 import { AIChatPanel } from "./components/AIChatPanel.js";
+import { FocusMode } from "./components/FocusMode.js";
+import { TemplateSelector } from "./components/TemplateSelector.js";
 import { Toast } from "./components/Toast.js";
 import { useKeyboardNavigation } from "./hooks/useKeyboardNavigation.js";
 import { useMultiSelect } from "./hooks/useMultiSelect.js";
@@ -43,6 +45,8 @@ function AppContent() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [chatPanelOpen, setChatPanelOpen] = useState(false);
+  const [focusModeOpen, setFocusModeOpen] = useState(false);
+  const [templateSelectorOpen, setTemplateSelectorOpen] = useState(false);
   const [projects, setProjects] = useState<ProjectType[]>([]);
   const {
     state,
@@ -53,6 +57,7 @@ function AppContent() {
     completeManyTasks,
     deleteManyTasks,
     updateManyTasks,
+    refreshTasks,
   } = useTaskContext();
   const { undo, redo, toast, dismissToast } = useUndoContext();
   const {
@@ -195,6 +200,24 @@ function AppContent() {
     clearSelection();
   };
 
+  // Sub-task indent/outdent
+  const handleIndent = useCallback(async (id: string) => {
+    try {
+      await api.indentTask(id);
+      // TaskContext will refresh on next fetch
+    } catch {
+      // Non-critical
+    }
+  }, []);
+
+  const handleOutdent = useCallback(async (id: string) => {
+    try {
+      await api.outdentTask(id);
+    } catch {
+      // Non-critical
+    }
+  }, []);
+
   // Drag-and-drop reorder
   const handleReorder = useCallback(async (orderedIds: string[]) => {
     try {
@@ -290,6 +313,12 @@ function AppContent() {
         callback: () => themeManager.setTheme("dark"),
       },
       { id: "ai-chat-toggle", name: "Toggle AI Chat", callback: () => setChatPanelOpen((o) => !o) },
+      { id: "focus-mode", name: "Enter Focus Mode", callback: () => setFocusModeOpen(true) },
+      {
+        id: "create-from-template",
+        name: "Create Task from Template",
+        callback: () => setTemplateSelectorOpen(true),
+      },
     ];
 
     for (const project of projects) {
@@ -356,7 +385,7 @@ function AppContent() {
       case "project": {
         const project = projects.find((p) => p.id === selectedProjectId);
         if (!project) {
-          return <p className="text-gray-500">Project not found.</p>;
+          return <p className="text-on-surface-muted">Project not found.</p>;
         }
         return (
           <Project
@@ -380,7 +409,7 @@ function AppContent() {
         return selectedPluginViewId ? (
           <PluginView viewId={selectedPluginViewId} />
         ) : (
-          <p className="text-gray-500">No plugin view selected.</p>
+          <p className="text-on-surface-muted">No plugin view selected.</p>
         );
       default:
         return null;
@@ -388,10 +417,10 @@ function AppContent() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+    <div className="flex flex-col h-screen bg-surface text-on-surface">
       <a
         href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-blue-500 focus:text-white focus:rounded-lg focus:text-sm"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-accent focus:text-white focus:rounded-lg focus:text-sm"
       >
         Skip to main content
       </a>
@@ -406,6 +435,7 @@ function AppContent() {
           selectedPluginViewId={selectedPluginViewId}
           onToggleChat={() => setChatPanelOpen((o) => !o)}
           chatOpen={chatPanelOpen}
+          onFocusMode={() => setFocusModeOpen(true)}
         />
         <main id="main-content" tabIndex={-1} className="flex-1 overflow-auto p-6">
           <BulkActionBar
@@ -418,9 +448,9 @@ function AppContent() {
             projects={projects}
           />
           {state.loading ? (
-            <p className="text-gray-500">Loading...</p>
+            <p className="text-on-surface-muted">Loading...</p>
           ) : state.error ? (
-            <p role="alert" className="text-red-500">
+            <p role="alert" className="text-error">
               Error: {state.error}
             </p>
           ) : (
@@ -430,9 +460,13 @@ function AppContent() {
         {selectedTask && (
           <TaskDetailPanel
             task={selectedTask}
+            allTasks={state.tasks}
             onUpdate={handleUpdateTask}
             onDelete={handleDeleteTask}
             onClose={handleCloseDetail}
+            onIndent={handleIndent}
+            onOutdent={handleOutdent}
+            onSelect={handleSelectTask}
           />
         )}
         {chatPanelOpen && (
@@ -445,6 +479,21 @@ function AppContent() {
           />
         )}
       </div>
+      {focusModeOpen && (
+        <FocusMode
+          tasks={state.tasks.filter((t) => t.status === "pending")}
+          onComplete={handleToggleTask}
+          onClose={() => setFocusModeOpen(false)}
+        />
+      )}
+      <TemplateSelector
+        open={templateSelectorOpen}
+        onClose={() => setTemplateSelectorOpen(false)}
+        onTaskCreated={() => {
+          refreshTasks();
+          setTemplateSelectorOpen(false);
+        }}
+      />
       <StatusBar />
       <CommandPalette
         commands={commands}
