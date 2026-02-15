@@ -597,7 +597,7 @@ function AppContent() {
     }
 
     return cmds;
-  }, [projects, pluginCommands, executeCommand]);
+  }, [projects, pluginCommands, executeCommand, handleNavigate]);
 
   const selectedTask = selectedTaskId ? state.tasks.find((t) => t.id === selectedTaskId) : null;
 
