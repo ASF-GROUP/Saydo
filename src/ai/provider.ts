@@ -69,7 +69,7 @@ export function createDefaultRegistry(): AIProviderRegistry {
     displayName: "LM Studio (local)",
     needsApiKey: false,
     defaultModel: "default",
-    defaultBaseUrl: "http://localhost:1234",
+    defaultBaseUrl: "http://localhost:1234/v1",
     showBaseUrl: true,
     pluginId: null,
     factory: (config) => new LMStudioProvider(config),
