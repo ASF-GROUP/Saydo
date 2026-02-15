@@ -62,6 +62,7 @@ const DEFAULT_ROUTE_STATE: RouteState = {
 };
 
 const SIDEBAR_COLLAPSED_STORAGE_KEY = "docket.ui.sidebar.collapsed";
+const AI_CHAT_EXPANDED_STORAGE_KEY = "docket.ui.ai-chat.expanded";
 
 function decodePathSegment(segment: string | undefined): string | null {
   if (!segment) return null;
@@ -265,7 +266,10 @@ function AppContent() {
   const [routeReady, setRouteReady] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
-  const [chatPanelOpen, setChatPanelOpen] = useState(false);
+  const [chatPanelOpen, setChatPanelOpen] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(AI_CHAT_EXPANDED_STORAGE_KEY) === "1";
+  });
   const [chatPanelStateLoaded, setChatPanelStateLoaded] = useState(false);
   const [focusModeOpen, setFocusModeOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
@@ -363,6 +367,10 @@ function AppContent() {
   useEffect(() => {
     window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, sidebarCollapsed ? "1" : "0");
   }, [sidebarCollapsed]);
+
+  useEffect(() => {
+    window.localStorage.setItem(AI_CHAT_EXPANDED_STORAGE_KEY, chatPanelOpen ? "1" : "0");
+  }, [chatPanelOpen]);
 
   useEffect(() => {
     const syncRouteFromLocation = () => {
