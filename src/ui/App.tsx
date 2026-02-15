@@ -28,6 +28,7 @@ import type { Project as ProjectType } from "../core/types.js";
 import { api } from "./api.js";
 
 const shortcutManager = new ShortcutManager();
+const AI_SIDEBAR_OPEN_SETTING_KEY = "ui_ai_sidebar_open";
 
 type View =
   | "inbox"
@@ -45,6 +46,7 @@ function AppContent() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [chatPanelOpen, setChatPanelOpen] = useState(false);
+  const [chatPanelStateLoaded, setChatPanelStateLoaded] = useState(false);
   const [focusModeOpen, setFocusModeOpen] = useState(false);
   const [templateSelectorOpen, setTemplateSelectorOpen] = useState(false);
   const [projects, setProjects] = useState<ProjectType[]>([]);
@@ -80,6 +82,42 @@ function AppContent() {
   useEffect(() => {
     fetchProjects();
   }, [fetchProjects]);
+
+  // Restore AI chat sidebar open/closed state on startup.
+  useEffect(() => {
+    let mounted = true;
+    api
+      .getAppSetting(AI_SIDEBAR_OPEN_SETTING_KEY)
+      .then((value) => {
+        if (!mounted || value === null) {
+          return;
+        }
+        setChatPanelOpen(value === "1" || value.toLowerCase() === "true");
+      })
+      .catch(() => {
+        // Non-critical
+      })
+      .finally(() => {
+        if (mounted) {
+          setChatPanelStateLoaded(true);
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Persist AI chat sidebar state after initial restore.
+  useEffect(() => {
+    if (!chatPanelStateLoaded) {
+      return;
+    }
+
+    api.setAppSetting(AI_SIDEBAR_OPEN_SETTING_KEY, chatPanelOpen ? "1" : "0").catch(() => {
+      // Non-critical
+    });
+  }, [chatPanelOpen, chatPanelStateLoaded]);
 
   // Re-fetch projects when tasks are added/removed (new project might have been created)
   const taskCount = state.tasks.length;
