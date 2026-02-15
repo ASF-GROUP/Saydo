@@ -683,6 +683,57 @@ function AppContent() {
 
   const selectedTask = selectedTaskId ? state.tasks.find((t) => t.id === selectedTaskId) : null;
 
+  const appTitle = useMemo(() => {
+    if (focusModeOpen) {
+      return "Focus Mode - Docket";
+    }
+
+    switch (currentView) {
+      case "inbox":
+        return "Inbox - Docket";
+      case "today":
+        return "Today - Docket";
+      case "upcoming":
+        return "Upcoming - Docket";
+      case "project": {
+        const project = projects.find((p) => p.id === selectedProjectId);
+        return project ? `${project.name} - Docket` : "Project - Docket";
+      }
+      case "settings": {
+        const tabLabelById: Record<SettingsTab, string> = {
+          general: "General",
+          ai: "AI Assistant",
+          plugins: "Plugins",
+          templates: "Templates",
+          keyboard: "Keyboard",
+          data: "Data",
+          about: "About",
+        };
+        return `${tabLabelById[settingsTab]} Settings - Docket`;
+      }
+      case "plugin-store":
+        return "Plugin Store - Docket";
+      case "plugin-view": {
+        const pluginView = pluginViews.find((view) => view.id === selectedPluginViewId);
+        return pluginView ? `${pluginView.name} - Docket` : "Custom View - Docket";
+      }
+      default:
+        return "Docket";
+    }
+  }, [
+    focusModeOpen,
+    currentView,
+    projects,
+    selectedProjectId,
+    settingsTab,
+    pluginViews,
+    selectedPluginViewId,
+  ]);
+
+  useEffect(() => {
+    document.title = appTitle;
+  }, [appTitle]);
+
   const renderView = () => {
     switch (currentView) {
       case "inbox":
