@@ -1,9 +1,12 @@
 import { CalendarDays } from "lucide-react";
+import { parseTask } from "../../parser/task-parser.js";
+import { TaskInput } from "../components/TaskInput.js";
 import { TaskList } from "../components/TaskList.js";
 import type { Task } from "../../core/types.js";
 
 interface TodayProps {
   tasks: Task[];
+  onCreateTask: (input: ReturnType<typeof parseTask>) => void;
   onToggleTask: (id: string) => void;
   onSelectTask: (id: string) => void;
   selectedTaskId: string | null;
@@ -17,6 +20,7 @@ interface TodayProps {
 
 export function Today({
   tasks,
+  onCreateTask,
   onToggleTask,
   onSelectTask,
   selectedTaskId,
@@ -40,6 +44,10 @@ export function Today({
           })}
         </span>
       </div>
+      <TaskInput
+        onSubmit={onCreateTask}
+        placeholder='Add a task for today... (e.g., "buy milk today p1")'
+      />
       <TaskList
         tasks={todayTasks}
         onToggle={onToggleTask}

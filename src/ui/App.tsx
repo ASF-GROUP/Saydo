@@ -622,6 +622,7 @@ function AppContent() {
         return (
           <Today
             tasks={state.tasks}
+            onCreateTask={handleCreateTask}
             onToggleTask={handleToggleTask}
             onSelectTask={handleSelectTask}
             selectedTaskId={selectedTaskId}
@@ -634,6 +635,7 @@ function AppContent() {
         return (
           <Upcoming
             tasks={state.tasks}
+            onCreateTask={handleCreateTask}
             onToggleTask={handleToggleTask}
             onSelectTask={handleSelectTask}
             selectedTaskId={selectedTaskId}
