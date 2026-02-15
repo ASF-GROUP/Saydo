@@ -7,11 +7,25 @@ import {
   Puzzle,
   MessageSquare,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   Focus,
 } from "lucide-react";
 import type { Project } from "../../core/types.js";
 import type { PanelInfo, ViewInfo } from "../api.js";
+
+function CollapsedTooltip({ visible, label }: { visible: boolean; label: string }) {
+  if (!visible) return null;
+
+  return (
+    <span
+      role="tooltip"
+      className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 whitespace-nowrap rounded-md border border-border bg-surface px-2 py-1 text-xs text-on-surface opacity-0 shadow-md transition-opacity group-hover:opacity-100 group-focus-within:opacity-100"
+    >
+      {label}
+    </span>
+  );
+}
 
 interface SidebarProps {
   currentView: string;
@@ -24,6 +38,8 @@ interface SidebarProps {
   onToggleChat?: () => void;
   chatOpen?: boolean;
   onFocusMode?: () => void;
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
 }
 
 const NAV_ITEMS = [
@@ -45,18 +61,36 @@ export function Sidebar({
   onToggleChat,
   chatOpen,
   onFocusMode,
+  collapsed = false,
+  onToggleCollapsed,
 }: SidebarProps) {
   const [projectsExpanded, setProjectsExpanded] = useState(true);
 
   return (
     <aside
       aria-label="Main navigation"
-      className="w-sidebar border-r border-border bg-surface-secondary flex flex-col overflow-auto"
+      className={`relative z-20 border-r border-border bg-surface-secondary flex flex-col transition-all ${
+        collapsed ? "w-16 overflow-visible" : "w-sidebar overflow-y-auto"
+      }`}
     >
-      <div className="px-5 py-4">
-        <h2 className="text-lg font-bold text-on-surface tracking-tight">Docket</h2>
+      <div className={`py-4 ${collapsed ? "px-2" : "px-5"}`}>
+        <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between"}`}>
+          {!collapsed && (
+            <h2 className="text-lg font-bold text-on-surface tracking-tight">Docket</h2>
+          )}
+          {onToggleCollapsed && (
+            <button
+              onClick={onToggleCollapsed}
+              aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              className="group relative p-2 rounded-md text-on-surface-secondary hover:bg-surface-tertiary hover:text-on-surface transition-colors"
+            >
+              {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+              <CollapsedTooltip visible={collapsed} label="Expand sidebar" />
+            </button>
+          )}
+        </div>
       </div>
-      <nav aria-label="Views" className="flex-1 px-3">
+      <nav aria-label="Views" className={`flex-1 ${collapsed ? "px-2" : "px-3"}`}>
         <ul className="space-y-0.5">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
@@ -66,21 +100,24 @@ export function Sidebar({
                 <button
                   onClick={() => onNavigate(item.id)}
                   aria-current={isActive ? "page" : undefined}
-                  className={`w-full text-left px-3 py-2 rounded-md text-sm flex items-center gap-3 transition-colors ${
+                  className={`group relative w-full text-left px-3 py-2 rounded-md text-sm flex items-center transition-colors ${
+                    collapsed ? "justify-center" : "gap-3"
+                  } ${
                     isActive
                       ? "bg-accent/10 text-accent font-medium"
                       : "text-on-surface-secondary hover:bg-surface-tertiary hover:text-on-surface"
                   }`}
                 >
                   <Icon size={18} strokeWidth={isActive ? 2.25 : 1.75} />
-                  {item.label}
+                  {!collapsed && item.label}
+                  <CollapsedTooltip visible={collapsed} label={item.label} />
                 </button>
               </li>
             );
           })}
         </ul>
 
-        {projects.length > 0 && (
+        {!collapsed && projects.length > 0 && (
           <>
             <button
               onClick={() => setProjectsExpanded(!projectsExpanded)}
@@ -119,7 +156,7 @@ export function Sidebar({
           </>
         )}
 
-        {panels.length > 0 && (
+        {!collapsed && panels.length > 0 && (
           <>
             <h3 className="text-xs font-semibold text-on-surface-muted uppercase tracking-wider mt-6 mb-2 px-3">
               Plugins
@@ -145,7 +182,7 @@ export function Sidebar({
           </>
         )}
 
-        {pluginViews.length > 0 && (
+        {!collapsed && pluginViews.length > 0 && (
           <>
             <h3 className="text-xs font-semibold text-on-surface-muted uppercase tracking-wider mt-6 mb-2 px-3">
               Plugin Views
@@ -175,15 +212,18 @@ export function Sidebar({
         )}
       </nav>
       {(onFocusMode || onToggleChat) && (
-        <div className="px-3 pb-3 pt-2 space-y-1">
+        <div className={`${collapsed ? "px-2" : "px-3"} pb-3 pt-2 space-y-1`}>
           {onFocusMode && (
             <button
               onClick={onFocusMode}
               aria-label="Enter focus mode"
-              className="w-full px-3 py-2 rounded-lg text-sm flex items-center gap-3 transition-colors text-on-surface-secondary hover:bg-surface-tertiary hover:text-on-surface"
+              className={`group relative w-full px-3 py-2 rounded-lg text-sm flex items-center transition-colors text-on-surface-secondary hover:bg-surface-tertiary hover:text-on-surface ${
+                collapsed ? "justify-center" : "gap-3"
+              }`}
             >
               <Focus size={18} strokeWidth={1.75} />
-              Focus Mode
+              {!collapsed && "Focus Mode"}
+              <CollapsedTooltip visible={collapsed} label="Focus Mode" />
             </button>
           )}
           {onToggleChat && (
@@ -191,14 +231,17 @@ export function Sidebar({
               onClick={onToggleChat}
               aria-label={chatOpen ? "Close AI chat panel" : "Open AI chat panel"}
               aria-pressed={chatOpen}
-              className={`w-full px-3 py-2 rounded-lg text-sm flex items-center gap-3 transition-colors ${
+              className={`group relative w-full px-3 py-2 rounded-lg text-sm flex items-center transition-colors ${
+                collapsed ? "justify-center" : "gap-3"
+              } ${
                 chatOpen
                   ? "bg-accent/10 text-accent font-medium"
                   : "text-on-surface-secondary hover:bg-surface-tertiary hover:text-on-surface"
               }`}
             >
               <MessageSquare size={18} strokeWidth={chatOpen ? 2.25 : 1.75} />
-              AI Chat
+              {!collapsed && "AI Chat"}
+              <CollapsedTooltip visible={collapsed} label="AI Chat" />
             </button>
           )}
         </div>

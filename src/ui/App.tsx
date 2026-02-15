@@ -60,6 +60,8 @@ const DEFAULT_ROUTE_STATE: RouteState = {
   focusModeOpen: false,
 };
 
+const SIDEBAR_COLLAPSED_STORAGE_KEY = "docket.ui.sidebar.collapsed";
+
 function decodePathSegment(segment: string | undefined): string | null {
   if (!segment) return null;
   try {
@@ -129,7 +131,6 @@ function parseRouteStateFromHash(hash: string): RouteState {
   }
 
   route.focusModeOpen = params.get("focus") === "1";
-
   return route;
 }
 
@@ -148,7 +149,6 @@ function buildHashFromRoute(route: RouteState): string {
   if (route.focusModeOpen) {
     params.set("focus", "1");
   }
-
   let path = "/inbox";
   switch (route.view) {
     case "today":
@@ -194,6 +194,10 @@ function AppContent() {
   const [chatPanelOpen, setChatPanelOpen] = useState(false);
   const [chatPanelStateLoaded, setChatPanelStateLoaded] = useState(false);
   const [focusModeOpen, setFocusModeOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === "1";
+  });
   const [templateSelectorOpen, setTemplateSelectorOpen] = useState(false);
   const [projects, setProjects] = useState<ProjectType[]>([]);
   const {
@@ -281,6 +285,10 @@ function AppContent() {
     setPluginStoreSearchQuery(route.pluginSearch);
     setFocusModeOpen(route.focusModeOpen);
   }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, sidebarCollapsed ? "1" : "0");
+  }, [sidebarCollapsed]);
 
   useEffect(() => {
     const syncRouteFromLocation = () => {
@@ -703,6 +711,8 @@ function AppContent() {
           onToggleChat={() => setChatPanelOpen((o) => !o)}
           chatOpen={chatPanelOpen}
           onFocusMode={() => setFocusModeOpen(true)}
+          collapsed={sidebarCollapsed}
+          onToggleCollapsed={() => setSidebarCollapsed((value) => !value)}
         />
         <main id="main-content" tabIndex={-1} className="flex-1 overflow-auto p-6">
           <BulkActionBar
