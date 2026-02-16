@@ -12,8 +12,9 @@ import { PluginSettingsManager } from "./plugins/settings.js";
 import { CommandRegistry } from "./plugins/command-registry.js";
 import { UIRegistry } from "./plugins/ui-registry.js";
 import { ChatManager } from "./ai/chat.js";
-import { createDefaultRegistry } from "./ai/provider.js";
-import type { AIProviderRegistry } from "./ai/provider-registry.js";
+import { createDefaultRegistry, createDefaultToolRegistry } from "./ai/provider.js";
+import type { LLMProviderRegistry } from "./ai/provider/registry.js";
+import type { ToolRegistry } from "./ai/tools/registry.js";
 import { loadEnv } from "./config/env.js";
 import { SQLiteBackend } from "./storage/sqlite-backend.js";
 import { MarkdownBackend } from "./storage/markdown-backend.js";
@@ -31,7 +32,8 @@ export interface AppServices {
   uiRegistry: UIRegistry;
   chatManager: ChatManager;
   storage: IStorage;
-  aiProviderRegistry: AIProviderRegistry;
+  aiProviderRegistry: LLMProviderRegistry;
+  toolRegistry: ToolRegistry;
 }
 
 export function bootstrap(dbPath?: string): AppServices {
@@ -70,6 +72,7 @@ export function bootstrap(dbPath?: string): AppServices {
   const uiRegistry = new UIRegistry();
   const chatManager = new ChatManager();
   const aiProviderRegistry = createDefaultRegistry();
+  const toolRegistry = createDefaultToolRegistry();
 
   const pluginDir = path.resolve(env.PLUGIN_DIR);
   const pluginLoader = new PluginLoader(pluginDir, {
@@ -80,6 +83,7 @@ export function bootstrap(dbPath?: string): AppServices {
     uiRegistry,
     queries: storage,
     aiProviderRegistry,
+    toolRegistry,
   });
 
   return {
@@ -95,5 +99,6 @@ export function bootstrap(dbPath?: string): AppServices {
     chatManager,
     storage,
     aiProviderRegistry,
+    toolRegistry,
   };
 }

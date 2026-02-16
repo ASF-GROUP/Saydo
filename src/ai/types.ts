@@ -44,3 +44,18 @@ export interface StreamErrorData {
   retryable: boolean;
   retryAfterMs?: number;
 }
+
+/** Canonical request sent through the LLM pipeline. */
+export interface LLMRequest {
+  messages: ChatMessage[];
+  tools?: ToolDefinition[];
+  model: string;
+  options?: Record<string, unknown>;
+}
+
+/** Canonical response from an LLM provider. */
+export interface LLMResponse {
+  content: string;
+  toolCalls?: ToolCall[];
+  usage?: { promptTokens: number; completionTokens: number };
+}

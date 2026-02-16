@@ -1,56 +1,78 @@
 import { describe, it, expect } from "vitest";
-import { createProvider } from "../../src/ai/provider.js";
-import { OpenAIProvider } from "../../src/ai/providers/openai.js";
-import { AnthropicProvider } from "../../src/ai/providers/anthropic.js";
-import { OpenRouterProvider } from "../../src/ai/providers/openrouter.js";
-import { OllamaProvider } from "../../src/ai/providers/ollama.js";
-import { LMStudioProvider } from "../../src/ai/providers/lmstudio.js";
+import { createDefaultRegistry } from "../../src/ai/provider.js";
 
-describe("createProvider", () => {
-  it("creates an OpenAI provider", () => {
-    const provider = createProvider({ provider: "openai", apiKey: "sk-test" });
-    expect(provider).toBeInstanceOf(OpenAIProvider);
+describe("createDefaultRegistry", () => {
+  it("registers all built-in providers", () => {
+    const registry = createDefaultRegistry();
+    const all = registry.getAll();
+    const names = all.map((r) => r.plugin.name);
+    expect(names).toContain("openai");
+    expect(names).toContain("anthropic");
+    expect(names).toContain("openrouter");
+    expect(names).toContain("ollama");
+    expect(names).toContain("lmstudio");
+    expect(all).toHaveLength(5);
   });
 
-  it("creates an Anthropic provider", () => {
-    const provider = createProvider({ provider: "anthropic", apiKey: "sk-ant-test" });
-    expect(provider).toBeInstanceOf(AnthropicProvider);
+  it("creates an executor for OpenAI with API key", () => {
+    const registry = createDefaultRegistry();
+    const executor = registry.createExecutor({ provider: "openai", apiKey: "sk-test" });
+    expect(executor).toBeDefined();
+    expect(executor.execute).toBeTypeOf("function");
+    expect(executor.getCapabilities).toBeTypeOf("function");
   });
 
-  it("creates an OpenRouter provider", () => {
-    const provider = createProvider({ provider: "openrouter", apiKey: "sk-or-test" });
-    expect(provider).toBeInstanceOf(OpenRouterProvider);
+  it("creates an executor for Anthropic with API key", () => {
+    const registry = createDefaultRegistry();
+    const executor = registry.createExecutor({ provider: "anthropic", apiKey: "sk-ant-test" });
+    expect(executor).toBeDefined();
+    expect(executor.execute).toBeTypeOf("function");
   });
 
-  it("creates an Ollama provider without API key", () => {
-    const provider = createProvider({ provider: "ollama" });
-    expect(provider).toBeInstanceOf(OllamaProvider);
+  it("creates an executor for OpenRouter with API key", () => {
+    const registry = createDefaultRegistry();
+    const executor = registry.createExecutor({ provider: "openrouter", apiKey: "sk-or-test" });
+    expect(executor).toBeDefined();
+    expect(executor.execute).toBeTypeOf("function");
   });
 
-  it("creates an LM Studio provider without API key", () => {
-    const provider = createProvider({ provider: "lmstudio" });
-    expect(provider).toBeInstanceOf(LMStudioProvider);
+  it("creates an executor for Ollama without API key", () => {
+    const registry = createDefaultRegistry();
+    const executor = registry.createExecutor({ provider: "ollama" });
+    expect(executor).toBeDefined();
+    expect(executor.execute).toBeTypeOf("function");
+  });
+
+  it("creates an executor for LM Studio without API key", () => {
+    const registry = createDefaultRegistry();
+    const executor = registry.createExecutor({ provider: "lmstudio" });
+    expect(executor).toBeDefined();
+    expect(executor.execute).toBeTypeOf("function");
   });
 
   it("throws for missing API key on OpenAI", () => {
-    expect(() => createProvider({ provider: "openai" })).toThrow("OpenAI requires an API key");
+    const registry = createDefaultRegistry();
+    expect(() => registry.createExecutor({ provider: "openai" })).toThrow("requires an API key");
   });
 
   it("throws for missing API key on Anthropic", () => {
-    expect(() => createProvider({ provider: "anthropic" })).toThrow(
-      "Anthropic requires an API key",
+    const registry = createDefaultRegistry();
+    expect(() => registry.createExecutor({ provider: "anthropic" })).toThrow(
+      "requires an API key",
     );
   });
 
   it("throws for missing API key on OpenRouter", () => {
-    expect(() => createProvider({ provider: "openrouter" })).toThrow(
-      "OpenRouter requires an API key",
+    const registry = createDefaultRegistry();
+    expect(() => registry.createExecutor({ provider: "openrouter" })).toThrow(
+      "requires an API key",
     );
   });
 
   it("throws for unknown provider", () => {
-    expect(() => createProvider({ provider: "unknown" as any })).toThrow(
-      "Unknown AI provider: unknown",
+    const registry = createDefaultRegistry();
+    expect(() => registry.createExecutor({ provider: "unknown" as any })).toThrow(
+      "Unknown AI provider",
     );
   });
 });

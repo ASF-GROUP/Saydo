@@ -9,7 +9,8 @@ import type { PluginSettingsManager } from "./settings.js";
 import type { CommandRegistry } from "./command-registry.js";
 import type { UIRegistry } from "./ui-registry.js";
 import type { IStorage } from "../storage/interface.js";
-import type { AIProviderRegistry } from "../ai/provider-registry.js";
+import type { LLMProviderRegistry } from "../ai/provider/registry.js";
+import type { ToolRegistry } from "../ai/tools/registry.js";
 import { createLogger } from "../utils/logger.js";
 
 const logger = createLogger("info");
@@ -29,7 +30,8 @@ export interface PluginServices {
   commandRegistry: CommandRegistry;
   uiRegistry: UIRegistry;
   queries: IStorage;
-  aiProviderRegistry?: AIProviderRegistry;
+  aiProviderRegistry?: LLMProviderRegistry;
+  toolRegistry?: ToolRegistry;
 }
 
 /**
@@ -151,6 +153,7 @@ export class PluginLoader {
       uiRegistry: this.services.uiRegistry,
       settingDefinitions: loaded.manifest.settings ?? [],
       aiProviderRegistry: this.services.aiProviderRegistry,
+      toolRegistry: this.services.toolRegistry,
     });
 
     try {
@@ -180,6 +183,7 @@ export class PluginLoader {
       this.services.commandRegistry.unregisterByPlugin(pluginId);
       this.services.uiRegistry.removeByPlugin(pluginId);
       this.services.aiProviderRegistry?.unregisterByPlugin(pluginId);
+      this.services.toolRegistry?.unregisterBySource(pluginId);
       loaded.enabled = false;
       logger.error(
         `Failed to load plugin "${pluginId}": ${err instanceof Error ? err.message : err}`,

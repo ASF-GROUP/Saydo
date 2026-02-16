@@ -559,52 +559,16 @@ export const api = {
 
   async listAIProviders(): Promise<AIProviderInfo[]> {
     if (isTauri()) {
-      // Return built-in providers for Tauri mode
-      return [
-        {
-          name: "openai",
-          displayName: "OpenAI",
-          needsApiKey: true,
-          defaultModel: "gpt-4o",
-          showBaseUrl: false,
-          pluginId: null,
-        },
-        {
-          name: "anthropic",
-          displayName: "Anthropic",
-          needsApiKey: true,
-          defaultModel: "claude-sonnet-4-5-20250929",
-          showBaseUrl: false,
-          pluginId: null,
-        },
-        {
-          name: "openrouter",
-          displayName: "OpenRouter",
-          needsApiKey: true,
-          defaultModel: "anthropic/claude-sonnet-4-5-20250929",
-          showBaseUrl: false,
-          pluginId: null,
-        },
-        {
-          name: "ollama",
-          displayName: "Ollama (local)",
-          needsApiKey: false,
-          defaultModel: "llama3.2",
-          defaultBaseUrl: "http://localhost:11434",
-          showBaseUrl: true,
-          pluginId: null,
-        },
-        {
-          name: "lmstudio",
-          displayName: "LM Studio (local)",
-          needsApiKey: false,
-          defaultModel: "default",
-          suggestedModels: ["liquid/lfm2.5-1.2b", "liquid/lfm2-1.2b"],
-          defaultBaseUrl: "http://localhost:1234/v1",
-          showBaseUrl: true,
-          pluginId: null,
-        },
-      ];
+      const svc = await getServices();
+      return svc.aiProviderRegistry.getAll().map((r) => ({
+        name: r.plugin.name,
+        displayName: r.plugin.displayName,
+        needsApiKey: r.plugin.needsApiKey,
+        defaultModel: r.plugin.defaultModel,
+        defaultBaseUrl: r.plugin.defaultBaseUrl,
+        showBaseUrl: r.plugin.showBaseUrl ?? false,
+        pluginId: r.pluginId,
+      }));
     }
     const res = await fetch(`${BASE}/ai/providers`);
     return handleResponse<AIProviderInfo[]>(res);
@@ -722,19 +686,13 @@ export const api = {
       }
 
       try {
-        const { createProvider } = await import("../ai/provider.js");
         const { gatherContext } = await import("../ai/chat.js");
         const apiKeySetting = svc.storage.getAppSetting("ai_api_key");
         const modelSetting = svc.storage.getAppSetting("ai_model");
         const baseUrlSetting = svc.storage.getAppSetting("ai_base_url");
 
-        const provider = createProvider({
-          provider: providerSetting.value as
-            | "openai"
-            | "anthropic"
-            | "openrouter"
-            | "ollama"
-            | "lmstudio",
+        const executor = svc.aiProviderRegistry.createExecutor({
+          provider: providerSetting.value as string,
           apiKey: apiKeySetting?.value,
           model: modelSetting?.value,
           baseUrl: baseUrlSetting?.value,
@@ -747,10 +705,15 @@ export const api = {
 
         const contextBlock = await gatherContext(toolServices);
         const session = svc.chatManager.getOrCreateSession(
-          provider,
+          executor,
           toolServices,
-          svc.storage,
-          contextBlock,
+          {
+            queries: svc.storage,
+            contextBlock,
+            toolRegistry: svc.toolRegistry,
+            model: modelSetting?.value ?? undefined,
+            providerName: providerSetting.value as string,
+          },
         );
 
         session.addUserMessage(message);
@@ -803,27 +766,26 @@ export const api = {
         try {
           const providerSetting = svc.storage.getAppSetting("ai_provider");
           if (providerSetting?.value) {
-            const { createProvider } = await import("../ai/provider.js");
             const apiKeySetting = svc.storage.getAppSetting("ai_api_key");
             const modelSetting = svc.storage.getAppSetting("ai_model");
             const baseUrlSetting = svc.storage.getAppSetting("ai_base_url");
 
-            const provider = createProvider({
-              provider: providerSetting.value as
-                | "openai"
-                | "anthropic"
-                | "openrouter"
-                | "ollama"
-                | "lmstudio",
+            const executor = svc.aiProviderRegistry.createExecutor({
+              provider: providerSetting.value as string,
               apiKey: apiKeySetting?.value,
               model: modelSetting?.value,
               baseUrl: baseUrlSetting?.value,
             });
 
             session = svc.chatManager.restoreSession(
-              provider,
+              executor,
               { taskService: svc.taskService, projectService: svc.projectService },
               svc.storage,
+              {
+                toolRegistry: svc.toolRegistry,
+                model: modelSetting?.value ?? undefined,
+                providerName: providerSetting.value as string,
+              },
             );
           }
         } catch {

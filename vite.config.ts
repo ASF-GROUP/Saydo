@@ -729,69 +729,18 @@ function apiPlugin() {
         if (req.url !== "/api/ai/providers" || req.method !== "GET") return next();
 
         const svc = await getServices();
-        const registry = (svc as any).aiProviderRegistry;
-        if (registry) {
-          const providers = registry.getAll().map((r: any) => ({
-            name: r.name,
-            displayName: r.displayName,
-            needsApiKey: r.needsApiKey,
-            defaultModel: r.defaultModel,
-            defaultBaseUrl: r.defaultBaseUrl,
-            showBaseUrl: r.showBaseUrl ?? false,
-            pluginId: r.pluginId,
-          }));
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify(providers));
-        } else {
-          // Fallback: return built-in providers
-          res.setHeader("Content-Type", "application/json");
-          res.end(
-            JSON.stringify([
-              {
-                name: "openai",
-                displayName: "OpenAI",
-                needsApiKey: true,
-                defaultModel: "gpt-4o",
-                showBaseUrl: false,
-                pluginId: null,
-              },
-              {
-                name: "anthropic",
-                displayName: "Anthropic",
-                needsApiKey: true,
-                defaultModel: "claude-sonnet-4-5-20250929",
-                showBaseUrl: false,
-                pluginId: null,
-              },
-              {
-                name: "openrouter",
-                displayName: "OpenRouter",
-                needsApiKey: true,
-                defaultModel: "anthropic/claude-sonnet-4-5-20250929",
-                showBaseUrl: false,
-                pluginId: null,
-              },
-              {
-                name: "ollama",
-                displayName: "Ollama (local)",
-                needsApiKey: false,
-                defaultModel: "llama3.2",
-                defaultBaseUrl: "http://localhost:11434",
-                showBaseUrl: true,
-                pluginId: null,
-              },
-              {
-                name: "lmstudio",
-                displayName: "LM Studio (local)",
-                needsApiKey: false,
-                defaultModel: "default",
-                defaultBaseUrl: "http://localhost:1234",
-                showBaseUrl: true,
-                pluginId: null,
-              },
-            ]),
-          );
-        }
+        const registry = svc.aiProviderRegistry;
+        const providers = registry.getAll().map((r: any) => ({
+          name: r.plugin.name,
+          displayName: r.plugin.displayName,
+          needsApiKey: r.plugin.needsApiKey,
+          defaultModel: r.plugin.defaultModel,
+          defaultBaseUrl: r.plugin.defaultBaseUrl,
+          showBaseUrl: r.plugin.showBaseUrl ?? false,
+          pluginId: r.pluginId,
+        }));
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify(providers));
       });
 
       // GET/PUT /api/ai/config
@@ -952,18 +901,19 @@ function apiPlugin() {
         }
 
         try {
-          const { createProvider } = await import("./src/ai/provider.js");
           const { gatherContext } = await import("./src/ai/chat.js");
           const apiKeySetting = svc.storage.getAppSetting("ai_api_key");
           const modelSetting = svc.storage.getAppSetting("ai_model");
           const baseUrlSetting = svc.storage.getAppSetting("ai_base_url");
 
-          const provider = createProvider({
-            provider: providerSetting.value as any,
+          const providerConfig = {
+            provider: providerSetting.value as string,
             apiKey: apiKeySetting?.value,
             model: modelSetting?.value,
             baseUrl: baseUrlSetting?.value,
-          });
+          };
+
+          const executor = svc.aiProviderRegistry.createExecutor(providerConfig);
 
           const toolServices = {
             taskService: svc.taskService,
@@ -974,10 +924,15 @@ function apiPlugin() {
           const contextBlock = await gatherContext(toolServices);
 
           const session = svc.chatManager.getOrCreateSession(
-            provider,
+            executor,
             toolServices,
-            svc.storage,
-            contextBlock,
+            {
+              queries: svc.storage,
+              contextBlock,
+              toolRegistry: svc.toolRegistry,
+              model: modelSetting?.value ?? undefined,
+              providerName: providerSetting.value as string,
+            },
           );
 
           session.addUserMessage(message);
@@ -1015,22 +970,26 @@ function apiPlugin() {
           try {
             const providerSetting = svc.storage.getAppSetting("ai_provider");
             if (providerSetting?.value) {
-              const { createProvider } = await import("./src/ai/provider.js");
               const apiKeySetting = svc.storage.getAppSetting("ai_api_key");
               const modelSetting = svc.storage.getAppSetting("ai_model");
               const baseUrlSetting = svc.storage.getAppSetting("ai_base_url");
 
-              const provider = createProvider({
-                provider: providerSetting.value as any,
+              const executor = svc.aiProviderRegistry.createExecutor({
+                provider: providerSetting.value as string,
                 apiKey: apiKeySetting?.value,
                 model: modelSetting?.value,
                 baseUrl: baseUrlSetting?.value,
               });
 
               session = svc.chatManager.restoreSession(
-                provider,
+                executor,
                 { taskService: svc.taskService, projectService: svc.projectService },
                 svc.storage,
+                {
+                  toolRegistry: svc.toolRegistry,
+                  model: modelSetting?.value ?? undefined,
+                  providerName: providerSetting.value as string,
+                },
               );
             }
           } catch {

@@ -1,27 +1,43 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { ChatSession, ChatManager, gatherContext } from "../../src/ai/chat.js";
-import type { AIProvider } from "../../src/ai/provider.js";
-import type { ChatResponse, StreamEvent } from "../../src/ai/types.js";
+import type { LLMExecutor } from "../../src/ai/provider/interface.js";
+import type { LLMExecutionContext, PipelineResult } from "../../src/ai/core/context.js";
+import type { StreamEvent, ToolCall } from "../../src/ai/types.js";
+import { DEFAULT_CAPABILITIES } from "../../src/ai/core/capabilities.js";
+import { ToolRegistry } from "../../src/ai/tools/registry.js";
+import { registerTaskCrudTools } from "../../src/ai/tools/builtin/task-crud.js";
+import { registerQueryTasksTool } from "../../src/ai/tools/builtin/query-tasks.js";
 import { createTestServices } from "../integration/helpers.js";
 
-function createMockProvider(
-  responses: Array<{ content: string; toolCalls?: ChatResponse["toolCalls"] }>,
-): AIProvider {
+function createToolRegistry(): ToolRegistry {
+  const registry = new ToolRegistry();
+  registerTaskCrudTools(registry);
+  registerQueryTasksTool(registry);
+  return registry;
+}
+
+function createMockExecutor(
+  responses: Array<{ content: string; toolCalls?: ToolCall[] }>,
+): LLMExecutor {
   let callCount = 0;
   return {
-    chat: vi.fn(),
-    async *streamChat(): AsyncIterable<StreamEvent> {
+    getCapabilities: () => ({ ...DEFAULT_CAPABILITIES }),
+    execute: async (_ctx: LLMExecutionContext): Promise<PipelineResult> => {
       const response = responses[callCount++];
-      if (!response) return;
-
-      if (response.content) {
-        yield { type: "token", data: response.content };
-      }
-      if (response.toolCalls?.length) {
-        yield { type: "tool_call", data: JSON.stringify(response.toolCalls) };
-      } else {
-        yield { type: "done", data: "" };
-      }
+      return {
+        mode: "stream",
+        events: (async function* (): AsyncGenerator<StreamEvent> {
+          if (!response) return;
+          if (response.content) {
+            yield { type: "token", data: response.content };
+          }
+          if (response.toolCalls?.length) {
+            yield { type: "tool_call", data: JSON.stringify(response.toolCalls) };
+          } else {
+            yield { type: "done", data: "" };
+          }
+        })(),
+      };
     },
   };
 }
@@ -29,13 +45,13 @@ function createMockProvider(
 describe("Chat Persistence", () => {
   it("persists messages to SQLite", async () => {
     const { taskService, projectService, storage } = createTestServices();
-    const provider = createMockProvider([{ content: "Hi there!" }]);
+    const executor = createMockExecutor([{ content: "Hi there!" }]);
+    const toolRegistry = createToolRegistry();
     const session = new ChatSession(
-      provider,
+      executor,
       { taskService, projectService },
       { role: "system", content: "You are helpful." },
-      undefined,
-      storage,
+      { queries: storage, toolRegistry },
     );
 
     session.addUserMessage("Hello");
@@ -52,20 +68,20 @@ describe("Chat Persistence", () => {
 
   it("persists tool call messages", async () => {
     const { taskService, projectService, storage } = createTestServices();
-    const provider = createMockProvider([
+    const executor = createMockExecutor([
       {
         content: "",
-        toolCalls: [{ id: "call_1", name: "list_tasks", arguments: "{}" }],
+        toolCalls: [{ id: "call_1", name: "query_tasks", arguments: "{}" }],
       },
       { content: "You have no tasks." },
     ]);
+    const toolRegistry = createToolRegistry();
 
     const session = new ChatSession(
-      provider,
+      executor,
       { taskService, projectService },
       { role: "system", content: "You are helpful." },
-      undefined,
-      storage,
+      { queries: storage, toolRegistry },
     );
 
     session.addUserMessage("What tasks do I have?");
@@ -82,12 +98,16 @@ describe("Chat Persistence", () => {
 
   it("restores session from DB", async () => {
     const { taskService, projectService, storage } = createTestServices();
-    const provider = createMockProvider([{ content: "Hello!" }]);
+    const executor = createMockExecutor([{ content: "Hello!" }]);
     const services = { taskService, projectService };
+    const toolRegistry = createToolRegistry();
 
     // Create and populate a session
     const manager1 = new ChatManager();
-    const session1 = manager1.getOrCreateSession(provider, services, storage);
+    const session1 = manager1.getOrCreateSession(executor, services, {
+      queries: storage,
+      toolRegistry,
+    });
     session1.addUserMessage("Hi");
     for await (const _event of session1.run()) {
       // drain
@@ -96,8 +116,10 @@ describe("Chat Persistence", () => {
 
     // Now restore from a fresh manager
     const manager2 = new ChatManager();
-    const provider2 = createMockProvider([]);
-    const restored = manager2.restoreSession(provider2, services, storage);
+    const executor2 = createMockExecutor([]);
+    const restored = manager2.restoreSession(executor2, services, storage, {
+      toolRegistry,
+    });
 
     expect(restored).not.toBeNull();
     expect(restored!.sessionId).toBe(sessionId);
@@ -108,11 +130,15 @@ describe("Chat Persistence", () => {
 
   it("clearSession deletes from DB", async () => {
     const { taskService, projectService, storage } = createTestServices();
-    const provider = createMockProvider([{ content: "Hello!" }]);
+    const executor = createMockExecutor([{ content: "Hello!" }]);
     const services = { taskService, projectService };
+    const toolRegistry = createToolRegistry();
 
     const manager = new ChatManager();
-    const session = manager.getOrCreateSession(provider, services, storage);
+    const session = manager.getOrCreateSession(executor, services, {
+      queries: storage,
+      toolRegistry,
+    });
     session.addUserMessage("Hi");
     for await (const _event of session.run()) {
       // drain
@@ -130,9 +156,15 @@ describe("Chat Persistence", () => {
 
   it("returns null when no session to restore", () => {
     const { taskService, projectService, storage } = createTestServices();
-    const provider = createMockProvider([]);
+    const executor = createMockExecutor([]);
+    const toolRegistry = createToolRegistry();
     const manager = new ChatManager();
-    const restored = manager.restoreSession(provider, { taskService, projectService }, storage);
+    const restored = manager.restoreSession(
+      executor,
+      { taskService, projectService },
+      storage,
+      { toolRegistry },
+    );
     expect(restored).toBeNull();
   });
 });

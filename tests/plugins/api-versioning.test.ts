@@ -11,8 +11,8 @@ import { UIRegistry } from "../../src/plugins/ui-registry.js";
 import type { Permission } from "../../src/plugins/types.js";
 
 describe("Plugin API versioning", () => {
-  it("PLUGIN_API_VERSION is 1.0.0", () => {
-    expect(PLUGIN_API_VERSION).toBe("1.0.0");
+  it("PLUGIN_API_VERSION is 1.1.0", () => {
+    expect(PLUGIN_API_VERSION).toBe("1.1.0");
   });
 
   it("PLUGIN_API_STABILITY is stable", () => {

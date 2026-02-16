@@ -5,10 +5,13 @@ import type { EventBus, EventName, EventCallback } from "../core/event-bus.js";
 import type { PluginSettingsManager } from "./settings.js";
 import type { CommandRegistry } from "./command-registry.js";
 import type { UIRegistry } from "./ui-registry.js";
-import type { AIProviderRegistry } from "../ai/provider-registry.js";
+import type { LLMProviderRegistry } from "../ai/provider/registry.js";
+import type { ToolRegistry } from "../ai/tools/registry.js";
+import type { LLMProviderPlugin } from "../ai/provider/interface.js";
+import type { ToolDefinition, ToolExecutor } from "../ai/tools/types.js";
 
 /** Current Plugin API version (semver). */
-export const PLUGIN_API_VERSION = "1.0.0";
+export const PLUGIN_API_VERSION = "1.1.0";
 
 /** API stability: "stable" means breaking changes require major version bump. */
 export const PLUGIN_API_STABILITY = "stable" as const;
@@ -22,7 +25,8 @@ export interface PluginAPIOptions {
   commandRegistry: CommandRegistry;
   uiRegistry: UIRegistry;
   settingDefinitions: SettingDefinition[];
-  aiProviderRegistry?: AIProviderRegistry;
+  aiProviderRegistry?: LLMProviderRegistry;
+  toolRegistry?: ToolRegistry;
 }
 
 /** Accessor bound to a specific plugin for reading/writing settings. */
@@ -48,6 +52,7 @@ export function createPluginAPI(options: PluginAPIOptions) {
     uiRegistry,
     settingDefinitions,
     aiProviderRegistry,
+    toolRegistry,
   } = options;
 
   const hasPermission = (p: Permission) => permissions.includes(p);
@@ -131,25 +136,23 @@ export function createPluginAPI(options: PluginAPIOptions) {
       },
     },
 
-    ai: hasPermission("ai:provider") && aiProviderRegistry
-      ? {
-          registerProvider: (registration: {
-            name: string;
-            displayName: string;
-            needsApiKey: boolean;
-            defaultModel: string;
-            defaultBaseUrl?: string;
-            showBaseUrl?: boolean;
-            factory: (config: { provider: string; apiKey?: string; model?: string; baseUrl?: string }) => any;
-          }) => {
-            aiProviderRegistry.register({
-              ...registration,
-              name: `${pluginId}:${registration.name}`,
-              pluginId,
-            });
-          },
-        }
-      : undefined,
+    ai: {
+      registerProvider: hasPermission("ai:provider") && aiProviderRegistry
+        ? (plugin: LLMProviderPlugin) => {
+            // Prefix the provider name with pluginId to avoid collisions
+            const prefixed = {
+              ...plugin,
+              name: `${pluginId}:${plugin.name}`,
+            };
+            aiProviderRegistry.register(prefixed, pluginId);
+          }
+        : undefined,
+      registerTool: hasPermission("ai:tools") && toolRegistry
+        ? (definition: ToolDefinition, executor: ToolExecutor) => {
+            toolRegistry.register(definition, executor, pluginId);
+          }
+        : undefined,
+    },
 
     settings: {
       get: <T>(key: string): T => {

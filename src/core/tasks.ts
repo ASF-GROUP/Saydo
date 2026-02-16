@@ -169,6 +169,16 @@ export class TaskService {
       const fromDate = existing.dueDate ? new Date(existing.dueDate) : new Date();
       const nextDate = getNextOccurrence(existing.recurrence, fromDate);
       if (nextDate) {
+        // Propagate remindAt with preserved offset from dueDate
+        let nextRemindAt: string | null = null;
+        if (existing.remindAt && existing.dueDate) {
+          const offsetMs = new Date(existing.dueDate).getTime() - new Date(existing.remindAt).getTime();
+          nextRemindAt = new Date(nextDate.getTime() - offsetMs).toISOString();
+        } else if (existing.remindAt) {
+          // No dueDate but has remindAt — keep the same remind offset from now
+          nextRemindAt = existing.remindAt;
+        }
+
         await this.create({
           title: existing.title,
           description: existing.description,
@@ -177,6 +187,7 @@ export class TaskService {
           dueTime: existing.dueTime,
           projectId: existing.projectId,
           recurrence: existing.recurrence,
+          remindAt: nextRemindAt,
           tags: existing.tags.map((t) => t.name),
         });
       }

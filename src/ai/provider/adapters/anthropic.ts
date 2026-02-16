@@ -1,19 +1,34 @@
+/**
+ * Anthropic provider adapter — standalone implementation.
+ * Uses the Anthropic SDK directly (different API format from OpenAI).
+ */
+
 import Anthropic from "@anthropic-ai/sdk";
-import type { AIProvider } from "../provider.js";
+import type { LLMProviderPlugin, LLMExecutor } from "../interface.js";
+import type { LLMCapabilities, ModelDescriptor } from "../../core/capabilities.js";
+import type { LLMExecutionContext, PipelineResult } from "../../core/context.js";
 import type {
   AIProviderConfig,
   ChatMessage,
-  ChatResponse,
   StreamEvent,
   ToolDefinition,
-} from "../types.js";
-import { classifyProviderError, type StreamErrorData } from "../errors.js";
+} from "../../types.js";
+import { classifyProviderError, type StreamErrorData } from "../../errors.js";
+import { DEFAULT_CAPABILITIES } from "../../core/capabilities.js";
+
+const ANTHROPIC_MODELS = [
+  "claude-sonnet-4-5-20250929",
+  "claude-opus-4-6",
+  "claude-haiku-4-5-20251001",
+];
+
+// ── Message/tool conversion helpers ──
 
 function toAnthropicMessages(messages: ChatMessage[]): Anthropic.MessageParam[] {
   const result: Anthropic.MessageParam[] = [];
 
   for (const msg of messages) {
-    if (msg.role === "system") continue; // system is handled separately
+    if (msg.role === "system") continue;
 
     if (msg.role === "assistant" && msg.toolCalls?.length) {
       const content: Anthropic.ContentBlockParam[] = [];
@@ -33,7 +48,6 @@ function toAnthropicMessages(messages: ChatMessage[]): Anthropic.MessageParam[] 
     }
 
     if (msg.role === "tool") {
-      // Anthropic expects tool results as user messages
       result.push({
         role: "user",
         content: [
@@ -61,61 +75,48 @@ function toAnthropicTools(tools: ToolDefinition[]): Anthropic.Tool[] {
   }));
 }
 
-export class AnthropicProvider implements AIProvider {
+// ── Executor ──
+
+class AnthropicExecutor implements LLMExecutor {
   private client: Anthropic;
   private model: string;
   private providerName: string;
 
-  constructor(config: AIProviderConfig) {
-    this.client = new Anthropic({
-      apiKey: config.apiKey,
-    });
-    this.model = config.model ?? "claude-sonnet-4-5-20250929";
-    this.providerName = config.provider;
+  constructor(client: Anthropic, model: string, providerName: string) {
+    this.client = client;
+    this.model = model;
+    this.providerName = providerName;
   }
 
-  async chat(messages: ChatMessage[], tools?: ToolDefinition[]): Promise<ChatResponse> {
-    const systemMessage = messages.find((m) => m.role === "system");
+  getCapabilities(_modelId: string): LLMCapabilities {
+    return { ...DEFAULT_CAPABILITIES, vision: true };
+  }
 
-    const response = await this.client.messages.create({
-      model: this.model,
-      max_tokens: 4096,
-      ...(systemMessage ? { system: systemMessage.content } : {}),
-      messages: toAnthropicMessages(messages),
-      ...(tools?.length ? { tools: toAnthropicTools(tools) } : {}),
-    });
-
-    let content = "";
-    const toolCalls: { id: string; name: string; arguments: string }[] = [];
-
-    for (const block of response.content) {
-      if (block.type === "text") {
-        content += block.text;
-      } else if (block.type === "tool_use") {
-        toolCalls.push({
-          id: block.id,
-          name: block.name,
-          arguments: JSON.stringify(block.input),
-        });
-      }
-    }
+  async execute(ctx: LLMExecutionContext): Promise<PipelineResult> {
+    const { request } = ctx;
+    const model = request.model || this.model;
 
     return {
-      content,
-      toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+      mode: "stream",
+      events: this.streamResponse(model, request.messages, request.tools),
     };
   }
 
-  async *streamChat(messages: ChatMessage[], tools?: ToolDefinition[]): AsyncIterable<StreamEvent> {
+  private async *streamResponse(
+    model: string,
+    messages: ChatMessage[],
+    tools?: ToolDefinition[],
+  ): AsyncGenerator<StreamEvent> {
     try {
       const systemMessage = messages.find((m) => m.role === "system");
+      const anthropicTools = tools?.length ? toAnthropicTools(tools) : undefined;
 
       const stream = this.client.messages.stream({
-        model: this.model,
+        model,
         max_tokens: 4096,
         ...(systemMessage ? { system: systemMessage.content } : {}),
         messages: toAnthropicMessages(messages),
-        ...(tools?.length ? { tools: toAnthropicTools(tools) } : {}),
+        ...(anthropicTools ? { tools: anthropicTools } : {}),
       });
 
       const toolCalls: { id: string; name: string; arguments: string }[] = [];
@@ -165,3 +166,27 @@ export class AnthropicProvider implements AIProvider {
     }
   }
 }
+
+// ── Plugin ──
+
+export const anthropicPlugin: LLMProviderPlugin = {
+  name: "anthropic",
+  displayName: "Anthropic",
+  needsApiKey: true,
+  defaultModel: "claude-sonnet-4-5-20250929",
+
+  createExecutor(config: AIProviderConfig): LLMExecutor {
+    const client = new Anthropic({ apiKey: config.apiKey });
+    const model = config.model ?? "claude-sonnet-4-5-20250929";
+    return new AnthropicExecutor(client, model, "anthropic");
+  },
+
+  async discoverModels(_config: AIProviderConfig): Promise<ModelDescriptor[]> {
+    return ANTHROPIC_MODELS.map((id) => ({
+      id,
+      label: id,
+      capabilities: { ...DEFAULT_CAPABILITIES, vision: true },
+      loaded: true,
+    }));
+  },
+};

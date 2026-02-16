@@ -332,6 +332,7 @@ const TOOL_META: Record<string, { emoji: string; verb: string }> = {
   update_task: { emoji: "✏️", verb: "Updating" },
   delete_task: { emoji: "🗑️", verb: "Deleting" },
   list_tasks: { emoji: "📋", verb: "Checking tasks" },
+  query_tasks: { emoji: "🔍", verb: "Searching tasks" },
 };
 
 function ToolCallBadge({ name, args }: { name: string; args: string }) {
