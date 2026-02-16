@@ -16,7 +16,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import type { Project } from "../../core/types.js";
-import type { PanelInfo, ViewInfo } from "../api.js";
+import type { PanelInfo, ViewInfo } from "../api/index.js";
 
 function CollapsedTooltip({ visible, label }: { visible: boolean; label: string }) {
   if (!visible) return null;

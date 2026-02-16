@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { X, FileText, Play } from "lucide-react";
-import { api } from "../api.js";
+import { api } from "../api/index.js";
 import type { TaskTemplate, Task } from "../../core/types.js";
 
 interface TemplateSelectorProps {

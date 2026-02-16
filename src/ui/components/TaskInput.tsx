@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from "react";
 import { Plus } from "lucide-react";
 import { parseTask } from "../../parser/task-parser.js";
+import { formatRecurrenceLabel } from "./RecurrencePicker.js";
 
 interface TaskInputProps {
   onSubmit: (input: ReturnType<typeof parseTask>) => void;
@@ -62,6 +63,11 @@ export function TaskInput({ onSubmit, placeholder, autoFocusTrigger }: TaskInput
             </span>
           ))}
           {preview.project && <span className="text-success">+{preview.project}</span>}
+          {preview.recurrence && (
+            <span className="text-teal-500 font-medium">
+              {formatRecurrenceLabel(preview.recurrence)}
+            </span>
+          )}
         </div>
       )}
     </form>

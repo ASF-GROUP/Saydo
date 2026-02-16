@@ -7,7 +7,7 @@ import React, {
   useMemo,
 } from "react";
 import type { Task, CreateTaskInput, UpdateTaskInput } from "../../core/types.js";
-import { api } from "../api.js";
+import { api } from "../api/index.js";
 
 interface TaskState {
   tasks: Task[];

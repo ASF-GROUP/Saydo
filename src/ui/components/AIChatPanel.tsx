@@ -4,7 +4,7 @@ import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useAIContext } from "../context/AIContext.js";
-import type { AIChatMessage } from "../api.js";
+import type { AIChatMessage } from "../api/index.js";
 
 interface AIChatPanelProps {
   onClose: () => void;

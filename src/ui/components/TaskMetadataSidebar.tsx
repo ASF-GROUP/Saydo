@@ -1,0 +1,238 @@
+import { useState, useCallback } from "react";
+import { Calendar, Tag, Bell, Repeat, Trash2, X } from "lucide-react";
+import type { Task, UpdateTaskInput } from "../../core/types.js";
+import { DatePicker } from "./DatePicker.js";
+import { TagsInput } from "./TagsInput.js";
+import { RecurrencePicker, formatRecurrenceLabel } from "./RecurrencePicker.js";
+
+const PRIORITIES = [
+  { value: 1, label: "P1", activeClass: "bg-priority-1/15 text-priority-1" },
+  { value: 2, label: "P2", activeClass: "bg-priority-2/15 text-priority-2" },
+  { value: 3, label: "P3", activeClass: "bg-priority-3/15 text-priority-3" },
+  { value: 4, label: "P4", activeClass: "bg-priority-4/15 text-priority-4" },
+];
+
+interface TaskMetadataSidebarProps {
+  task: Task;
+  onUpdate: (id: string, input: UpdateTaskInput) => void;
+  onDelete: (id: string) => void;
+  availableTags?: string[];
+}
+
+export function TaskMetadataSidebar({
+  task,
+  onUpdate,
+  onDelete,
+  availableTags = [],
+}: TaskMetadataSidebarProps) {
+  const currentRemindAt = (task as any).remindAt ?? null;
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showRecurrencePicker, setShowRecurrencePicker] = useState(false);
+  const [remindAtInput, setRemindAtInput] = useState(
+    currentRemindAt ? currentRemindAt.slice(0, 16) : "",
+  );
+
+  // Reset local state when task changes
+  // (parent resets via key prop or we track task.id)
+  const [trackedTaskId, setTrackedTaskId] = useState(task.id);
+  if (task.id !== trackedTaskId) {
+    setTrackedTaskId(task.id);
+    setShowDatePicker(false);
+    setShowRecurrencePicker(false);
+    const remind = (task as any).remindAt ?? null;
+    setRemindAtInput(remind ? remind.slice(0, 16) : "");
+  }
+
+  const handlePriorityClick = (priority: number) => {
+    const newPriority = task.priority === priority ? null : priority;
+    onUpdate(task.id, { priority: newPriority });
+  };
+
+  const handleDueDateChange = useCallback(
+    (date: string | null) => {
+      if (!date) {
+        onUpdate(task.id, { dueDate: null, dueTime: false });
+      } else {
+        onUpdate(task.id, { dueDate: new Date(date).toISOString(), dueTime: false });
+      }
+      setShowDatePicker(false);
+    },
+    [task.id, onUpdate],
+  );
+
+  const handleTagsChange = useCallback(
+    (tags: string[]) => {
+      onUpdate(task.id, { tags });
+    },
+    [task.id, onUpdate],
+  );
+
+  const handleRecurrenceChange = useCallback(
+    (recurrence: string | null) => {
+      onUpdate(task.id, { recurrence } as any);
+      setShowRecurrencePicker(false);
+    },
+    [task.id, onUpdate],
+  );
+
+  const handleRemindAtBlur = () => {
+    const currentVal = currentRemindAt ? currentRemindAt.slice(0, 16) : "";
+    if (remindAtInput === currentVal) return;
+
+    if (!remindAtInput) {
+      onUpdate(task.id, { remindAt: null } as any);
+      return;
+    }
+
+    const isoString = new Date(remindAtInput).toISOString();
+    onUpdate(task.id, { remindAt: isoString } as any);
+  };
+
+  return (
+    <div className="w-64 border-l border-border overflow-auto p-5 space-y-5 flex-shrink-0">
+      {/* Due Date */}
+      <div className="relative">
+        <label className="text-xs font-medium text-on-surface-muted uppercase tracking-wider flex items-center gap-1.5">
+          <Calendar size={12} /> Date
+        </label>
+        <button
+          onClick={() => setShowDatePicker((prev) => !prev)}
+          className="mt-1.5 w-full px-2 py-1.5 text-sm text-left rounded-md text-on-surface hover:bg-surface-tertiary transition-colors"
+        >
+          {task.dueDate
+            ? new Date(task.dueDate).toLocaleDateString(undefined, { month: "short", day: "numeric" })
+            : <span className="text-on-surface-muted">No date</span>}
+        </button>
+        {task.dueDate && (
+          <button
+            onClick={() => handleDueDateChange(null)}
+            className="absolute top-0 right-0 text-on-surface-muted hover:text-on-surface transition-colors p-0.5"
+            title="Clear date"
+          >
+            <X size={12} />
+          </button>
+        )}
+        {showDatePicker && (
+          <DatePicker
+            value={task.dueDate}
+            onChange={handleDueDateChange}
+            onClose={() => setShowDatePicker(false)}
+          />
+        )}
+      </div>
+
+      <div className="border-t border-border" />
+
+      {/* Priority */}
+      <div>
+        <label className="text-xs font-medium text-on-surface-muted uppercase tracking-wider">
+          Priority
+        </label>
+        <div className="flex gap-1.5 mt-1.5">
+          {PRIORITIES.map((p) => (
+            <button
+              key={p.value}
+              onClick={() => handlePriorityClick(p.value)}
+              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                task.priority === p.value
+                  ? p.activeClass
+                  : "bg-surface-tertiary text-on-surface-muted hover:text-on-surface-secondary"
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="border-t border-border" />
+
+      {/* Tags */}
+      <div>
+        <label className="text-xs font-medium text-on-surface-muted uppercase tracking-wider flex items-center gap-1.5">
+          <Tag size={12} /> Labels
+        </label>
+        <div className="mt-1.5">
+          <TagsInput
+            value={task.tags.map((t) => t.name)}
+            onChange={handleTagsChange}
+            suggestions={availableTags}
+          />
+        </div>
+      </div>
+
+      <div className="border-t border-border" />
+
+      {/* Reminder */}
+      <div>
+        <label className="text-xs font-medium text-on-surface-muted uppercase tracking-wider flex items-center gap-1.5">
+          <Bell size={12} /> Reminder
+        </label>
+        <div className="mt-1.5 relative">
+          <input
+            type="datetime-local"
+            value={remindAtInput}
+            onChange={(e) => setRemindAtInput(e.target.value)}
+            onBlur={handleRemindAtBlur}
+            className="w-full px-2 py-1.5 text-xs bg-surface-secondary border border-border rounded-md text-on-surface focus:outline-none focus:ring-1 focus:ring-accent"
+          />
+          {remindAtInput && (
+            <button
+              onClick={() => {
+                setRemindAtInput("");
+                onUpdate(task.id, { remindAt: null } as any);
+              }}
+              className="absolute top-0 right-0 -mt-5 text-on-surface-muted hover:text-on-surface transition-colors p-0.5"
+              title="Clear reminder"
+            >
+              <X size={12} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Recurrence */}
+      <div className="border-t border-border" />
+      <div className="relative">
+        <label className="text-xs font-medium text-on-surface-muted uppercase tracking-wider flex items-center gap-1.5">
+          <Repeat size={12} /> Recurrence
+        </label>
+        <button
+          onClick={() => setShowRecurrencePicker((prev) => !prev)}
+          className="mt-1.5 w-full px-2 py-1.5 text-sm text-left rounded-md text-on-surface hover:bg-surface-tertiary transition-colors"
+        >
+          {task.recurrence
+            ? formatRecurrenceLabel(task.recurrence)
+            : <span className="text-on-surface-muted">No repeat</span>}
+        </button>
+        {task.recurrence && (
+          <button
+            onClick={() => handleRecurrenceChange(null)}
+            className="absolute top-0 right-0 text-on-surface-muted hover:text-on-surface transition-colors p-0.5"
+            title="Clear recurrence"
+          >
+            <X size={12} />
+          </button>
+        )}
+        {showRecurrencePicker && (
+          <RecurrencePicker
+            value={task.recurrence ?? null}
+            onChange={handleRecurrenceChange}
+            onClose={() => setShowRecurrencePicker(false)}
+          />
+        )}
+      </div>
+
+      <div className="border-t border-border" />
+
+      {/* Delete */}
+      <button
+        onClick={() => onDelete(task.id)}
+        className="text-sm text-error hover:text-error/80 flex items-center gap-1.5 transition-colors w-full"
+      >
+        <Trash2 size={14} />
+        Delete task
+      </button>
+    </div>
+  );
+}

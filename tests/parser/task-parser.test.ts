@@ -87,4 +87,30 @@ describe("parseTask", () => {
     expect(result.tags).toEqual(["urgent"]);
     expect(result.title).toBe("fix the bug");
   });
+
+  it("extracts recurrence", () => {
+    const result = parseTask("standup daily");
+    expect(result.title).toBe("standup");
+    expect(result.recurrence).toBe("daily");
+  });
+
+  it("returns null recurrence when none present", () => {
+    const result = parseTask("buy milk");
+    expect(result.recurrence).toBeNull();
+  });
+
+  it("handles recurrence with priority, tags, and project", () => {
+    const result = parseTask("buy milk daily p2 #groceries +shopping");
+    expect(result.title).toBe("buy milk");
+    expect(result.recurrence).toBe("daily");
+    expect(result.priority).toBe(2);
+    expect(result.tags).toEqual(["groceries"]);
+    expect(result.project).toBe("shopping");
+  });
+
+  it("handles 'every N days' recurrence with date", () => {
+    const result = parseTask("water plants every 3 days");
+    expect(result.title).toBe("water plants");
+    expect(result.recurrence).toBe("every 3 days");
+  });
 });

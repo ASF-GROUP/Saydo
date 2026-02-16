@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { Puzzle, Search, Download, Trash2, Loader2 } from "lucide-react";
-import { api, type StorePluginInfo } from "../api.js";
+import { api, type StorePluginInfo } from "../api/index.js";
 import { usePluginContext } from "../context/PluginContext.js";
 
 interface PluginStoreProps {

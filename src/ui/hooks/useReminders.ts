@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from "react";
-import { api } from "../api.js";
+import { api } from "../api/index.js";
 
 interface UseRemindersOptions {
   onReminder: (task: { id: string; title: string }) => void;

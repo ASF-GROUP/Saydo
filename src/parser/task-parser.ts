@@ -1,5 +1,5 @@
 import { parseDate, removeDateText } from "./nlp.js";
-import { extractPriority, extractTags, extractProject } from "./grammar.js";
+import { extractPriority, extractTags, extractProject, extractRecurrence } from "./grammar.js";
 
 export interface ParsedTask {
   title: string;
@@ -8,6 +8,7 @@ export interface ParsedTask {
   project: string | null;
   dueDate: Date | null;
   dueTime: boolean;
+  recurrence: string | null;
 }
 
 /**
@@ -35,6 +36,10 @@ export function parseTask(input: string): ParsedTask {
   const { project, text: afterProject } = extractProject(remaining);
   remaining = afterProject;
 
+  // Extract recurrence (before dates, to avoid chrono-node confusion with "daily", "every day", etc.)
+  const { recurrence, text: afterRecurrence } = extractRecurrence(remaining);
+  remaining = afterRecurrence;
+
   // Extract date/time
   let dueDate: Date | null = null;
   let dueTime = false;
@@ -48,5 +53,5 @@ export function parseTask(input: string): ParsedTask {
   // Whatever's left is the title
   const title = remaining.replace(/\s+/g, " ").trim();
 
-  return { title, priority, tags, project, dueDate, dueTime };
+  return { title, priority, tags, project, dueDate, dueTime, recurrence };
 }

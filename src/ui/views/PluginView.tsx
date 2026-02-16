@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { api } from "../api.js";
+import { api } from "../api/index.js";
 
 interface PluginViewProps {
   viewId: string;

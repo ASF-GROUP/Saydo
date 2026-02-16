@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { extractPriority, extractTags, extractProject } from "../../src/parser/grammar.js";
+import { extractPriority, extractTags, extractProject, extractRecurrence } from "../../src/parser/grammar.js";
 
 describe("extractPriority", () => {
   it("extracts p1", () => {
@@ -149,5 +149,91 @@ describe("extractProject", () => {
     expect(result.project).toBe("work");
     // second +personal remains in text
     expect(result.text).toBe("task +personal");
+  });
+});
+
+describe("extractRecurrence", () => {
+  it("extracts 'daily'", () => {
+    const result = extractRecurrence("buy milk daily");
+    expect(result.recurrence).toBe("daily");
+    expect(result.text).toBe("buy milk");
+  });
+
+  it("extracts 'weekly'", () => {
+    const result = extractRecurrence("standup weekly");
+    expect(result.recurrence).toBe("weekly");
+    expect(result.text).toBe("standup");
+  });
+
+  it("extracts 'monthly'", () => {
+    const result = extractRecurrence("pay rent monthly");
+    expect(result.recurrence).toBe("monthly");
+    expect(result.text).toBe("pay rent");
+  });
+
+  it("extracts 'weekdays'", () => {
+    const result = extractRecurrence("exercise weekdays");
+    expect(result.recurrence).toBe("weekdays");
+    expect(result.text).toBe("exercise");
+  });
+
+  it("extracts 'every day'", () => {
+    const result = extractRecurrence("take vitamins every day");
+    expect(result.recurrence).toBe("daily");
+    expect(result.text).toBe("take vitamins");
+  });
+
+  it("extracts 'every week'", () => {
+    const result = extractRecurrence("review goals every week");
+    expect(result.recurrence).toBe("weekly");
+    expect(result.text).toBe("review goals");
+  });
+
+  it("extracts 'every month'", () => {
+    const result = extractRecurrence("check budget every month");
+    expect(result.recurrence).toBe("monthly");
+    expect(result.text).toBe("check budget");
+  });
+
+  it("extracts 'every N days'", () => {
+    const result = extractRecurrence("water plants every 3 days");
+    expect(result.recurrence).toBe("every 3 days");
+    expect(result.text).toBe("water plants");
+  });
+
+  it("extracts 'every N weeks'", () => {
+    const result = extractRecurrence("clean house every 2 weeks");
+    expect(result.recurrence).toBe("every 2 weeks");
+    expect(result.text).toBe("clean house");
+  });
+
+  it("extracts 'every 1 day' as singular", () => {
+    const result = extractRecurrence("take meds every 1 day");
+    expect(result.recurrence).toBe("every 1 day");
+    expect(result.text).toBe("take meds");
+  });
+
+  it("is case-insensitive", () => {
+    const result = extractRecurrence("run Daily");
+    expect(result.recurrence).toBe("daily");
+    expect(result.text).toBe("run");
+  });
+
+  it("returns null when no recurrence present", () => {
+    const result = extractRecurrence("buy milk tomorrow");
+    expect(result.recurrence).toBeNull();
+    expect(result.text).toBe("buy milk tomorrow");
+  });
+
+  it("handles recurrence at the beginning", () => {
+    const result = extractRecurrence("daily standup meeting");
+    expect(result.recurrence).toBe("daily");
+    expect(result.text).toBe("standup meeting");
+  });
+
+  it("handles recurrence in the middle", () => {
+    const result = extractRecurrence("team weekly sync");
+    expect(result.recurrence).toBe("weekly");
+    expect(result.text).toBe("team sync");
   });
 });

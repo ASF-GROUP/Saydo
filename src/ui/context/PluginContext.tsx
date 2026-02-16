@@ -6,7 +6,7 @@ import {
   type StatusBarItemInfo,
   type PanelInfo,
   type ViewInfo,
-} from "../api.js";
+} from "../api/index.js";
 
 interface PluginContextValue {
   plugins: PluginInfo[];

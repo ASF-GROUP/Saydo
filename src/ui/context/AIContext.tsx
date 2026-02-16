@@ -7,7 +7,7 @@ import {
   useRef,
   type ReactNode,
 } from "react";
-import { api, type AIConfigInfo, type AIChatMessage } from "../api.js";
+import { api, type AIConfigInfo, type AIChatMessage } from "../api/index.js";
 import { useTaskContext } from "./TaskContext.js";
 
 interface AIState {

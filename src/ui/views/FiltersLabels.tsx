@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { SlidersHorizontal, Tag, ChevronDown, ChevronRight, Plus, X, Filter } from "lucide-react";
-import { api } from "../api.js";
+import { api } from "../api/index.js";
 import type { Task } from "../../core/types.js";
 
 interface SavedFilter {

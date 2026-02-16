@@ -1,0 +1,288 @@
+import { isTauri, BASE, handleResponse, handleVoidResponse, getServices } from "./helpers.js";
+
+export interface AIConfigInfo {
+  provider: string | null;
+  model: string | null;
+  baseUrl: string | null;
+  hasApiKey: boolean;
+}
+
+export interface AIChatMessage {
+  role: "user" | "assistant" | "tool";
+  content: string;
+  toolCallId?: string;
+  toolCalls?: { id: string; name: string; arguments: string }[];
+  isError?: boolean;
+  errorCategory?: string;
+  retryable?: boolean;
+}
+
+export interface AIProviderInfo {
+  name: string;
+  displayName: string;
+  needsApiKey: boolean;
+  defaultModel: string;
+  suggestedModels?: string[];
+  defaultBaseUrl?: string;
+  showBaseUrl?: boolean;
+  pluginId: string | null;
+}
+
+export interface ModelDiscoveryInfo {
+  id: string;
+  label: string;
+  loaded: boolean;
+}
+
+export async function listAIProviders(): Promise<AIProviderInfo[]> {
+  if (isTauri()) {
+    const svc = await getServices();
+    return svc.aiProviderRegistry.getAll().map((r) => ({
+      name: r.plugin.name,
+      displayName: r.plugin.displayName,
+      needsApiKey: r.plugin.needsApiKey,
+      defaultModel: r.plugin.defaultModel,
+      defaultBaseUrl: r.plugin.defaultBaseUrl,
+      showBaseUrl: r.plugin.showBaseUrl ?? false,
+      pluginId: r.pluginId,
+    }));
+  }
+  const res = await fetch(`${BASE}/ai/providers`);
+  return handleResponse<AIProviderInfo[]>(res);
+}
+
+export async function fetchModels(providerName: string, baseUrl?: string): Promise<ModelDiscoveryInfo[]> {
+  if (isTauri()) {
+    const svc = await getServices();
+    const apiKeySetting = svc.storage.getAppSetting("ai_api_key");
+    const baseUrlSetting = svc.storage.getAppSetting("ai_base_url");
+    const { fetchAvailableModels } = await import("../../ai/model-discovery.js");
+    return fetchAvailableModels(providerName, {
+      apiKey: apiKeySetting?.value,
+      baseUrl: baseUrl || baseUrlSetting?.value,
+    });
+  }
+  const url = new URL(`${BASE}/ai/providers/${encodeURIComponent(providerName)}/models`, window.location.origin);
+  if (baseUrl) url.searchParams.set("baseUrl", baseUrl);
+  const res = await fetch(url.toString());
+  const data = await handleResponse<{ models: ModelDiscoveryInfo[] }>(res);
+  return data.models;
+}
+
+export async function loadModel(providerName: string, modelKey: string, baseUrl?: string): Promise<void> {
+  if (isTauri()) {
+    const svc = await getServices();
+    const baseUrlSetting = svc.storage.getAppSetting("ai_base_url");
+    if (providerName === "lmstudio") {
+      const { loadLMStudioModel } = await import("../../ai/model-discovery.js");
+      await loadLMStudioModel(modelKey, baseUrl || baseUrlSetting?.value || "http://localhost:1234/v1");
+    }
+    return;
+  }
+  await handleVoidResponse(
+    await fetch(`${BASE}/ai/providers/${encodeURIComponent(providerName)}/models/load`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: modelKey, baseUrl }),
+    }),
+  );
+}
+
+export async function getAIConfig(): Promise<AIConfigInfo> {
+  if (isTauri()) {
+    const svc = await getServices();
+    const providerSetting = svc.storage.getAppSetting("ai_provider");
+    const modelSetting = svc.storage.getAppSetting("ai_model");
+    const baseUrlSetting = svc.storage.getAppSetting("ai_base_url");
+    const apiKeySetting = svc.storage.getAppSetting("ai_api_key");
+    return {
+      provider: providerSetting?.value ?? null,
+      model: modelSetting?.value ?? null,
+      baseUrl: baseUrlSetting?.value ?? null,
+      hasApiKey: !!apiKeySetting?.value,
+    };
+  }
+  const res = await fetch(`${BASE}/ai/config`);
+  return handleResponse<AIConfigInfo>(res);
+}
+
+export async function updateAIConfig(config: {
+  provider?: string;
+  apiKey?: string;
+  model?: string;
+  baseUrl?: string;
+}): Promise<void> {
+  if (isTauri()) {
+    const svc = await getServices();
+    if (config.provider) svc.storage.setAppSetting("ai_provider", config.provider);
+    if (config.apiKey) svc.storage.setAppSetting("ai_api_key", config.apiKey);
+    if (config.model !== undefined) {
+      if (config.model) {
+        svc.storage.setAppSetting("ai_model", config.model);
+      } else {
+        svc.storage.deleteAppSetting("ai_model");
+      }
+    }
+    if (config.baseUrl !== undefined) {
+      if (config.baseUrl) {
+        svc.storage.setAppSetting("ai_base_url", config.baseUrl);
+      } else {
+        svc.storage.deleteAppSetting("ai_base_url");
+      }
+    }
+    svc.chatManager.clearSession(svc.storage);
+    svc.save();
+    return;
+  }
+  await handleVoidResponse(
+    await fetch(`${BASE}/ai/config`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(config),
+    }),
+  );
+}
+
+export async function sendChatMessage(message: string): Promise<ReadableStream<Uint8Array> | null> {
+  if (isTauri()) {
+    const svc = await getServices();
+    const providerSetting = svc.storage.getAppSetting("ai_provider");
+    if (!providerSetting?.value) {
+      // Return a stream with an error event, matching SSE format
+      const encoder = new TextEncoder();
+      return new ReadableStream({
+        start(controller) {
+          controller.enqueue(
+            encoder.encode(
+              `data: ${JSON.stringify({ type: "error", data: "No AI provider configured. Go to Settings to set one up." })}\n\n`,
+            ),
+          );
+          controller.close();
+        },
+      });
+    }
+
+    try {
+      const { gatherContext } = await import("../../ai/chat.js");
+      const apiKeySetting = svc.storage.getAppSetting("ai_api_key");
+      const modelSetting = svc.storage.getAppSetting("ai_model");
+      const baseUrlSetting = svc.storage.getAppSetting("ai_base_url");
+
+      const executor = svc.aiProviderRegistry.createExecutor({
+        provider: providerSetting.value as string,
+        apiKey: apiKeySetting?.value,
+        model: modelSetting?.value,
+        baseUrl: baseUrlSetting?.value,
+      });
+
+      const toolServices = {
+        taskService: svc.taskService,
+        projectService: svc.projectService,
+      };
+
+      const contextBlock = await gatherContext(toolServices);
+      const session = svc.chatManager.getOrCreateSession(
+        executor,
+        toolServices,
+        {
+          queries: svc.storage,
+          contextBlock,
+          toolRegistry: svc.toolRegistry,
+          model: modelSetting?.value ?? undefined,
+          providerName: providerSetting.value as string,
+        },
+      );
+
+      session.addUserMessage(message);
+
+      const encoder = new TextEncoder();
+      return new ReadableStream({
+        async start(controller) {
+          try {
+            for await (const event of session.run()) {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+            }
+          } catch (err: unknown) {
+            const errorMsg = err instanceof Error ? err.message : "Unknown error";
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ type: "error", data: errorMsg })}\n\n`),
+            );
+          }
+          svc.save();
+          controller.close();
+        },
+      });
+    } catch (err: unknown) {
+      const encoder = new TextEncoder();
+      const errorMsg = err instanceof Error ? err.message : "Unknown error";
+      return new ReadableStream({
+        start(controller) {
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ type: "error", data: errorMsg })}\n\n`),
+          );
+          controller.close();
+        },
+      });
+    }
+  }
+
+  const res = await fetch(`${BASE}/ai/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message }),
+  });
+  return res.body;
+}
+
+export async function getChatMessages(): Promise<AIChatMessage[]> {
+  if (isTauri()) {
+    const svc = await getServices();
+    let session = svc.chatManager.getSession();
+
+    if (!session) {
+      try {
+        const providerSetting = svc.storage.getAppSetting("ai_provider");
+        if (providerSetting?.value) {
+          const apiKeySetting = svc.storage.getAppSetting("ai_api_key");
+          const modelSetting = svc.storage.getAppSetting("ai_model");
+          const baseUrlSetting = svc.storage.getAppSetting("ai_base_url");
+
+          const executor = svc.aiProviderRegistry.createExecutor({
+            provider: providerSetting.value as string,
+            apiKey: apiKeySetting?.value,
+            model: modelSetting?.value,
+            baseUrl: baseUrlSetting?.value,
+          });
+
+          session = svc.chatManager.restoreSession(
+            executor,
+            { taskService: svc.taskService, projectService: svc.projectService },
+            svc.storage,
+            {
+              toolRegistry: svc.toolRegistry,
+              model: modelSetting?.value ?? undefined,
+              providerName: providerSetting.value as string,
+            },
+          );
+        }
+      } catch {
+        // Non-critical
+      }
+    }
+
+    return session ? (session.getMessages() as AIChatMessage[]) : [];
+  }
+
+  const res = await fetch(`${BASE}/ai/messages`);
+  return handleResponse<AIChatMessage[]>(res);
+}
+
+export async function clearChat(): Promise<void> {
+  if (isTauri()) {
+    const svc = await getServices();
+    svc.chatManager.clearSession(svc.storage);
+    svc.save();
+    return;
+  }
+  await handleVoidResponse(await fetch(`${BASE}/ai/clear`, { method: "POST" }));
+}
