@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
+import { viteStaticCopy } from "vite-plugin-static-copy";
 import fs from "node:fs";
 import path from "node:path";
 import type { ViteDevServer } from "vite";
@@ -1012,6 +1013,92 @@ function apiPlugin() {
         res.end(JSON.stringify({ ok: true }));
       });
 
+      // ── Voice Proxy Endpoints ──────────────────────────
+
+      // POST /api/voice/transcribe — proxy to Groq STT
+      server.middlewares.use(async (req, res, next) => {
+        if (req.url !== "/api/voice/transcribe" || req.method !== "POST") return next();
+
+        try {
+          const apiKey = req.headers["x-api-key"] as string;
+          if (!apiKey) {
+            res.statusCode = 401;
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ error: "Missing API key" }));
+            return;
+          }
+
+          // Collect raw body for multipart forwarding
+          const chunks: Buffer[] = [];
+          for await (const chunk of req) {
+            chunks.push(chunk as Buffer);
+          }
+          const bodyBuffer = Buffer.concat(chunks);
+
+          const groqRes = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": req.headers["content-type"]!,
+            },
+            body: bodyBuffer,
+          });
+
+          const data = await groqRes.text();
+          res.statusCode = groqRes.status;
+          res.setHeader("Content-Type", "application/json");
+          res.end(data);
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : "Transcription proxy error";
+          res.statusCode = 500;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ error: message }));
+        }
+      });
+
+      // POST /api/voice/synthesize — proxy to Groq TTS
+      server.middlewares.use(async (req, res, next) => {
+        if (req.url !== "/api/voice/synthesize" || req.method !== "POST") return next();
+
+        try {
+          const apiKey = req.headers["x-api-key"] as string;
+          if (!apiKey) {
+            res.statusCode = 401;
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ error: "Missing API key" }));
+            return;
+          }
+
+          const body = await parseBody(req);
+
+          const groqRes = await fetch("https://api.groq.com/openai/v1/audio/speech", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(body),
+          });
+
+          if (!groqRes.ok) {
+            const errText = await groqRes.text();
+            res.statusCode = groqRes.status;
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ error: errText }));
+            return;
+          }
+
+          const audioBuffer = await groqRes.arrayBuffer();
+          res.setHeader("Content-Type", "audio/wav");
+          res.end(Buffer.from(audioBuffer));
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : "Synthesis proxy error";
+          res.statusCode = 500;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ error: message }));
+        }
+      });
+
       // GET /api/tasks/reminders/due — list tasks with due reminders
       server.middlewares.use(async (req, res, next) => {
         if (req.url !== "/api/tasks/reminders/due" || req.method !== "GET") return next();
@@ -1146,7 +1233,27 @@ function apiPlugin() {
 }
 
 export default defineConfig(({ command }) => ({
-  plugins: [tailwindcss(), react(), ...(command === "serve" ? [apiPlugin()] : [])],
+  plugins: [
+    tailwindcss(),
+    react(),
+    ...(command === "serve" ? [apiPlugin()] : []),
+    viteStaticCopy({
+      targets: [
+        {
+          src: "node_modules/@ricky0123/vad-web/dist/vad.worklet.bundle.min.js",
+          dest: "",
+        },
+        {
+          src: "node_modules/@ricky0123/vad-web/dist/silero_vad.onnx",
+          dest: "",
+        },
+        {
+          src: "node_modules/onnxruntime-web/dist/*.wasm",
+          dest: "",
+        },
+      ],
+    }),
+  ],
   resolve: {
     alias: {
       "@": "/src",

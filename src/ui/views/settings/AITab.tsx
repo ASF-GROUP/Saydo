@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAIContext } from "../../context/AIContext.js";
+import { useVoiceContext, type VoiceMode } from "../../context/VoiceContext.js";
 import { api, type AIProviderInfo, type ModelDiscoveryInfo } from "../../api/index.js";
 
 export function AITab() {
@@ -276,6 +277,150 @@ export function AITab() {
           </>
         )}
       </div>
+
+      <VoiceSettings />
     </section>
+  );
+}
+
+function VoiceSettings() {
+  const { settings, updateSettings, registry, ttsVoices } = useVoiceContext();
+
+  const sttProviders = registry.listSTT();
+  const ttsProviders = registry.listTTS();
+
+  return (
+    <div className="mt-8 pt-6 border-t border-border">
+      <h3 className="text-base font-semibold mb-3 text-on-surface">Voice</h3>
+
+      <div className="space-y-4 max-w-md">
+        {/* Groq API Key */}
+        <div>
+          <label className="block text-xs font-medium text-on-surface-secondary mb-1">
+            Groq API Key
+            {settings.groqApiKey && (
+              <span className="font-normal text-success ml-2">Set</span>
+            )}
+          </label>
+          <input
+            type="password"
+            value={settings.groqApiKey}
+            onChange={(e) => updateSettings({ groqApiKey: e.target.value })}
+            placeholder="Enter Groq API key for voice features"
+            className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-on-surface"
+          />
+          <p className="mt-1 text-xs text-on-surface-muted">
+            Required for Groq STT (Whisper) and TTS (PlayAI). Get one at groq.com.
+          </p>
+        </div>
+
+        {/* STT Provider */}
+        <div>
+          <label className="block text-xs font-medium text-on-surface-secondary mb-1">
+            Speech-to-Text Provider
+          </label>
+          <select
+            value={settings.sttProviderId}
+            onChange={(e) => updateSettings({ sttProviderId: e.target.value })}
+            className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-on-surface"
+          >
+            {sttProviders.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* TTS Provider */}
+        <div>
+          <label className="block text-xs font-medium text-on-surface-secondary mb-1">
+            Text-to-Speech Provider
+          </label>
+          <select
+            value={settings.ttsProviderId}
+            onChange={(e) => updateSettings({ ttsProviderId: e.target.value })}
+            className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-on-surface"
+          >
+            {ttsProviders.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* TTS Voice */}
+        {ttsVoices.length > 0 && (
+          <div>
+            <label className="block text-xs font-medium text-on-surface-secondary mb-1">
+              Voice
+            </label>
+            <select
+              value={settings.ttsVoice}
+              onChange={(e) => updateSettings({ ttsVoice: e.target.value })}
+              className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-on-surface"
+            >
+              <option value="">Default</option>
+              {ttsVoices.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
+        {/* Voice Mode */}
+        <div>
+          <label className="block text-xs font-medium text-on-surface-secondary mb-1">
+            Voice Mode
+          </label>
+          <div className="flex gap-4 mt-1">
+            {(["off", "push-to-talk", "vad"] as VoiceMode[]).map((mode) => (
+              <label key={mode} className="flex items-center gap-1.5 text-sm text-on-surface">
+                <input
+                  type="radio"
+                  name="voiceMode"
+                  value={mode}
+                  checked={settings.voiceMode === mode}
+                  onChange={() => updateSettings({ voiceMode: mode })}
+                  className="accent-accent"
+                />
+                {mode === "off" ? "Off" : mode === "push-to-talk" ? "Push-to-Talk" : "VAD (Hands-free)"}
+              </label>
+            ))}
+          </div>
+          {settings.voiceMode === "vad" && (
+            <p className="mt-1 text-xs text-on-surface-muted">
+              Voice Activity Detection automatically detects when you start and stop speaking.
+              Requires a Groq API key for best results.
+            </p>
+          )}
+        </div>
+
+        {/* Auto-send */}
+        <label className="flex items-center gap-2 text-sm text-on-surface">
+          <input
+            type="checkbox"
+            checked={settings.autoSend}
+            onChange={(e) => updateSettings({ autoSend: e.target.checked })}
+            className="accent-accent"
+          />
+          Auto-send transcribed text
+        </label>
+
+        {/* TTS for responses */}
+        <label className="flex items-center gap-2 text-sm text-on-surface">
+          <input
+            type="checkbox"
+            checked={settings.ttsEnabled}
+            onChange={(e) => updateSettings({ ttsEnabled: e.target.checked })}
+            className="accent-accent"
+          />
+          Read AI responses aloud (TTS)
+        </label>
+      </div>
+    </div>
   );
 }

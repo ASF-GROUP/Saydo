@@ -154,8 +154,8 @@ All work items for ASF Docket, organized by area and prioritized within each sec
 | A-17 | Custom AI provider plugin support | done | S9 | BYOM via ai:provider permission |
 | A-18 | AI reminders via integrations | idea | — | Discord bot, Google Calendar, etc. |
 | A-19 | AI chat error handling & graceful degradation | done | S17 | AIError class, classifyProviderError, error bubbles with retry, safety timeout |
-| A-20 | AI voice output (text-to-speech for responses) | needs-design | — | TTS for AI assistant responses, provider abstraction (Browser Speech Synthesis, ElevenLabs, etc.) |
-| A-21 | AI voice conversation mode (bidirectional) | needs-design | — | Full voice-in/voice-out conversational flow, wake word or push-to-talk |
+| A-20 | AI voice output (text-to-speech for responses) | done | S21 | TTS provider abstraction (Browser Speech Synthesis, Groq PlayAI), voice settings UI |
+| A-21 | AI voice conversation mode (bidirectional) | done | S21 | VAD-based hands-free mode, push-to-talk, voice conversation loop (speak → STT → AI → TTS → repeat) |
 | A-22 | AI chat streaming error recovery | done | S17 | withTimeout(), partial content preservation, structured error events |
 | A-23 | Dynamic model discovery for all AI providers | done | S18 | Fetch available models from provider APIs, dynamic dropdown in Settings with Custom fallback |
 | A-24 | Local AI voice models (STT/TTS) | needs-design | — | Local speech-to-text and text-to-speech models for mobile & desktop (Whisper, Piper, etc.) |

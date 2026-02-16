@@ -9,6 +9,7 @@ import { RightActionRail } from "./components/RightActionRail.js";
 import { TaskProvider, useTaskContext } from "./context/TaskContext.js";
 import { PluginProvider, usePluginContext } from "./context/PluginContext.js";
 import { AIProvider } from "./context/AIContext.js";
+import { VoiceProvider } from "./context/VoiceContext.js";
 import { UndoProvider, useUndoContext } from "./context/UndoContext.js";
 import { AIChatPanel } from "./components/AIChatPanel.js";
 import { FocusMode } from "./components/FocusMode.js";
@@ -591,9 +592,11 @@ export function App() {
       <TaskProvider>
         <PluginProvider>
           <AIProvider>
-            <UndoProvider>
-              <AppContent />
-            </UndoProvider>
+            <VoiceProvider>
+              <UndoProvider>
+                <AppContent />
+              </UndoProvider>
+            </VoiceProvider>
           </AIProvider>
         </PluginProvider>
       </TaskProvider>

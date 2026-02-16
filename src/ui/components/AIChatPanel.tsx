@@ -1,9 +1,25 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { X, Send, Mic, MicOff, Bot, Trash2, Settings, AlertTriangle, RotateCcw } from "lucide-react";
+import {
+  X,
+  Send,
+  Mic,
+  MicOff,
+  Bot,
+  Trash2,
+  Settings,
+  AlertTriangle,
+  RotateCcw,
+  Loader2,
+  Volume2,
+} from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useAIContext } from "../context/AIContext.js";
+import { useVoiceContext } from "../context/VoiceContext.js";
+import { useVAD } from "../hooks/useVAD.js";
+import { BrowserSTTProvider } from "../../ai/voice/adapters/browser-stt.js";
+import { createAudioRecorder } from "../../ai/voice/audio-utils.js";
 import type { AIChatMessage } from "../api/index.js";
 
 interface AIChatPanelProps {
@@ -54,9 +70,52 @@ export function AIChatPanel({ onClose, onOpenSettings }: AIChatPanelProps) {
     await sendMessage(text);
   };
 
-  const handleVoiceResult = useCallback((transcript: string) => {
-    setInput((prev) => (prev ? prev + " " + transcript : transcript));
-  }, []);
+  const voice = useVoiceContext();
+  const prevMessagesLenRef = useRef(messages.length);
+
+  const handleVoiceResult = useCallback(
+    (transcript: string) => {
+      if (!transcript.trim()) return;
+      if (voice.settings.autoSend) {
+        sendMessage(transcript);
+      } else {
+        setInput((prev) => (prev ? prev + " " + transcript : transcript));
+      }
+    },
+    [voice.settings.autoSend, sendMessage],
+  );
+
+  // VAD integration — auto-detect speech and transcribe
+  const handleVADSpeechEnd = useCallback(
+    async (audio: Blob) => {
+      try {
+        const transcript = await voice.transcribeAudio(audio);
+        handleVoiceResult(transcript);
+      } catch {
+        // Transcription failed — silently ignore
+      }
+    },
+    [voice, handleVoiceResult],
+  );
+
+  useVAD({
+    onSpeechEnd: handleVADSpeechEnd,
+    enabled: voice.settings.voiceMode === "vad" && !isStreaming && !voice.isSpeaking,
+  });
+
+  // Voice conversation loop: TTS on new AI response
+  useEffect(() => {
+    if (!voice.settings.ttsEnabled || voice.settings.voiceMode === "off") return;
+    const prevLen = prevMessagesLenRef.current;
+    prevMessagesLenRef.current = messages.length;
+
+    if (messages.length > prevLen && !isStreaming) {
+      const lastMsg = messages[messages.length - 1];
+      if (lastMsg?.role === "assistant" && lastMsg.content && !lastMsg.isError) {
+        voice.speak(lastMsg.content);
+      }
+    }
+  }, [messages, isStreaming, voice]);
 
   if (!isConfigured) {
     return (
@@ -177,7 +236,7 @@ export function AIChatPanel({ onClose, onOpenSettings }: AIChatPanelProps) {
             placeholder="Ask about your tasks..."
             className="min-w-0 flex-1 px-3 py-2 text-sm border border-border rounded-lg bg-surface text-on-surface placeholder-on-surface-muted focus:outline-none focus:ring-2 focus:ring-accent"
           />
-          <VoiceButton onResult={handleVoiceResult} disabled={isStreaming} />
+          <VoiceButton onResult={handleVoiceResult} disabled={isStreaming} voice={voice} />
           <button
             type="submit"
             disabled={isStreaming || !input.trim()}
@@ -356,75 +415,107 @@ function ToolCallBadge({ name, args }: { name: string; args: string }) {
   );
 }
 
-// Speech Recognition type declarations
-interface SpeechRecognitionEvent {
-  results: { [index: number]: { [index: number]: { transcript: string } } };
-}
-
 function VoiceButton({
   onResult,
   disabled,
+  voice,
 }: {
   onResult: (text: string) => void;
   disabled: boolean;
+  voice: ReturnType<typeof useVoiceContext>;
 }) {
   const [listening, setListening] = useState(false);
-  const recognitionRef = useRef<any>(null);
+  const recorderRef = useRef<ReturnType<typeof createAudioRecorder> | null>(null);
 
-  const isSupported =
-    typeof window !== "undefined" &&
-    ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
+  const { settings, sttProvider, isTranscribing, isSpeaking } = voice;
 
-  const toggleListening = useCallback(() => {
+  // Don't show button if voice mode is off or VAD (VAD handles itself)
+  if (settings.voiceMode === "off" || settings.voiceMode === "vad") return null;
+
+  const handlePushToTalk = useCallback(async () => {
     if (listening) {
-      recognitionRef.current?.stop();
+      // Stop recording and transcribe
       setListening(false);
+      if (sttProvider instanceof BrowserSTTProvider) {
+        // Browser STT handles its own recording — the result comes from the recognition event
+        return;
+      }
+      // For API-based STT (Groq), stop the recorder and transcribe the blob
+      if (recorderRef.current) {
+        try {
+          const blob = await recorderRef.current.stop();
+          const transcript = await voice.transcribeAudio(blob);
+          onResult(transcript);
+        } catch {
+          // Transcription failed
+        }
+        recorderRef.current = null;
+      }
       return;
     }
 
-    const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
-
-    const recognition = new SpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.lang = "en-US";
-
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
-      const transcript = event.results[0][0].transcript;
-      onResult(transcript);
-      setListening(false);
-    };
-
-    recognition.onerror = () => {
-      setListening(false);
-    };
-
-    recognition.onend = () => {
-      setListening(false);
-    };
-
-    recognitionRef.current = recognition;
-    recognition.start();
+    // Start recording
     setListening(true);
-  }, [listening, onResult]);
+    if (sttProvider instanceof BrowserSTTProvider) {
+      // Use browser live recognition
+      try {
+        const transcript = await sttProvider.startLiveRecognition();
+        if (transcript) onResult(transcript);
+      } catch {
+        // Recognition failed
+      }
+      setListening(false);
+    } else {
+      // Use MediaRecorder for API-based STT
+      const recorder = createAudioRecorder();
+      recorderRef.current = recorder;
+      try {
+        await recorder.start();
+      } catch {
+        setListening(false);
+        recorderRef.current = null;
+      }
+    }
+  }, [listening, sttProvider, voice, onResult]);
 
-  if (!isSupported) return null;
+  const buttonState = isTranscribing
+    ? "transcribing"
+    : isSpeaking
+      ? "speaking"
+      : listening
+        ? "listening"
+        : "idle";
+
+  const title = {
+    idle: "Voice input (push to talk)",
+    listening: "Stop listening",
+    transcribing: "Transcribing...",
+    speaking: "AI speaking...",
+  }[buttonState];
+
+  const icon = {
+    idle: <Mic size={16} />,
+    listening: <MicOff size={16} className="animate-pulse" />,
+    transcribing: <Loader2 size={16} className="animate-spin" />,
+    speaking: <Volume2 size={16} className="animate-pulse" />,
+  }[buttonState];
+
+  const colorClass = {
+    idle: "border-border text-on-surface-muted hover:bg-surface-secondary",
+    listening: "bg-error/10 border-error/30 text-error",
+    transcribing: "bg-accent/10 border-accent/30 text-accent",
+    speaking: "bg-success/10 border-success/30 text-success",
+  }[buttonState];
 
   return (
     <button
       type="button"
-      onClick={toggleListening}
-      disabled={disabled}
-      title={listening ? "Stop listening" : "Voice input"}
-      className={`shrink-0 px-2 py-2 text-sm rounded-lg border disabled:opacity-50 transition-colors ${
-        listening
-          ? "bg-error/10 border-error/30 text-error"
-          : "border-border text-on-surface-muted hover:bg-surface-secondary"
-      }`}
+      onClick={handlePushToTalk}
+      disabled={disabled || isTranscribing}
+      title={title}
+      className={`shrink-0 px-2 py-2 text-sm rounded-lg border disabled:opacity-50 transition-colors ${colorClass}`}
     >
-      {listening ? <MicOff size={16} className="animate-pulse" /> : <Mic size={16} />}
+      {icon}
     </button>
   );
 }
