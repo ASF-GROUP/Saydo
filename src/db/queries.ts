@@ -1,4 +1,4 @@
-import { eq, desc, inArray } from "drizzle-orm";
+import { eq, desc, inArray, and, lte, isNotNull } from "drizzle-orm";
 import type { BaseSQLiteDatabase } from "drizzle-orm/sqlite-core";
 import * as schema from "./schema.js";
 
@@ -29,6 +29,19 @@ export function createQueries(db: BaseSQLiteDatabase<"sync", any, typeof schema>
 
     insertTaskWithId: (task: typeof schema.tasks.$inferInsert) =>
       db.insert(schema.tasks).values(task).run(),
+
+    listTasksDueForReminder: (beforeTime: string) =>
+      db
+        .select()
+        .from(schema.tasks)
+        .where(
+          and(
+            isNotNull(schema.tasks.remindAt),
+            lte(schema.tasks.remindAt, beforeTime),
+            eq(schema.tasks.status, "pending"),
+          ),
+        )
+        .all(),
 
     // ── Task Tags (junction) ─────────────────────────────
     getTaskTags: (taskId: string) =>

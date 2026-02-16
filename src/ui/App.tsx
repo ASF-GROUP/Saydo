@@ -16,6 +16,7 @@ import { Toast } from "./components/Toast.js";
 import { Focus } from "lucide-react";
 import { useKeyboardNavigation } from "./hooks/useKeyboardNavigation.js";
 import { useMultiSelect } from "./hooks/useMultiSelect.js";
+import { useReminders } from "./hooks/useReminders.js";
 import { ShortcutManager } from "./shortcuts.js";
 import { themeManager } from "./themes/manager.js";
 import { Inbox } from "./views/Inbox.js";
@@ -294,6 +295,7 @@ function AppContent() {
   });
   const [templateSelectorOpen, setTemplateSelectorOpen] = useState(false);
   const [projects, setProjects] = useState<ProjectType[]>([]);
+  const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [addTaskTrigger, setAddTaskTrigger] = useState(0);
   const {
     state,
@@ -325,9 +327,19 @@ function AppContent() {
     }
   }, []);
 
+  const fetchTags = useCallback(async () => {
+    try {
+      const tags = await api.listTags();
+      setAvailableTags(tags.map((t) => t.name));
+    } catch {
+      // Non-critical
+    }
+  }, []);
+
   useEffect(() => {
     fetchProjects();
-  }, [fetchProjects]);
+    fetchTags();
+  }, [fetchProjects, fetchTags]);
 
   // Restore AI chat sidebar open/closed state on startup.
   useEffect(() => {
@@ -365,11 +377,12 @@ function AppContent() {
     });
   }, [chatPanelOpen, chatPanelStateLoaded]);
 
-  // Re-fetch projects when tasks are added/removed (new project might have been created)
+  // Re-fetch projects and tags when tasks are added/removed
   const taskCount = state.tasks.length;
   useEffect(() => {
     fetchProjects();
-  }, [taskCount, fetchProjects]);
+    fetchTags();
+  }, [taskCount, fetchProjects, fetchTags]);
 
   const applyRouteState = useCallback((route: RouteState) => {
     setCurrentView(route.view);
@@ -603,6 +616,28 @@ function AppContent() {
     clearSelection();
   };
 
+  // Inline due date update (from DatePicker on TaskItem)
+  const handleUpdateDueDate = useCallback(async (taskId: string, dueDate: string | null) => {
+    if (dueDate) {
+      await updateTask(taskId, { dueDate: new Date(dueDate).toISOString(), dueTime: false });
+    } else {
+      await updateTask(taskId, { dueDate: null, dueTime: false });
+    }
+  }, [updateTask]);
+
+  // Add subtask handler
+  const handleAddSubtask = useCallback(async (parentId: string, title: string) => {
+    await createTask({
+      title,
+      priority: null,
+      dueDate: null,
+      dueTime: false,
+      tags: [],
+      projectId: selectedProjectId,
+      parentId,
+    } as any);
+  }, [createTask, selectedProjectId]);
+
   // Sub-task indent/outdent
   const handleIndent = useCallback(async (id: string) => {
     try {
@@ -641,6 +676,18 @@ function AppContent() {
     onClose: handleCloseDetail,
     enabled: !commandPaletteOpen,
   });
+
+  // Reminder notifications
+  const handleReminder = useCallback((task: { id: string; title: string }) => {
+    // In-app toast
+    // Use the same toast pattern from undo — trigger a brief notification
+    // For now, show browser notification if permitted
+    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+      new Notification("Docket Reminder", { body: task.title });
+    }
+  }, []);
+
+  useReminders({ onReminder: handleReminder, enabled: true });
 
   // Load custom themes on mount
   useEffect(() => {
@@ -859,6 +906,8 @@ function AppContent() {
             selectedTaskIds={multiSelectedIds}
             onMultiSelect={handleMultiSelect}
             onReorder={handleReorder}
+            onAddSubtask={handleAddSubtask}
+            onUpdateDueDate={handleUpdateDueDate}
             queryText={inboxQueryText}
             onQueryTextChange={setInboxQueryText}
             autoFocusTrigger={addTaskTrigger}
@@ -877,6 +926,8 @@ function AppContent() {
             selectedTaskIds={multiSelectedIds}
             onMultiSelect={handleMultiSelect}
             onReorder={handleReorder}
+            onAddSubtask={handleAddSubtask}
+            onUpdateDueDate={handleUpdateDueDate}
             autoFocusTrigger={addTaskTrigger}
           />
         );
@@ -893,6 +944,8 @@ function AppContent() {
             selectedTaskIds={multiSelectedIds}
             onMultiSelect={handleMultiSelect}
             onReorder={handleReorder}
+            onAddSubtask={handleAddSubtask}
+            onUpdateDueDate={handleUpdateDueDate}
             autoFocusTrigger={addTaskTrigger}
           />
         );
@@ -912,6 +965,8 @@ function AppContent() {
             selectedTaskIds={multiSelectedIds}
             onMultiSelect={handleMultiSelect}
             onReorder={handleReorder}
+            onAddSubtask={handleAddSubtask}
+            onUpdateDueDate={handleUpdateDueDate}
             autoFocusTrigger={addTaskTrigger}
           />
         );
@@ -1002,6 +1057,8 @@ function AppContent() {
             onIndent={handleIndent}
             onOutdent={handleOutdent}
             onSelect={handleSelectTask}
+            onAddSubtask={handleAddSubtask}
+            availableTags={availableTags}
           />
         )}
         {chatPanelOpen && (

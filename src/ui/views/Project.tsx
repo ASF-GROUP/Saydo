@@ -22,6 +22,8 @@ interface ProjectProps {
     event: { ctrlKey: boolean; metaKey: boolean; shiftKey: boolean },
   ) => void;
   onReorder?: (orderedIds: string[]) => void;
+  onAddSubtask?: (parentId: string, title: string) => void;
+  onUpdateDueDate?: (taskId: string, dueDate: string | null) => void;
   autoFocusTrigger?: number;
 }
 
@@ -35,6 +37,8 @@ export function Project({
   selectedTaskIds,
   onMultiSelect,
   onReorder,
+  onAddSubtask,
+  onUpdateDueDate,
   autoFocusTrigger,
 }: ProjectProps) {
   const projectTasks = tasks.filter((t) => t.status === "pending" && t.projectId === project.id);
@@ -59,6 +63,8 @@ export function Project({
         selectedTaskIds={selectedTaskIds}
         onMultiSelect={onMultiSelect}
         onReorder={onReorder}
+        onAddSubtask={onAddSubtask}
+        onUpdateDueDate={onUpdateDueDate}
       />
     </div>
   );

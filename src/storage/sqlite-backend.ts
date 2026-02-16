@@ -59,6 +59,10 @@ export class SQLiteBackend implements IStorage {
     return this.q.updateManyTasks(ids, data as any);
   }
 
+  listTasksDueForReminder(beforeTime: string): TaskRow[] {
+    return this.q.listTasksDueForReminder(beforeTime) as unknown as TaskRow[];
+  }
+
   // ── Task-Tag Relations ──
 
   getTaskTags(taskId: string): TaskTagJoin[] {

@@ -12,6 +12,7 @@ export interface TaskRow {
   projectId: string | null;
   recurrence: string | null;
   parentId: string | null;
+  remindAt: string | null;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
@@ -93,6 +94,7 @@ export interface IStorage {
   deleteTask(id: string): MutationResult;
   deleteManyTasks(ids: string[]): MutationResult;
   updateManyTasks(ids: string[], data: Partial<TaskRow>): MutationResult;
+  listTasksDueForReminder(beforeTime: string): TaskRow[];
 
   // ── Task-Tag Relations ──
   getTaskTags(taskId: string): TaskTagJoin[];

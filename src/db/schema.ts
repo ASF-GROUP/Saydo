@@ -14,6 +14,7 @@ export const tasks = sqliteTable("tasks", {
   projectId: text("project_id").references(() => projects.id, { onDelete: "set null" }),
   recurrence: text("recurrence"),
   parentId: text("parent_id").references((): any => tasks.id, { onDelete: "cascade" }),
+  remindAt: text("remind_at"),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),

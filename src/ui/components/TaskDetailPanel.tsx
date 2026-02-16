@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import {
   X,
   Trash2,
@@ -8,8 +8,13 @@ import {
   ChevronRight,
   ArrowRight,
   ArrowLeft,
+  Check,
+  Plus,
+  Bell,
 } from "lucide-react";
 import type { Task, UpdateTaskInput } from "../../core/types.js";
+import { DatePicker } from "./DatePicker.js";
+import { TagsInput } from "./TagsInput.js";
 
 interface TaskDetailPanelProps {
   task: Task;
@@ -20,6 +25,8 @@ interface TaskDetailPanelProps {
   onIndent?: (id: string) => void;
   onOutdent?: (id: string) => void;
   onSelect?: (id: string) => void;
+  onAddSubtask?: (parentId: string, title: string) => void;
+  availableTags?: string[];
 }
 
 const PRIORITIES = [
@@ -38,16 +45,28 @@ export function TaskDetailPanel({
   onIndent,
   onOutdent,
   onSelect,
+  onAddSubtask,
+  availableTags = [],
 }: TaskDetailPanelProps) {
-  const currentDueDateInput = task.dueDate ? task.dueDate.split("T")[0] : "";
+  const currentRemindAt = (task as any).remindAt ?? null;
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description ?? "");
-  const [dueDateInput, setDueDateInput] = useState(currentDueDateInput);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [remindAtInput, setRemindAtInput] = useState(
+    currentRemindAt ? currentRemindAt.slice(0, 16) : "",
+  );
+  const [addingSubtask, setAddingSubtask] = useState(false);
+  const [subtaskTitle, setSubtaskTitle] = useState("");
+  const subtaskInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setTitle(task.title);
     setDescription(task.description ?? "");
-    setDueDateInput(task.dueDate ? task.dueDate.split("T")[0] : "");
+    setShowDatePicker(false);
+    const remind = (task as any).remindAt ?? null;
+    setRemindAtInput(remind ? remind.slice(0, 16) : "");
+    setAddingSubtask(false);
+    setSubtaskTitle("");
   }, [task]);
 
   const handleTitleBlur = () => {
@@ -69,17 +88,48 @@ export function TaskDetailPanel({
     onUpdate(task.id, { priority: newPriority });
   };
 
-  const handleDueDateBlur = () => {
-    if (dueDateInput === currentDueDateInput) return;
+  const handleDueDateChange = useCallback(
+    (date: string | null) => {
+      if (!date) {
+        onUpdate(task.id, { dueDate: null, dueTime: false });
+      } else {
+        onUpdate(task.id, { dueDate: new Date(date).toISOString(), dueTime: false });
+      }
+      setShowDatePicker(false);
+    },
+    [task.id, onUpdate],
+  );
 
-    if (!dueDateInput) {
-      onUpdate(task.id, { dueDate: null, dueTime: false });
+  const handleTagsChange = useCallback(
+    (tags: string[]) => {
+      onUpdate(task.id, { tags });
+    },
+    [task.id, onUpdate],
+  );
+
+  const handleRemindAtBlur = () => {
+    const currentVal = currentRemindAt ? currentRemindAt.slice(0, 16) : "";
+    if (remindAtInput === currentVal) return;
+
+    if (!remindAtInput) {
+      onUpdate(task.id, { remindAt: null } as any);
       return;
     }
 
-    const nextDueDate = new Date(`${dueDateInput}T00:00:00`).toISOString();
-    onUpdate(task.id, { dueDate: nextDueDate, dueTime: false });
+    const isoString = new Date(remindAtInput).toISOString();
+    onUpdate(task.id, { remindAt: isoString } as any);
   };
+
+  const handleAddSubtask = () => {
+    const trimmed = subtaskTitle.trim();
+    if (trimmed && onAddSubtask) {
+      onAddSubtask(task.id, trimmed);
+      setSubtaskTitle("");
+      setAddingSubtask(false);
+    }
+  };
+
+  const children = allTasks.filter((t) => t.parentId === task.id);
 
   return (
     <div
@@ -141,23 +191,54 @@ export function TaskDetailPanel({
           />
         </div>
 
-        <div>
+        <div className="relative">
           <label className="text-xs font-medium text-on-surface-muted uppercase tracking-wider flex items-center gap-1.5">
             <Calendar size={12} /> Due Date
           </label>
           <div className="mt-1 flex items-center gap-2">
+            <button
+              onClick={() => setShowDatePicker((prev) => !prev)}
+              className="flex-1 px-2 py-1.5 text-sm text-left bg-surface-secondary border border-border rounded-md text-on-surface hover:bg-surface-tertiary transition-colors"
+            >
+              {task.dueDate
+                ? new Date(task.dueDate).toLocaleDateString()
+                : "No due date"}
+            </button>
+            {task.dueDate && (
+              <button
+                onClick={() => handleDueDateChange(null)}
+                className="text-xs px-2 py-1.5 rounded-md bg-surface-tertiary text-on-surface-secondary hover:text-on-surface"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          {showDatePicker && (
+            <DatePicker
+              value={task.dueDate}
+              onChange={handleDueDateChange}
+              onClose={() => setShowDatePicker(false)}
+            />
+          )}
+        </div>
+
+        <div>
+          <label className="text-xs font-medium text-on-surface-muted uppercase tracking-wider flex items-center gap-1.5">
+            <Bell size={12} /> Reminder
+          </label>
+          <div className="mt-1 flex items-center gap-2">
             <input
-              type="date"
-              value={dueDateInput}
-              onChange={(e) => setDueDateInput(e.target.value)}
-              onBlur={handleDueDateBlur}
+              type="datetime-local"
+              value={remindAtInput}
+              onChange={(e) => setRemindAtInput(e.target.value)}
+              onBlur={handleRemindAtBlur}
               className="flex-1 px-2 py-1.5 text-sm bg-surface-secondary border border-border rounded-md text-on-surface focus:outline-none focus:ring-1 focus:ring-accent"
             />
-            {dueDateInput && (
+            {remindAtInput && (
               <button
                 onClick={() => {
-                  setDueDateInput("");
-                  onUpdate(task.id, { dueDate: null, dueTime: false });
+                  setRemindAtInput("");
+                  onUpdate(task.id, { remindAt: null } as any);
                 }}
                 className="text-xs px-2 py-1.5 rounded-md bg-surface-tertiary text-on-surface-secondary hover:text-on-surface"
               >
@@ -167,23 +248,16 @@ export function TaskDetailPanel({
           </div>
         </div>
 
-        {task.tags.length > 0 && (
-          <div>
-            <label className="text-xs font-medium text-on-surface-muted uppercase tracking-wider flex items-center gap-1.5">
-              <Tag size={12} /> Tags
-            </label>
-            <div className="flex gap-1.5 mt-1 flex-wrap">
-              {task.tags.map((tag) => (
-                <span
-                  key={tag.id}
-                  className="text-xs px-2 py-0.5 rounded-md bg-surface-tertiary text-on-surface-secondary"
-                >
-                  #{tag.name}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
+        <div>
+          <label className="text-xs font-medium text-on-surface-muted uppercase tracking-wider flex items-center gap-1.5 mb-1">
+            <Tag size={12} /> Tags
+          </label>
+          <TagsInput
+            value={task.tags.map((t) => t.name)}
+            onChange={handleTagsChange}
+            suggestions={availableTags}
+          />
+        </div>
 
         {task.recurrence && (
           <div>
@@ -235,38 +309,80 @@ export function TaskDetailPanel({
         )}
 
         {/* Sub-tasks list */}
-        {allTasks.filter((t) => t.parentId === task.id).length > 0 && (
+        {(children.length > 0 || onAddSubtask) && (
           <div>
             <label className="text-xs font-medium text-on-surface-muted uppercase tracking-wider flex items-center gap-1.5">
               <ChevronRight size={12} /> Sub-tasks
             </label>
             <div className="mt-1 space-y-1">
-              {allTasks
-                .filter((t) => t.parentId === task.id)
-                .map((child) => (
-                  <button
-                    key={child.id}
-                    onClick={() => onSelect?.(child.id)}
-                    className="w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-tertiary transition-colors"
-                  >
-                    <span
-                      className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 ${
-                        child.status === "completed"
-                          ? "bg-success border-success"
+              {children.map((child) => (
+                <button
+                  key={child.id}
+                  onClick={() => onSelect?.(child.id)}
+                  className="w-full text-left flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-tertiary transition-colors"
+                >
+                  <span
+                    className={`w-3.5 h-3.5 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+                      child.status === "completed"
+                        ? "bg-success border-success"
+                        : child.priority
+                          ? `border-priority-${child.priority}`
                           : "border-on-surface-muted"
-                      }`}
+                    }`}
+                  >
+                    {child.status === "completed" && <Check size={10} className="text-white" />}
+                  </span>
+                  <span
+                    className={`text-sm ${
+                      child.status === "completed"
+                        ? "line-through text-on-surface-muted"
+                        : "text-on-surface"
+                    }`}
+                  >
+                    {child.title}
+                  </span>
+                </button>
+              ))}
+
+              {/* Inline add subtask */}
+              {onAddSubtask && (
+                addingSubtask ? (
+                  <div className="flex items-center gap-2 px-2 py-1.5">
+                    <div className="w-3.5 h-3.5 rounded-full border-2 border-on-surface-muted/40 flex-shrink-0" />
+                    <input
+                      ref={subtaskInputRef}
+                      type="text"
+                      value={subtaskTitle}
+                      onChange={(e) => setSubtaskTitle(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleAddSubtask();
+                        if (e.key === "Escape") {
+                          setSubtaskTitle("");
+                          setAddingSubtask(false);
+                        }
+                      }}
+                      onBlur={() => {
+                        if (!subtaskTitle.trim()) setAddingSubtask(false);
+                        else handleAddSubtask();
+                      }}
+                      placeholder="Sub-task title..."
+                      autoFocus
+                      className="flex-1 text-sm bg-transparent border-none outline-none text-on-surface placeholder-on-surface-muted/50"
                     />
-                    <span
-                      className={`text-sm ${
-                        child.status === "completed"
-                          ? "line-through text-on-surface-muted"
-                          : "text-on-surface"
-                      }`}
-                    >
-                      {child.title}
-                    </span>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setAddingSubtask(true);
+                      setTimeout(() => subtaskInputRef.current?.focus(), 0);
+                    }}
+                    className="flex items-center gap-1.5 px-2 py-1.5 text-xs text-on-surface-muted hover:text-accent transition-colors w-full text-left"
+                  >
+                    <Plus size={12} />
+                    Add sub-task
                   </button>
-                ))}
+                )
+              )}
             </div>
           </div>
         )}

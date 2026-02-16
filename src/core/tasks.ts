@@ -45,6 +45,7 @@ export class TaskService {
       projectId: input.projectId ?? null,
       recurrence: input.recurrence ?? null,
       parentId: input.parentId ?? null,
+      remindAt: input.remindAt ?? null,
       sortOrder: 0,
       createdAt: now,
       updatedAt: now,
@@ -67,6 +68,7 @@ export class TaskService {
       projectId: input.projectId ?? null,
       recurrence: input.recurrence ?? null,
       parentId: input.parentId ?? null,
+      remindAt: input.remindAt ?? null,
       tags,
       sortOrder: 0,
       createdAt: now,
@@ -94,6 +96,7 @@ export class TaskService {
       ...row,
       dueTime: row.dueTime ?? false,
       parentId: row.parentId ?? null,
+      remindAt: row.remindAt ?? null,
       tags: tagsByTaskId.get(row.id) ?? [],
     }));
 
@@ -114,7 +117,7 @@ export class TaskService {
     const tagRows = this.queries.getTaskTags(id);
     const tags = tagRows.map((r) => r.tags);
 
-    return { ...row, dueTime: row.dueTime ?? false, parentId: row.parentId ?? null, tags };
+    return { ...row, dueTime: row.dueTime ?? false, parentId: row.parentId ?? null, remindAt: row.remindAt ?? null, tags };
   }
 
   async update(id: string, input: UpdateTaskInput): Promise<Task> {
@@ -267,6 +270,7 @@ export class TaskService {
       projectId: task.projectId,
       recurrence: task.recurrence,
       parentId: task.parentId,
+      remindAt: task.remindAt,
       sortOrder: task.sortOrder,
       createdAt: task.createdAt,
       updatedAt: task.updatedAt,
@@ -287,6 +291,28 @@ export class TaskService {
       this.queries.updateTask(orderedIds[i], { sortOrder: i });
     }
     this.eventBus?.emit("task:reorder", orderedIds);
+  }
+
+  /** Get tasks with reminders that are due (remindAt <= now, status pending). */
+  async getDueReminders(): Promise<Task[]> {
+    const now = new Date().toISOString();
+    const rows = this.queries.listTasksDueForReminder(now);
+
+    const allTagJoins = this.queries.listAllTaskTags();
+    const tagsByTaskId = new Map<string, import("../storage/interface.js").TagRow[]>();
+    for (const join of allTagJoins) {
+      const taskId = join.task_tags.taskId;
+      if (!tagsByTaskId.has(taskId)) tagsByTaskId.set(taskId, []);
+      tagsByTaskId.get(taskId)!.push(join.tags);
+    }
+
+    return rows.map((row) => ({
+      ...row,
+      dueTime: row.dueTime ?? false,
+      parentId: row.parentId ?? null,
+      remindAt: row.remindAt ?? null,
+      tags: tagsByTaskId.get(row.id) ?? [],
+    }));
   }
 
   // ── Sub-task methods ──

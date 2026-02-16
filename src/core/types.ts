@@ -15,6 +15,7 @@ export const CreateTaskInput = z.object({
   projectId: z.string().nullable().optional(),
   recurrence: z.string().nullable().optional(),
   parentId: z.string().nullable().optional(),
+  remindAt: z.string().datetime().nullable().optional(),
   tags: z.array(z.string()).optional().default([]),
 });
 export type CreateTaskInput = z.infer<typeof CreateTaskInput>;
@@ -34,6 +35,7 @@ export interface Task {
   projectId: string | null;
   recurrence: string | null;
   parentId: string | null;
+  remindAt: string | null;
   tags: Tag[];
   children?: Task[];
   sortOrder: number;

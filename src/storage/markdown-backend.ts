@@ -190,6 +190,20 @@ export class MarkdownBackend implements IStorage {
     return { changes };
   }
 
+  listTasksDueForReminder(beforeTime: string): TaskRow[] {
+    const results: TaskRow[] = [];
+    for (const entry of this.taskIndex.values()) {
+      if (
+        entry.row.remindAt &&
+        entry.row.remindAt <= beforeTime &&
+        entry.row.status === "pending"
+      ) {
+        results.push(entry.row);
+      }
+    }
+    return results;
+  }
+
   // ── Task-Tag Relations ──
 
   getTaskTags(taskId: string): TaskTagJoin[] {

@@ -27,6 +27,8 @@ interface InboxProps {
     event: { ctrlKey: boolean; metaKey: boolean; shiftKey: boolean },
   ) => void;
   onReorder?: (orderedIds: string[]) => void;
+  onAddSubtask?: (parentId: string, title: string) => void;
+  onUpdateDueDate?: (taskId: string, dueDate: string | null) => void;
   queryText?: string;
   onQueryTextChange?: (value: string) => void;
   autoFocusTrigger?: number;
@@ -41,6 +43,8 @@ export function Inbox({
   selectedTaskIds,
   onMultiSelect,
   onReorder,
+  onAddSubtask,
+  onUpdateDueDate,
   queryText,
   onQueryTextChange,
   autoFocusTrigger,
@@ -105,6 +109,8 @@ export function Inbox({
         selectedTaskIds={selectedTaskIds}
         onMultiSelect={onMultiSelect}
         onReorder={onReorder}
+        onAddSubtask={onAddSubtask}
+        onUpdateDueDate={onUpdateDueDate}
       />
     </div>
   );

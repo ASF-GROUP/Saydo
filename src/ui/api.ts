@@ -172,6 +172,15 @@ export const api = {
     return handleResponse<Task[]>(res);
   },
 
+  async fetchDueReminders(): Promise<Task[]> {
+    if (isTauri()) {
+      const svc = await getServices();
+      return svc.taskService.getDueReminders();
+    }
+    const res = await fetch(`${BASE}/tasks/reminders/due`);
+    return handleResponse<Task[]>(res);
+  },
+
   async listTaskTree(): Promise<Task[]> {
     if (isTauri()) {
       const svc = await getServices();

@@ -19,6 +19,8 @@ interface TodayProps {
     event: { ctrlKey: boolean; metaKey: boolean; shiftKey: boolean },
   ) => void;
   onReorder?: (orderedIds: string[]) => void;
+  onAddSubtask?: (parentId: string, title: string) => void;
+  onUpdateDueDate?: (taskId: string, dueDate: string | null) => void;
   autoFocusTrigger?: number;
 }
 
@@ -42,6 +44,8 @@ export function Today({
   selectedTaskIds,
   onMultiSelect,
   onReorder,
+  onAddSubtask,
+  onUpdateDueDate,
   autoFocusTrigger,
 }: TodayProps) {
   const [overdueExpanded, setOverdueExpanded] = useState(true);
@@ -185,6 +189,8 @@ export function Today({
           selectedTaskIds={selectedTaskIds}
           onMultiSelect={onMultiSelect}
           onReorder={onReorder}
+          onAddSubtask={onAddSubtask}
+          onUpdateDueDate={onUpdateDueDate}
         />
       </div>
     </div>

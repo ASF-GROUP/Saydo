@@ -19,6 +19,8 @@ interface UpcomingProps {
     event: { ctrlKey: boolean; metaKey: boolean; shiftKey: boolean },
   ) => void;
   onReorder?: (orderedIds: string[]) => void;
+  onAddSubtask?: (parentId: string, title: string) => void;
+  onUpdateDueDate?: (taskId: string, dueDate: string | null) => void;
   autoFocusTrigger?: number;
 }
 
@@ -49,6 +51,8 @@ export function Upcoming({
   selectedTaskIds,
   onMultiSelect,
   onReorder,
+  onAddSubtask,
+  onUpdateDueDate,
   autoFocusTrigger,
 }: UpcomingProps) {
   const [overdueExpanded, setOverdueExpanded] = useState(true);
@@ -223,6 +227,8 @@ export function Upcoming({
                 selectedTaskIds={selectedTaskIds}
                 onMultiSelect={onMultiSelect}
                 onReorder={onReorder}
+                onAddSubtask={onAddSubtask}
+                onUpdateDueDate={onUpdateDueDate}
               />
             </div>
           ))}

@@ -18,6 +18,13 @@ import { CSS } from "@dnd-kit/utilities";
 import { ClipboardList } from "lucide-react";
 import type { Task } from "../../core/types.js";
 import { TaskItem } from "./TaskItem.js";
+import { InlineAddSubtask } from "./InlineAddSubtask.js";
+
+interface ChildStats {
+  children: Task[];
+  completed: number;
+  total: number;
+}
 
 interface TaskListProps {
   tasks: Task[];
@@ -31,6 +38,8 @@ interface TaskListProps {
     event: { ctrlKey: boolean; metaKey: boolean; shiftKey: boolean },
   ) => void;
   onReorder?: (orderedIds: string[]) => void;
+  onAddSubtask?: (parentId: string, title: string) => void;
+  onUpdateDueDate?: (taskId: string, dueDate: string | null) => void;
 }
 
 const SortableTaskItem = React.memo(function SortableTaskItem({
@@ -42,9 +51,11 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
   showCheckbox,
   onMultiSelect,
   depth,
-  childCount,
+  completedChildCount,
+  totalChildCount,
   expanded,
   onToggleExpand,
+  onUpdateDueDate,
 }: {
   task: Task;
   onToggle: (id: string) => void;
@@ -57,9 +68,11 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
     event: { ctrlKey: boolean; metaKey: boolean; shiftKey: boolean },
   ) => void;
   depth?: number;
-  childCount?: number;
+  completedChildCount?: number;
+  totalChildCount?: number;
   expanded?: boolean;
   onToggleExpand?: (id: string) => void;
+  onUpdateDueDate?: (taskId: string, dueDate: string | null) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: task.id });
 
@@ -81,20 +94,25 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
       style={style}
       innerRef={setNodeRef}
       depth={depth}
-      childCount={childCount}
+      completedChildCount={completedChildCount}
+      totalChildCount={totalChildCount}
       expanded={expanded}
       onToggleExpand={onToggleExpand}
+      onUpdateDueDate={onUpdateDueDate}
     />
   );
 });
 
-/** Build a parent→children map and count from a flat task list. */
-function buildChildMap(tasks: Task[]): Map<string, Task[]> {
-  const map = new Map<string, Task[]>();
+/** Build a parent -> children stats map from a flat task list. */
+function buildChildStats(tasks: Task[]): Map<string, ChildStats> {
+  const map = new Map<string, ChildStats>();
   for (const t of tasks) {
     if (t.parentId) {
-      if (!map.has(t.parentId)) map.set(t.parentId, []);
-      map.get(t.parentId)!.push(t);
+      if (!map.has(t.parentId)) map.set(t.parentId, { children: [], completed: 0, total: 0 });
+      const stats = map.get(t.parentId)!;
+      stats.children.push(t);
+      stats.total++;
+      if (t.status === "completed") stats.completed++;
     }
   }
   return map;
@@ -109,6 +127,8 @@ export function TaskList({
   selectedTaskIds,
   onMultiSelect,
   onReorder,
+  onAddSubtask,
+  onUpdateDueDate,
 }: TaskListProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
@@ -156,17 +176,21 @@ export function TaskList({
   }
 
   // Build tree structure from flat list
-  const childMap = buildChildMap(tasks);
+  const childStatsMap = buildChildStats(tasks);
   const topLevel = tasks.filter((t) => !t.parentId);
 
   // Flatten visible tree for DnD ordering
-  function flattenVisible(items: Task[], depth: number): Array<{ task: Task; depth: number }> {
-    const result: Array<{ task: Task; depth: number }> = [];
+  function flattenVisible(items: Task[], depth: number): Array<{ task: Task; depth: number; showAddSubtask?: boolean }> {
+    const result: Array<{ task: Task; depth: number; showAddSubtask?: boolean }> = [];
     for (const item of items) {
+      const stats = childStatsMap.get(item.id);
       result.push({ task: item, depth });
-      const children = childMap.get(item.id);
-      if (children && expandedIds.has(item.id)) {
-        result.push(...flattenVisible(children, depth + 1));
+      if (stats && expandedIds.has(item.id)) {
+        result.push(...flattenVisible(stats.children, depth + 1));
+        // Mark last child to show inline add subtask
+        if (onAddSubtask) {
+          result.push({ task: item, depth: depth + 1, showAddSubtask: true });
+        }
       }
     }
     return result;
@@ -174,28 +198,45 @@ export function TaskList({
 
   const visibleTasks = flattenVisible(topLevel, 0);
   const isMultiSelectActive = selectedTaskIds && selectedTaskIds.size > 0;
-  const taskIds = visibleTasks.map((v) => v.task.id);
+  const taskIds = visibleTasks.filter(v => !v.showAddSubtask).map((v) => v.task.id);
 
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
-        <div role="list" aria-label="Tasks" className="space-y-0.5">
-          {visibleTasks.map(({ task, depth }) => (
-            <SortableTaskItem
-              key={task.id}
-              task={task}
-              onToggle={onToggle}
-              onSelect={onSelect}
-              isSelected={selectedTaskId === task.id}
-              isMultiSelected={selectedTaskIds?.has(task.id) ?? false}
-              showCheckbox={!!isMultiSelectActive || !!onMultiSelect}
-              onMultiSelect={onMultiSelect}
-              depth={depth}
-              childCount={childMap.get(task.id)?.length ?? 0}
-              expanded={expandedIds.has(task.id)}
-              onToggleExpand={handleToggleExpand}
-            />
-          ))}
+        <div role="list" aria-label="Tasks" className="space-y-0">
+          {visibleTasks.map((entry) => {
+            if (entry.showAddSubtask) {
+              return (
+                <InlineAddSubtask
+                  key={`add-subtask-${entry.task.id}`}
+                  parentId={entry.task.id}
+                  depth={entry.depth}
+                  onAdd={onAddSubtask!}
+                />
+              );
+            }
+
+            const { task, depth } = entry;
+            const stats = childStatsMap.get(task.id);
+            return (
+              <SortableTaskItem
+                key={task.id}
+                task={task}
+                onToggle={onToggle}
+                onSelect={onSelect}
+                isSelected={selectedTaskId === task.id}
+                isMultiSelected={selectedTaskIds?.has(task.id) ?? false}
+                showCheckbox={!!isMultiSelectActive || !!onMultiSelect}
+                onMultiSelect={onMultiSelect}
+                depth={depth}
+                completedChildCount={stats?.completed ?? 0}
+                totalChildCount={stats?.total ?? 0}
+                expanded={expandedIds.has(task.id)}
+                onToggleExpand={handleToggleExpand}
+                onUpdateDueDate={onUpdateDueDate}
+              />
+            );
+          })}
         </div>
       </SortableContext>
     </DndContext>
