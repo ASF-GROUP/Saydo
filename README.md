@@ -16,14 +16,14 @@ Saydo is a desktop task manager built with Tauri and React. You type tasks in na
 
 - Natural language input — `buy milk tomorrow 3pm p1 #groceries +shopping` just works
 - AI sidebar — chat with your LLM of choice to create tasks, plan your day, get suggestions
-- Voice — speak instead of type, with browser, Groq, or local models (Whisper, Kokoro)
+- Voice — speak instead of type, with browser, Groq, Inworld AI, or local models (Whisper, Kokoro, Piper)
 - Plugins — TypeScript files in a folder. Commands, sidebar panels, views, task hooks, storage
 - Dual storage — SQLite (default) or Markdown files with YAML frontmatter
 - Sub-tasks, templates, recurring tasks, reminders
 - Focus mode — distraction-free, keyboard-driven
 - CLI companion — `saydo add`, `saydo list`, `saydo done`
 - Light/dark themes + custom CSS
-- 770+ tests
+- 960+ tests
 
 ## Quick start
 
@@ -86,14 +86,14 @@ Nothing AI-related runs unless you configure it. No keys are stored or proxied b
 | Frontend | React 19, Tailwind CSS 4 |
 | Database | SQLite (better-sqlite3 / sql.js) + Drizzle ORM |
 | AI | OpenAI, Anthropic, OpenRouter, Ollama, LM Studio |
-| Voice | Browser Speech API, Groq, Whisper, Kokoro |
+| Voice | Browser Speech API, Groq, Inworld AI, Whisper, Kokoro, Piper |
 | CLI | Commander.js |
 | Tests | Vitest |
 | Build | Vite 6 |
 
 ## Status
 
-v1.0 shipped. Desktop app works on Mac, Windows, Linux. Active development — voice and AI intelligence features are latest additions.
+v1.0 shipped. Desktop app works on Mac, Windows, Linux. Active development — Inworld AI TTS, mobile UI, and AI intelligence tools are latest additions.
 
 Next milestone: Saydo Sync (optional paid cross-device sync).
 

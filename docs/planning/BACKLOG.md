@@ -163,7 +163,7 @@ All work items for ASF Saydo, organized by area and prioritized within each sect
 | A-29 | VAD (Voice Activity Detection) via @ricky0123/vad-web | done | S21 | useVAD hook for hands-free mode |
 | A-22 | AI chat streaming error recovery | done | S17 | withTimeout(), partial content preservation, structured error events |
 | A-23 | Dynamic model discovery for all AI providers | done | S18 | Fetch available models from provider APIs, dynamic dropdown in Settings with Custom fallback |
-| A-24 | Local AI voice models (STT/TTS) | needs-design | — | Local speech-to-text and text-to-speech models for mobile & desktop (Whisper, Piper, etc.) |
+| A-24 | Local AI voice models (STT/TTS) | done | S24 | Whisper local STT, Kokoro local TTS, Piper local TTS — all run in browser via WASM/ONNX |
 | A-25 | Pluggable LLM core (LLMPipeline, LLMExecutor, ToolRegistry) | done | S20 | Refactored AI layer into pipeline/executor/registry pattern |
 | A-26 | AI intelligence tools (analyze-patterns, workload, smart-organize, energy) | done | S22 | 5 analytical tools in src/ai/tools/builtin/ |
 | A-30 | Tiered system prompts (SOTA full + compact local) | done | S26 | Full prompt for cloud, compact for Ollama/LM Studio, tool filtering, duplicate loop detection |
@@ -185,6 +185,9 @@ All work items for ASF Saydo, organized by area and prioritized within each sect
 | A-46 | Conversational daily planning (voice) | idea | — | "Talk me through my day" — AI walks through tasks, asks priorities, builds plan via multi-turn voice conversation. Inspired by Sunsama. |
 | A-47 | Auto-scheduling into time blocks | idea | — | Given tasks with durations + available hours, algorithmically schedule into time blocks. Output as timeline or ICS. Inspired by Motion, Morgen. |
 | A-48 | Plugin-contributed AI tools | idea | — | Let plugins register custom AI tools at runtime via ToolRegistry. E.g., a Gmail plugin adds import_emails_as_tasks. Architecture already supports this. |
+| A-49 | Inworld AI TTS provider | done | S26 | Cloud TTS via Inworld AI streaming API. Adapter, proxy (NDJSON streaming), model selection (1.5-max/mini), contextual API key UX |
+| A-50 | Contextual API key UX for Voice & AI tabs | done | S26 | API key input appears inline under selected provider with "Set" indicator and help text |
+| A-51 | TTS model selection interface | done | S26 | TTSProviderPlugin.getModels(), model dropdown in Voice settings, Inworld exposes 4 models |
 
 ## Storage & Data
 

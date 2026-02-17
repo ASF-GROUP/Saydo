@@ -85,7 +85,7 @@ src/
 │       ├── registry.ts      # VoiceProviderRegistry
 │       ├── provider.ts      # Voice provider factory
 │       ├── audio-utils.ts   # WAV encoding, sample rate conversion
-│       └── adapters/        # STT: browser, groq, whisper-local | TTS: browser, groq, kokoro-local
+│       └── adapters/        # STT: browser, groq, whisper-local | TTS: browser, groq, kokoro-local, piper-local, inworld
 │
 ├── plugins/                 # Plugin system
 │   ├── loader.ts            # Discovery, validation, loading
@@ -361,10 +361,10 @@ Tools are registered in `ToolRegistry` (`createDefaultToolRegistry()`). Plugins 
 Voice I/O mirrors the LLM provider pattern:
 
 - **STT**: `STTProviderPlugin` — Browser Speech API, Groq Whisper, local Whisper (@huggingface/transformers)
-- **TTS**: `TTSProviderPlugin` — Browser Speech Synthesis, Groq PlayAI, local Kokoro (kokoro-js)
+- **TTS**: `TTSProviderPlugin` — Browser Speech Synthesis, Groq PlayAI, Inworld AI (streaming, model selection), local Kokoro (kokoro-js), local Piper (piper-phonemize + onnxruntime)
 - **VAD**: Voice activity detection via `@ricky0123/vad-web` for hands-free mode
 
-Voice settings stored in localStorage (`saydo-voice-settings`).
+Voice settings stored in localStorage (`saydo-voice-settings`). Cloud TTS providers (Groq, Inworld) are proxied through Vite middleware to avoid CORS and handle auth. Inworld uses the streaming NDJSON endpoint (`/tts/v1/voice:stream`) for lower time-to-first-audio.
 
 ## Plugin system
 

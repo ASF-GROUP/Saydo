@@ -593,3 +593,51 @@ See [BACKLOG.md](BACKLOG.md) for all items.
 | — | Update all documentation | done |
 
 **Result**: Full rebrand complete. No functional changes — same test count (772 passing).
+
+### Sprint 24 — "Local Voice Models" (completed)
+
+**Goal**: Add Piper TTS as a local voice provider and move Kokoro TTS to a Web Worker for non-blocking synthesis. Expand structured logging across all layers.
+
+| ID | Item | Status |
+|----|------|--------|
+| A-24 | Piper local TTS provider (piper-phonemize + onnxruntime-web) | done |
+| — | Move Kokoro TTS to Web Worker (non-blocking synthesis) | done |
+| — | Structured logging with module scoping | done |
+| — | Piper TTS tests (12 tests) | done |
+| — | Kokoro Worker tests (3 new tests) | done |
+
+**Result**: Two local TTS engines now available in-browser. Piper uses piper-phonemize WASM + ONNX Runtime. Kokoro offloaded to Web Worker so main thread stays responsive. 813 passing tests (798 + 12 Piper + 3 new Kokoro Worker).
+
+### Sprint 25 — "Project & Reminder AI Tools" (completed)
+
+**Goal**: Give the AI assistant project management and reminder capabilities via new tool functions.
+
+| ID | Item | Status |
+|----|------|--------|
+| — | 5 project CRUD tools (create/list/get/update/delete_project) | done |
+| — | 4 reminder tools (list/set/snooze/dismiss_reminder) | done |
+| — | ProjectService.update() for partial project updates | done |
+| — | System prompt updated to document project + reminder tools | done |
+| — | Project tools tests (24 tests) | done |
+| — | Reminder tools tests (20 tests) | done |
+
+**Result**: AI can now manage projects and reminders. createDefaultToolRegistry() registers 19 tools total (5 task CRUD + 5 project CRUD + 4 reminder + 5 analytical). 857 passing tests (813 + 24 project + 20 reminder).
+
+### Sprint 26 — "Inworld TTS, Mobile UI & Settings" (completed)
+
+**Goal**: Add Inworld AI as a cloud TTS provider with streaming and model selection. Mobile-responsive UI. Comprehensive app settings. Contextual API key UX across Voice and AI tabs.
+
+| ID | Item | Status |
+|----|------|--------|
+| A-49 | Inworld AI TTS provider (adapter + streaming proxy) | done |
+| A-50 | Contextual API key UX (Voice tab + AI tab) | done |
+| A-51 | TTS model selection (TTSProviderPlugin.getModels()) | done |
+| — | Streaming proxy via NDJSON endpoint (/voice:stream) | done |
+| — | Mobile responsive UI (BottomNavBar, MobileDrawer, FAB, useIsMobile) | done |
+| — | SettingsContext + expanded GeneralTab (accent color, density, date format, preferences) | done |
+| — | Task breakdown, duplicate detection, overcommitment AI tools | done |
+| — | Inworld TTS tests (10 tests) | done |
+| — | Mobile UI tests (BottomNavBar, FAB, MobileDrawer, useIsMobile) | done |
+| — | Settings tests (SettingsContext, GeneralTab, format-date) | done |
+
+**Result**: Inworld AI TTS with streaming NDJSON proxy, 4-model selection, and contextual API key input. Mobile-first responsive layout. Comprehensive settings with SettingsContext. 960 passing tests.
