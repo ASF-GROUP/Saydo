@@ -36,6 +36,11 @@ export function useAppCommands(
         callback: () => openSettingsTab("general"),
       },
       {
+        id: "nav-settings-appearance",
+        name: "Go to Settings: Appearance",
+        callback: () => openSettingsTab("appearance"),
+      },
+      {
         id: "nav-settings-ai",
         name: "Go to Settings: AI Assistant",
         callback: () => openSettingsTab("ai"),

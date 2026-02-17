@@ -11,23 +11,39 @@ import { api } from "../api/index.js";
 export interface GeneralSettings {
   accent_color: string;
   density: "compact" | "default" | "comfortable";
+  font_size: "small" | "default" | "large";
+  reduce_animations: "true" | "false";
   week_start: "sunday" | "monday" | "saturday";
   date_format: "relative" | "short" | "long" | "iso";
   time_format: "12h" | "24h";
   default_priority: "none" | "p1" | "p2" | "p3" | "p4";
   confirm_delete: "true" | "false";
   start_view: "inbox" | "today" | "upcoming";
+  sound_enabled: "true" | "false";
+  sound_volume: string;
+  sound_complete: "true" | "false";
+  sound_create: "true" | "false";
+  sound_delete: "true" | "false";
+  sound_reminder: "true" | "false";
 }
 
 const DEFAULT_SETTINGS: GeneralSettings = {
   accent_color: "#3b82f6",
   density: "default",
+  font_size: "default",
+  reduce_animations: "false",
   week_start: "sunday",
   date_format: "relative",
   time_format: "12h",
   default_priority: "none",
   confirm_delete: "true",
   start_view: "inbox",
+  sound_enabled: "true",
+  sound_volume: "70",
+  sound_complete: "true",
+  sound_create: "true",
+  sound_delete: "true",
+  sound_reminder: "true",
 };
 
 const SETTING_KEYS = Object.keys(DEFAULT_SETTINGS) as (keyof GeneralSettings)[];
@@ -96,6 +112,18 @@ function applyDensity(density: GeneralSettings["density"]) {
   else if (density === "comfortable") el.classList.add("density-comfortable");
 }
 
+function applyFontSize(size: GeneralSettings["font_size"]) {
+  const el = document.documentElement;
+  el.classList.remove("font-small", "font-large");
+  if (size === "small") el.classList.add("font-small");
+  else if (size === "large") el.classList.add("font-large");
+}
+
+function applyReduceAnimations(reduce: GeneralSettings["reduce_animations"]) {
+  const el = document.documentElement;
+  el.classList.toggle("reduce-motion", reduce === "true");
+}
+
 export function SettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<GeneralSettings>(DEFAULT_SETTINGS);
   const [loaded, setLoaded] = useState(false);
@@ -115,6 +143,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         setSettings(next);
         applyAccentColor(next.accent_color);
         applyDensity(next.density);
+        applyFontSize(next.font_size);
+        applyReduceAnimations(next.reduce_animations);
         setLoaded(true);
       })
       .catch(() => {
@@ -129,6 +159,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         const next = { ...prev, [key]: value };
         if (key === "accent_color") applyAccentColor(value as string);
         if (key === "density") applyDensity(value as GeneralSettings["density"]);
+        if (key === "font_size") applyFontSize(value as GeneralSettings["font_size"]);
+        if (key === "reduce_animations") applyReduceAnimations(value as GeneralSettings["reduce_animations"]);
         return next;
       });
       api.setAppSetting(key, String(value)).catch(() => {});

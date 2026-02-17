@@ -28,6 +28,7 @@ import { useBulkActions } from "./hooks/useBulkActions.js";
 import { useAppShortcuts } from "./hooks/useAppShortcuts.js";
 import { useAppCommands } from "./hooks/useAppCommands.js";
 import { useIsMobile } from "./hooks/useIsMobile.js";
+import { useSoundEffect } from "./hooks/useSoundEffect.js";
 import { shortcutManager } from "./shortcutManagerInstance.js";
 import { Inbox } from "./views/Inbox.js";
 import { Today } from "./views/Today.js";
@@ -96,6 +97,7 @@ function AppContent() {
     return window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === "1";
   });
   const isMobile = useIsMobile();
+  const playSound = useSoundEffect();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [templateSelectorOpen, setTemplateSelectorOpen] = useState(false);
@@ -274,7 +276,8 @@ function AppContent() {
     if (typeof Notification !== "undefined" && Notification.permission === "granted") {
       new Notification("Saydo Reminder", { body: task.title });
     }
-  }, []);
+    playSound("reminder");
+  }, [playSound]);
 
   useReminders({ onReminder: handleReminder, enabled: true });
 

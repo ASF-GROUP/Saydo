@@ -1,148 +1,14 @@
 import { useState, useEffect } from "react";
-import { Bell, Check } from "lucide-react";
-import { themeManager } from "../../themes/manager.js";
+import { Bell, Volume2 } from "lucide-react";
 import { api } from "../../api/index.js";
 import { useGeneralSettings, type GeneralSettings } from "../../context/SettingsContext.js";
-import { DEFAULT_PROJECT_COLORS } from "../../../config/defaults.js";
-
-// ── Reusable sub-components (local to this file) ──
-
-function SegmentedControl<T extends string>({
-  options,
-  value,
-  onChange,
-}: {
-  options: { value: T; label: string }[];
-  value: T;
-  onChange: (value: T) => void;
-}) {
-  return (
-    <div className="inline-flex rounded-lg border border-border bg-surface-secondary p-0.5">
-      {options.map((opt) => (
-        <button
-          key={opt.value}
-          onClick={() => onChange(opt.value)}
-          className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-            value === opt.value
-              ? "bg-accent text-white shadow-sm"
-              : "text-on-surface-secondary hover:text-on-surface"
-          }`}
-        >
-          {opt.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function ColorSwatchPicker({
-  colors,
-  value,
-  onChange,
-}: {
-  colors: readonly string[];
-  value: string;
-  onChange: (color: string) => void;
-}) {
-  return (
-    <div className="flex items-center gap-2 flex-wrap">
-      {colors.map((color) => (
-        <button
-          key={color}
-          onClick={() => onChange(color)}
-          aria-label={`Accent color ${color}`}
-          className={`w-7 h-7 rounded-full flex items-center justify-center transition-all ${
-            value === color ? "ring-2 ring-offset-2 ring-offset-surface ring-on-surface" : "hover:scale-110"
-          }`}
-          style={{ backgroundColor: color }}
-        >
-          {value === color && <Check size={14} className="text-white drop-shadow" />}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function SettingRow({
-  label,
-  description,
-  children,
-}: {
-  label: string;
-  description?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-4">
-      <div className="min-w-0">
-        <p className="text-sm text-on-surface">{label}</p>
-        {description && <p className="text-xs text-on-surface-muted">{description}</p>}
-      </div>
-      <div className="flex-shrink-0">{children}</div>
-    </div>
-  );
-}
-
-function SettingSelect<T extends string>({
-  value,
-  onChange,
-  options,
-}: {
-  value: T;
-  onChange: (value: T) => void;
-  options: { value: T; label: string }[];
-}) {
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value as T)}
-      className="px-3 py-1.5 text-sm border border-border rounded-lg bg-surface text-on-surface"
-    >
-      {options.map((opt) => (
-        <option key={opt.value} value={opt.value}>
-          {opt.label}
-        </option>
-      ))}
-    </select>
-  );
-}
-
-function Toggle({
-  enabled,
-  onToggle,
-  disabled,
-}: {
-  enabled: boolean;
-  onToggle: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <button
-      onClick={onToggle}
-      disabled={disabled}
-      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-        enabled ? "bg-accent" : "bg-surface-tertiary"
-      } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
-    >
-      <span
-        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-          enabled ? "translate-x-4.5" : "translate-x-0.5"
-        }`}
-      />
-    </button>
-  );
-}
+import { SegmentedControl, SettingRow, SettingSelect, Toggle } from "./components.js";
+import { previewSound, type SoundEvent } from "../../../utils/sounds.js";
 
 // ── Main component ──
 
 export function GeneralTab() {
   const { settings, loaded, updateSetting } = useGeneralSettings();
-  const [currentTheme, setCurrentTheme] = useState(themeManager.getCurrent());
-
-  const handleThemeChange = (themeId: string) => {
-    themeManager.setTheme(themeId);
-    setCurrentTheme(themeId);
-  };
 
   if (!loaded) return null;
 
@@ -150,45 +16,6 @@ export function GeneralTab() {
 
   return (
     <div className="space-y-8">
-      {/* ── Appearance ── */}
-      <section>
-        <h2 className="text-lg font-semibold mb-3 text-on-surface">Appearance</h2>
-        <div className="space-y-4 max-w-md">
-          <SettingRow label="Theme" description="Choose light, dark, or match your system">
-            <SegmentedControl
-              options={[
-                { value: "system", label: "System" },
-                { value: "light", label: "Light" },
-                { value: "dark", label: "Dark" },
-              ]}
-              value={currentTheme}
-              onChange={handleThemeChange}
-            />
-          </SettingRow>
-
-          <div>
-            <p className="text-sm text-on-surface mb-2">Accent color</p>
-            <ColorSwatchPicker
-              colors={DEFAULT_PROJECT_COLORS}
-              value={settings.accent_color}
-              onChange={(color) => updateSetting("accent_color", color)}
-            />
-          </div>
-
-          <SettingRow label="Density" description="Adjust UI spacing">
-            <SegmentedControl
-              options={[
-                { value: "compact" as const, label: "Compact" },
-                { value: "default" as const, label: "Default" },
-                { value: "comfortable" as const, label: "Comfortable" },
-              ]}
-              value={settings.density}
-              onChange={(v) => updateSetting("density", v)}
-            />
-          </SettingRow>
-        </div>
-      </section>
-
       {/* ── Date & Time ── */}
       <section>
         <h2 className="text-lg font-semibold mb-3 text-on-surface">Date &amp; Time</h2>
@@ -278,9 +105,77 @@ export function GeneralTab() {
         </div>
       </section>
 
-      {/* ── Notifications (existing) ── */}
+      {/* ── Sound Effects ── */}
+      <SoundSettings />
+
+      {/* ── Notifications ── */}
       <NotificationSettings />
     </div>
+  );
+}
+
+const SOUND_EVENTS: { event: SoundEvent; settingKey: "sound_complete" | "sound_create" | "sound_delete" | "sound_reminder"; label: string }[] = [
+  { event: "complete", settingKey: "sound_complete", label: "Task completed" },
+  { event: "create", settingKey: "sound_create", label: "Task created" },
+  { event: "delete", settingKey: "sound_delete", label: "Task deleted" },
+  { event: "reminder", settingKey: "sound_reminder", label: "Reminder" },
+];
+
+function SoundSettings() {
+  const { settings, updateSetting } = useGeneralSettings();
+  const enabled = settings.sound_enabled === "true";
+  const volume = parseInt(settings.sound_volume, 10) || 0;
+
+  const handlePreview = (event: SoundEvent) => {
+    previewSound(event, volume / 100).catch(() => {});
+  };
+
+  return (
+    <section>
+      <h2 className="text-lg font-semibold mb-3 text-on-surface flex items-center gap-2">
+        <Volume2 className="w-5 h-5" />
+        Sound Effects
+      </h2>
+      <div className="space-y-4 max-w-md">
+        <SettingRow label="Enable sound effects" description="Play sounds for task events">
+          <Toggle
+            enabled={enabled}
+            onToggle={() => updateSetting("sound_enabled", enabled ? "false" : "true")}
+          />
+        </SettingRow>
+
+        <div className={enabled ? "" : "opacity-50 pointer-events-none"}>
+          <SettingRow label="Volume" description={`${volume}%`}>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              value={volume}
+              onChange={(e) => updateSetting("sound_volume", e.target.value)}
+              className="w-32 accent-[var(--color-accent)]"
+            />
+          </SettingRow>
+        </div>
+
+        {SOUND_EVENTS.map(({ event, settingKey, label }) => (
+          <div key={event} className={`flex items-center justify-between gap-4 ${enabled ? "" : "opacity-50 pointer-events-none"}`}>
+            <div className="flex items-center gap-3 min-w-0">
+              <Toggle
+                enabled={settings[settingKey] === "true"}
+                onToggle={() => updateSetting(settingKey, settings[settingKey] === "true" ? "false" : "true")}
+              />
+              <span className="text-sm text-on-surface">{label}</span>
+            </div>
+            <button
+              onClick={() => handlePreview(event)}
+              className="text-xs text-accent hover:text-accent-hover px-2 py-1 rounded transition-colors"
+            >
+              Preview
+            </button>
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, act, waitFor } from "@testing-library/react";
 import { SettingsProvider, useGeneralSettings } from "../../../src/ui/context/SettingsContext.js";
 
@@ -19,6 +19,8 @@ function TestConsumer() {
       <span data-testid="loaded">{String(loaded)}</span>
       <span data-testid="accent">{settings.accent_color}</span>
       <span data-testid="density">{settings.density}</span>
+      <span data-testid="font-size">{settings.font_size}</span>
+      <span data-testid="reduce-animations">{settings.reduce_animations}</span>
       <span data-testid="date-format">{settings.date_format}</span>
       <span data-testid="time-format">{settings.time_format}</span>
       <span data-testid="default-priority">{settings.default_priority}</span>
@@ -31,6 +33,12 @@ function TestConsumer() {
       <button data-testid="set-density" onClick={() => updateSetting("density", "compact")}>
         Set density
       </button>
+      <button data-testid="set-font-size" onClick={() => updateSetting("font_size", "large")}>
+        Set font size
+      </button>
+      <button data-testid="set-reduce-animations" onClick={() => updateSetting("reduce_animations", "true")}>
+        Set reduce animations
+      </button>
     </div>
   );
 }
@@ -41,7 +49,7 @@ describe("SettingsContext", () => {
     // Reset document element state
     document.documentElement.style.removeProperty("--color-accent");
     document.documentElement.style.removeProperty("--color-accent-hover");
-    document.documentElement.classList.remove("density-compact", "density-comfortable");
+    document.documentElement.classList.remove("density-compact", "density-comfortable", "font-small", "font-large", "reduce-motion");
   });
 
   it("provides default settings when none are stored", async () => {
@@ -57,6 +65,8 @@ describe("SettingsContext", () => {
 
     expect(screen.getByTestId("accent").textContent).toBe("#3b82f6");
     expect(screen.getByTestId("density").textContent).toBe("default");
+    expect(screen.getByTestId("font-size").textContent).toBe("default");
+    expect(screen.getByTestId("reduce-animations").textContent).toBe("false");
     expect(screen.getByTestId("date-format").textContent).toBe("relative");
     expect(screen.getByTestId("time-format").textContent).toBe("12h");
     expect(screen.getByTestId("default-priority").textContent).toBe("none");
@@ -143,5 +153,46 @@ describe("SettingsContext", () => {
 
     expect(document.documentElement.classList.contains("density-compact")).toBe(true);
     expect(document.documentElement.classList.contains("density-comfortable")).toBe(false);
+  });
+
+  it("font size change applies CSS class to documentElement", async () => {
+    render(
+      <SettingsProvider>
+        <TestConsumer />
+      </SettingsProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("loaded").textContent).toBe("true");
+    });
+
+    act(() => {
+      screen.getByTestId("set-font-size").click();
+    });
+
+    expect(screen.getByTestId("font-size").textContent).toBe("large");
+    expect(document.documentElement.classList.contains("font-large")).toBe(true);
+    expect(document.documentElement.classList.contains("font-small")).toBe(false);
+    expect(api.setAppSetting).toHaveBeenCalledWith("font_size", "large");
+  });
+
+  it("reduce animations change applies CSS class to documentElement", async () => {
+    render(
+      <SettingsProvider>
+        <TestConsumer />
+      </SettingsProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("loaded").textContent).toBe("true");
+    });
+
+    act(() => {
+      screen.getByTestId("set-reduce-animations").click();
+    });
+
+    expect(screen.getByTestId("reduce-animations").textContent).toBe("true");
+    expect(document.documentElement.classList.contains("reduce-motion")).toBe(true);
+    expect(api.setAppSetting).toHaveBeenCalledWith("reduce_animations", "true");
   });
 });

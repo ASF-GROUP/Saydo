@@ -29,6 +29,20 @@
   }
 }
 
+@layer base {
+  .font-small {
+    font-size: 87.5%;
+  }
+  .font-large {
+    font-size: 112.5%;
+  }
+  .reduce-motion,
+  .reduce-motion * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 @layer utilities {
   .pb-safe {
     padding-bottom: env(safe-area-inset-bottom, 0px);

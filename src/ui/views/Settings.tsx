@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   X,
+  SlidersHorizontal,
   Palette,
   Bot,
   Mic,
@@ -13,6 +14,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { GeneralTab } from "./settings/GeneralTab.js";
+import { AppearanceTab } from "./settings/AppearanceTab.js";
 import { AITab } from "./settings/AITab.js";
 import { VoiceTab } from "./settings/VoiceTab.js";
 import { PluginsTab } from "./settings/PluginsTab.js";
@@ -40,7 +42,8 @@ interface TabMeta {
 }
 
 const TABS: TabMeta[] = [
-  { id: "general", label: "General", icon: <Palette className="w-4 h-4" />, mobileIcon: <Palette className="w-5 h-5" /> },
+  { id: "general", label: "General", icon: <SlidersHorizontal className="w-4 h-4" />, mobileIcon: <SlidersHorizontal className="w-5 h-5" /> },
+  { id: "appearance", label: "Appearance", subtitle: "Theme & layout", icon: <Palette className="w-4 h-4" />, mobileIcon: <Palette className="w-5 h-5" /> },
   { id: "ai", label: "AI Assistant", subtitle: "Models & providers", icon: <Bot className="w-4 h-4" />, mobileIcon: <Bot className="w-5 h-5" /> },
   { id: "voice", label: "Voice", subtitle: "Speech & microphone", icon: <Mic className="w-4 h-4" />, mobileIcon: <Mic className="w-5 h-5" /> },
   { id: "plugins", label: "Plugins", icon: <Puzzle className="w-4 h-4" />, mobileIcon: <Puzzle className="w-5 h-5" /> },
@@ -52,7 +55,7 @@ const TABS: TabMeta[] = [
 
 // Sections for the mobile index page
 const MOBILE_SECTIONS: { label: string; tabs: SettingsTab[] }[] = [
-  { label: "General", tabs: ["general", "keyboard", "data"] },
+  { label: "General", tabs: ["general", "appearance", "keyboard", "data"] },
   { label: "AI & Voice", tabs: ["ai", "voice"] },
   { label: "Extensions", tabs: ["plugins", "templates"] },
   { label: "Info", tabs: ["about"] },
@@ -61,6 +64,7 @@ const MOBILE_SECTIONS: { label: string; tabs: SettingsTab[] }[] = [
 function renderTabContent(tab: SettingsTab) {
   switch (tab) {
     case "general": return <GeneralTab />;
+    case "appearance": return <AppearanceTab />;
     case "ai": return <AITab />;
     case "voice": return <VoiceTab />;
     case "plugins": return <PluginsTab />;

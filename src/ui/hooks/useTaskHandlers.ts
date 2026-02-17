@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { useTaskContext } from "../context/TaskContext.js";
+import { useSoundEffect } from "./useSoundEffect.js";
 import { api } from "../api/index.js";
 
 export function useTaskHandlers(selectedProjectId: string | null) {
@@ -10,6 +11,7 @@ export function useTaskHandlers(selectedProjectId: string | null) {
     completeTask,
     deleteTask,
   } = useTaskContext();
+  const playSound = useSoundEffect();
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
   const handleCreateTask = async (parsed: {
@@ -30,10 +32,12 @@ export function useTaskHandlers(selectedProjectId: string | null) {
       projectId: selectedProjectId,
       ...(parsed.recurrence ? { recurrence: parsed.recurrence } : {}),
     } as any);
+    playSound("create");
   };
 
   const handleToggleTask = async (id: string) => {
     await completeTask(id);
+    playSound("complete");
   };
 
   const handleSelectTask = (id: string) => {
@@ -50,6 +54,7 @@ export function useTaskHandlers(selectedProjectId: string | null) {
 
   const handleDeleteTask = async (id: string) => {
     await deleteTask(id);
+    playSound("delete");
     setSelectedTaskId(null);
   };
 

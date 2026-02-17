@@ -13,7 +13,7 @@ vi.mock("../../../src/ui/api/index.js", () => ({
 
 import { api } from "../../../src/ui/api/index.js";
 
-// Mock themeManager
+// Mock themeManager (still needed by SettingsProvider indirectly)
 vi.mock("../../../src/ui/themes/manager.js", () => ({
   themeManager: {
     getCurrent: vi.fn().mockReturnValue("system"),
@@ -23,6 +23,11 @@ vi.mock("../../../src/ui/themes/manager.js", () => ({
       { id: "dark", name: "Dark", type: "dark" },
     ]),
   },
+}));
+
+// Mock sounds utility
+vi.mock("../../../src/utils/sounds.js", () => ({
+  previewSound: vi.fn(),
 }));
 
 // Mock Notification API
@@ -46,66 +51,20 @@ describe("GeneralTab", () => {
     (api.getAppSetting as any).mockResolvedValue(null);
     document.documentElement.style.removeProperty("--color-accent");
     document.documentElement.style.removeProperty("--color-accent-hover");
-    document.documentElement.classList.remove("density-compact", "density-comfortable");
+    document.documentElement.classList.remove("density-compact", "density-comfortable", "font-small", "font-large", "reduce-motion");
   });
 
-  it("renders all 4 sections", async () => {
+  it("renders 3 sections (no Appearance)", async () => {
     renderGeneralTab();
     await waitFor(() => {
-      expect(screen.getByText("Appearance")).toBeDefined();
+      expect(screen.getByText("Date & Time")).toBeDefined();
     });
-    expect(screen.getByText("Date & Time")).toBeDefined();
     expect(screen.getByText("Task Behavior")).toBeDefined();
-    // NotificationSettings loads its own settings async, wait for it
     await waitFor(() => {
       expect(screen.getByText("Notifications")).toBeDefined();
     });
-  });
-
-  it("renders theme segmented control with system/light/dark options", async () => {
-    renderGeneralTab();
-    await waitFor(() => {
-      expect(screen.getByText("System")).toBeDefined();
-    });
-    expect(screen.getByText("Light")).toBeDefined();
-    expect(screen.getByText("Dark")).toBeDefined();
-  });
-
-  it("renders 8 accent color swatches", async () => {
-    renderGeneralTab();
-    await waitFor(() => {
-      expect(screen.getByText("Accent color")).toBeDefined();
-    });
-    const swatches = screen.getAllByLabelText(/Accent color #/);
-    expect(swatches.length).toBe(8);
-  });
-
-  it("accent color picker updates setting on click", async () => {
-    renderGeneralTab();
-    await waitFor(() => {
-      expect(screen.getByText("Accent color")).toBeDefined();
-    });
-    const redSwatch = screen.getByLabelText("Accent color #ef4444");
-    fireEvent.click(redSwatch);
-    expect(api.setAppSetting).toHaveBeenCalledWith("accent_color", "#ef4444");
-  });
-
-  it("renders density segmented control", async () => {
-    renderGeneralTab();
-    await waitFor(() => {
-      expect(screen.getByText("Compact")).toBeDefined();
-    });
-    expect(screen.getByText("Default")).toBeDefined();
-    expect(screen.getByText("Comfortable")).toBeDefined();
-  });
-
-  it("density control updates setting", async () => {
-    renderGeneralTab();
-    await waitFor(() => {
-      expect(screen.getByText("Compact")).toBeDefined();
-    });
-    fireEvent.click(screen.getByText("Compact"));
-    expect(api.setAppSetting).toHaveBeenCalledWith("density", "compact");
+    // Appearance section should NOT be present
+    expect(screen.queryByText("Appearance")).toBeNull();
   });
 
   it("renders week start dropdown", async () => {
@@ -120,7 +79,6 @@ describe("GeneralTab", () => {
     await waitFor(() => {
       expect(screen.getByText("Date format")).toBeDefined();
     });
-    // Should show preview descriptions (multiple exist for different settings)
     const previews = screen.getAllByText(/e\.g\./);
     expect(previews.length).toBeGreaterThan(0);
   });
@@ -154,7 +112,6 @@ describe("GeneralTab", () => {
     await waitFor(() => {
       expect(screen.getByText("Default priority")).toBeDefined();
     });
-    // Find the select that contains priority options
     const selects = screen.getAllByRole("combobox");
     const prioritySelect = selects.find((s) =>
       Array.from(s.querySelectorAll("option")).some((o) => o.textContent?.includes("Urgent")),
@@ -176,7 +133,6 @@ describe("GeneralTab", () => {
     await waitFor(() => {
       expect(screen.getByText("Confirm before deleting")).toBeDefined();
     });
-    // Find the toggle button near "Confirm before deleting"
     const label = screen.getByText("Confirm before deleting");
     const row = label.closest(".flex")!;
     const toggle = row.querySelector("button")!;
