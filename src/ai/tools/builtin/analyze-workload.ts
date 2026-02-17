@@ -11,6 +11,96 @@ const OVERLOADED_TASK_THRESHOLD = 5;
 const OVERLOADED_WEIGHT_THRESHOLD = 12;
 const LIGHT_TASK_THRESHOLD = 2;
 
+export function registerCheckOvercommitmentTool(registry: ToolRegistry): void {
+  registry.register(
+    {
+      name: "check_overcommitment",
+      description:
+        "Quick check if a specific date is overloaded with tasks. " +
+        "Use proactively when creating or scheduling tasks with due dates.",
+      parameters: {
+        type: "object",
+        properties: {
+          date: {
+            type: "string",
+            description: "ISO date to check (YYYY-MM-DD). Defaults to today.",
+          },
+        },
+      },
+    },
+    async (args, ctx) => {
+      const now = new Date();
+      const todayISO = now.toISOString().split("T")[0];
+      const targetDate = (args.date as string) || todayISO;
+
+      const pending = await ctx.taskService.list({ status: "pending" });
+
+      // Count tasks due on the target date
+      const tasksOnDate = pending.filter(
+        (t) => t.dueDate && t.dueDate.split("T")[0] === targetDate,
+      );
+
+      // Count overdue tasks
+      const overdue = pending.filter(
+        (t) => t.dueDate && t.dueDate.split("T")[0] < todayISO,
+      );
+
+      // Calculate priority weight for the target date
+      let priorityWeight = 0;
+      for (const task of tasksOnDate) {
+        priorityWeight += PRIORITY_WEIGHT[task.priority ?? 4] ?? 1;
+      }
+
+      const isOverloaded =
+        tasksOnDate.length > OVERLOADED_TASK_THRESHOLD ||
+        priorityWeight > OVERLOADED_WEIGHT_THRESHOLD;
+
+      // Find a lighter day to suggest if overloaded
+      let suggestion: string | null = null;
+      if (isOverloaded) {
+        // Look at 7 days around the target to find a lighter day
+        const targetD = new Date(targetDate + "T00:00:00");
+        let lightest: { date: string; count: number } | null = null;
+
+        for (let i = 1; i <= 7; i++) {
+          const d = new Date(targetD);
+          d.setDate(d.getDate() + i);
+          const dateStr = d.toISOString().split("T")[0];
+          const count = pending.filter(
+            (t) => t.dueDate && t.dueDate.split("T")[0] === dateStr,
+          ).length;
+          if (!lightest || count < lightest.count) {
+            lightest = { date: dateStr, count };
+          }
+        }
+
+        const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        const targetDay = dayNames[targetD.getDay()];
+
+        if (lightest && lightest.count < tasksOnDate.length) {
+          const lighterD = new Date(lightest.date + "T00:00:00");
+          const lighterDay = dayNames[lighterD.getDay()];
+          suggestion =
+            `You have ${tasksOnDate.length} tasks due ${targetDay}. ` +
+            `Consider spreading some to ${lighterDay} (only ${lightest.count} task${lightest.count === 1 ? "" : "s"}).`;
+        } else {
+          suggestion =
+            `You have ${tasksOnDate.length} tasks due ${targetDay}. Consider rescheduling some tasks.`;
+        }
+      }
+
+      return JSON.stringify({
+        date: targetDate,
+        taskCount: tasksOnDate.length,
+        priorityWeight,
+        isOverloaded,
+        overdue: overdue.length,
+        suggestion,
+      });
+    },
+  );
+}
+
 export function registerAnalyzeWorkloadTool(registry: ToolRegistry): void {
   registry.register(
     {

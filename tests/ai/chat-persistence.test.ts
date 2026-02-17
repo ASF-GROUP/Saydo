@@ -7,6 +7,7 @@ import { DEFAULT_CAPABILITIES } from "../../src/ai/core/capabilities.js";
 import { ToolRegistry } from "../../src/ai/tools/registry.js";
 import { registerTaskCrudTools } from "../../src/ai/tools/builtin/task-crud.js";
 import { registerQueryTasksTool } from "../../src/ai/tools/builtin/query-tasks.js";
+import { createDefaultToolRegistry } from "../../src/ai/provider.js";
 import { createTestServices } from "../integration/helpers.js";
 
 function createToolRegistry(): ToolRegistry {
@@ -217,6 +218,33 @@ describe("Context Injection", () => {
     expect(context).not.toContain("Projects:");
   });
 
+  it("gatherContext compact mode returns short output", async () => {
+    const { taskService, projectService } = createTestServices();
+
+    await taskService.create({ title: "Task A", dueTime: false });
+    await taskService.create({ title: "Task B", dueDate: "2020-01-01", dueTime: false });
+    await projectService.create("Work");
+
+    const compact = await gatherContext({ taskService, projectService }, { compact: true });
+    expect(compact).toContain("Pending: 2");
+    expect(compact).toContain("Overdue: 1");
+    expect(compact).toContain("Projects: Work");
+    // Compact should NOT contain verbose headers or tag stats
+    expect(compact).not.toContain("## Current Task Context");
+    expect(compact).not.toContain("without tags");
+    expect(compact).not.toContain("without due dates");
+    expect(compact.length).toBeLessThan(200);
+  });
+
+  it("gatherContext compact mode handles empty state", async () => {
+    const { taskService, projectService } = createTestServices();
+
+    const compact = await gatherContext({ taskService, projectService }, { compact: true });
+    expect(compact).toContain("Pending: 0");
+    expect(compact).not.toContain("Overdue");
+    expect(compact).not.toContain("Projects");
+  });
+
   it("system message includes context block", () => {
     const { taskService, projectService } = createTestServices();
     const manager = new ChatManager();
@@ -224,22 +252,219 @@ describe("Context Injection", () => {
 
     const msg = manager.buildSystemMessage({ taskService, projectService }, contextBlock);
     expect(msg.content).toContain("Total pending tasks: 5");
-    expect(msg.content).toContain("Saydo's AI assistant");
+    expect(msg.content).toContain("Saydo");
   });
 
   it("system message includes date and time", () => {
     const { taskService, projectService } = createTestServices();
     const manager = new ChatManager();
     const msg = manager.buildSystemMessage({ taskService, projectService });
-    expect(msg.content).toContain("Current date and time:");
+    expect(msg.content).toContain("Current date/time:");
   });
 
-  it("system message includes follow-up question guidelines", () => {
+  it("full prompt includes tool sections and behavioral rules", () => {
     const { taskService, projectService } = createTestServices();
     const manager = new ChatManager();
     const msg = manager.buildSystemMessage({ taskService, projectService });
-    expect(msg.content).toContain("Ask Before Acting");
-    expect(msg.content).toContain("Daily Planning");
-    expect(msg.content).toContain("Priority Suggestions");
+    expect(msg.content).toContain("Analytical Tools");
+    expect(msg.content).toContain("Project Tools");
+    expect(msg.content).toContain("Reminder Tools");
+    expect(msg.content).toContain("Always use tools");
+    expect(msg.content).toContain("Never invent data");
+  });
+
+  it("cloud provider returns full prompt", () => {
+    const { taskService, projectService } = createTestServices();
+    const manager = new ChatManager();
+    const msg = manager.buildSystemMessage({ taskService, projectService }, "", "openai");
+    expect(msg.content).toContain("Analytical Tools");
+    expect(msg.content).toContain("Act, then confirm");
+    expect(msg.content).toContain("No sycophancy");
+  });
+
+  it("ollama provider returns compact prompt", () => {
+    const { taskService, projectService } = createTestServices();
+    const manager = new ChatManager();
+    const msg = manager.buildSystemMessage({ taskService, projectService }, "", "ollama");
+    expect(msg.content).not.toContain("Analytical Tools");
+    expect(msg.content).not.toContain("## Behavior");
+    expect(msg.content).toContain("ONLY do what the user asked");
+    expect(msg.content).toContain("Use tools to act");
+    expect(msg.content.length).toBeLessThan(500);
+  });
+
+  it("lmstudio provider returns compact prompt", () => {
+    const { taskService, projectService } = createTestServices();
+    const manager = new ChatManager();
+    const msg = manager.buildSystemMessage({ taskService, projectService }, "", "lmstudio");
+    expect(msg.content).not.toContain("Analytical Tools");
+    expect(msg.content).toContain("ONLY do what the user asked");
+  });
+
+  it("both prompts contain tool grounding rule", () => {
+    const { taskService, projectService } = createTestServices();
+    const manager = new ChatManager();
+    const full = manager.buildSystemMessage({ taskService, projectService }, "", "openai");
+    const compact = manager.buildSystemMessage({ taskService, projectService }, "", "ollama");
+    expect(full.content).toContain("Always use tools");
+    expect(compact.content).toContain("Use tools to act");
+  });
+
+  it("both prompts contain date/time info", () => {
+    const { taskService, projectService } = createTestServices();
+    const manager = new ChatManager();
+    const full = manager.buildSystemMessage({ taskService, projectService }, "", "anthropic");
+    const compact = manager.buildSystemMessage({ taskService, projectService }, "", "ollama");
+    // Both should contain a year somewhere
+    const year = new Date().getFullYear().toString();
+    expect(full.content).toContain(year);
+    expect(compact.content).toContain(year);
+  });
+
+  it("default (no provider) returns full prompt", () => {
+    const { taskService, projectService } = createTestServices();
+    const manager = new ChatManager();
+    const msg = manager.buildSystemMessage({ taskService, projectService });
+    expect(msg.content).toContain("Analytical Tools");
+  });
+});
+
+describe("Tool Filtering for Local Providers", () => {
+  function createCapturingExecutor(): {
+    executor: LLMExecutor;
+    getCapturedTools: () => string[];
+  } {
+    let capturedTools: string[] = [];
+    const executor: LLMExecutor = {
+      getCapabilities: () => ({ ...DEFAULT_CAPABILITIES }),
+      execute: async (ctx: LLMExecutionContext): Promise<PipelineResult> => {
+        capturedTools = (ctx.request.tools ?? []).map((t) => t.name);
+        return {
+          mode: "stream",
+          events: (async function* (): AsyncGenerator<StreamEvent> {
+            yield { type: "token", data: "OK" };
+          })(),
+        };
+      },
+    };
+    return { executor, getCapturedTools: () => capturedTools };
+  }
+
+  it("local provider (ollama) receives only essential tools", async () => {
+    const { taskService, projectService } = createTestServices();
+    const { executor, getCapturedTools } = createCapturingExecutor();
+    const toolRegistry = createDefaultToolRegistry();
+
+    const session = new ChatSession(
+      executor,
+      { taskService, projectService },
+      { role: "system", content: "test" },
+      { toolRegistry, providerName: "ollama" },
+    );
+
+    session.addUserMessage("hello");
+    for await (const _event of session.run()) {
+      // drain
+    }
+
+    const tools = getCapturedTools();
+    expect(tools).toContain("query_tasks");
+    expect(tools).toContain("create_task");
+    expect(tools).toContain("complete_task");
+    expect(tools).toContain("list_projects");
+    expect(tools).not.toContain("analyze_workload");
+    expect(tools).not.toContain("suggest_tags");
+    expect(tools).not.toContain("set_reminder");
+    expect(tools.length).toBeLessThanOrEqual(6);
+  });
+
+  it("local provider (lmstudio) receives only essential tools", async () => {
+    const { taskService, projectService } = createTestServices();
+    const { executor, getCapturedTools } = createCapturingExecutor();
+    const toolRegistry = createDefaultToolRegistry();
+
+    const session = new ChatSession(
+      executor,
+      { taskService, projectService },
+      { role: "system", content: "test" },
+      { toolRegistry, providerName: "lmstudio" },
+    );
+
+    session.addUserMessage("hello");
+    for await (const _event of session.run()) {
+      // drain
+    }
+
+    const tools = getCapturedTools();
+    expect(tools.length).toBeLessThanOrEqual(6);
+    expect(tools).not.toContain("find_similar_tasks");
+  });
+
+  it("cloud provider receives all tools", async () => {
+    const { taskService, projectService } = createTestServices();
+    const { executor, getCapturedTools } = createCapturingExecutor();
+    const toolRegistry = createDefaultToolRegistry();
+
+    const session = new ChatSession(
+      executor,
+      { taskService, projectService },
+      { role: "system", content: "test" },
+      { toolRegistry, providerName: "openai" },
+    );
+
+    session.addUserMessage("hello");
+    for await (const _event of session.run()) {
+      // drain
+    }
+
+    const tools = getCapturedTools();
+    expect(tools.length).toBe(22);
+    expect(tools).toContain("analyze_workload");
+    expect(tools).toContain("suggest_tags");
+    expect(tools).toContain("break_down_task");
+    expect(tools).toContain("check_duplicates");
+    expect(tools).toContain("check_overcommitment");
+  });
+
+  it("breaks out of duplicate tool call loops", async () => {
+    const { taskService, projectService } = createTestServices();
+    await taskService.create({ title: "Existing", dueTime: false });
+
+    // Mock executor that always returns the same tool call (hallucination loop)
+    let callCount = 0;
+    const executor: LLMExecutor = {
+      getCapabilities: () => ({ ...DEFAULT_CAPABILITIES }),
+      execute: async (): Promise<PipelineResult> => {
+        callCount++;
+        return {
+          mode: "stream",
+          events: (async function* (): AsyncGenerator<StreamEvent> {
+            yield {
+              type: "tool_call",
+              data: JSON.stringify([{ id: `call_${callCount}`, name: "query_tasks", arguments: "{}" }]),
+            };
+          })(),
+        };
+      },
+    };
+
+    const toolRegistry = createToolRegistry();
+    const session = new ChatSession(
+      executor,
+      { taskService, projectService },
+      { role: "system", content: "test" },
+      { toolRegistry, providerName: "ollama" },
+    );
+
+    session.addUserMessage("list tasks");
+    const events: StreamEvent[] = [];
+    for await (const event of session.run()) {
+      events.push(event);
+    }
+
+    // Should break after detecting duplicate, not run 10 iterations
+    expect(callCount).toBe(2);
+    expect(events.some((e) => e.type === "done")).toBe(true);
+    expect(events.some((e) => e.type === "error")).toBe(false);
   });
 });

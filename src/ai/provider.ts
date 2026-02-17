@@ -16,9 +16,12 @@ import { ToolRegistry } from "./tools/registry.js";
 import { registerTaskCrudTools } from "./tools/builtin/task-crud.js";
 import { registerQueryTasksTool } from "./tools/builtin/query-tasks.js";
 import { registerAnalyzePatternsTool } from "./tools/builtin/analyze-patterns.js";
-import { registerAnalyzeWorkloadTool } from "./tools/builtin/analyze-workload.js";
-import { registerSmartOrganizeTools } from "./tools/builtin/smart-organize.js";
+import { registerAnalyzeWorkloadTool, registerCheckOvercommitmentTool } from "./tools/builtin/analyze-workload.js";
+import { registerSmartOrganizeTools, registerCheckDuplicatesTool } from "./tools/builtin/smart-organize.js";
 import { registerEnergyRecommendationsTool } from "./tools/builtin/energy-recommendations.js";
+import { registerProjectCrudTools } from "./tools/builtin/project-crud.js";
+import { registerReminderTools } from "./tools/builtin/reminder-tools.js";
+import { registerTaskBreakdownTool } from "./tools/builtin/task-breakdown.js";
 
 /** Create a provider registry with all built-in providers. */
 export function createDefaultRegistry(): LLMProviderRegistry {
@@ -37,10 +40,15 @@ export function createDefaultToolRegistry(): ToolRegistry {
   const registry = new ToolRegistry();
   registerTaskCrudTools(registry);
   registerQueryTasksTool(registry);
+  registerProjectCrudTools(registry);
+  registerReminderTools(registry);
   registerAnalyzePatternsTool(registry);
   registerAnalyzeWorkloadTool(registry);
+  registerCheckOvercommitmentTool(registry);
   registerSmartOrganizeTools(registry);
+  registerCheckDuplicatesTool(registry);
   registerEnergyRecommendationsTool(registry);
+  registerTaskBreakdownTool(registry);
   logger.info("Tool registry initialized", { tools: registry.size });
   return registry;
 }

@@ -15,7 +15,16 @@ describe("ToolRegistry", () => {
     expect(names).toContain("complete_task");
     expect(names).toContain("update_task");
     expect(names).toContain("delete_task");
-    expect(defs).toHaveLength(10);
+    expect(names).toContain("create_project");
+    expect(names).toContain("list_projects");
+    expect(names).toContain("get_project");
+    expect(names).toContain("update_project");
+    expect(names).toContain("delete_project");
+    expect(names).toContain("list_reminders");
+    expect(names).toContain("set_reminder");
+    expect(names).toContain("snooze_reminder");
+    expect(names).toContain("dismiss_reminder");
+    expect(defs).toHaveLength(22);
   });
 
   it("each tool has name, description, and parameters", () => {

@@ -207,6 +207,63 @@ export function registerSmartOrganizeTools(registry: ToolRegistry): void {
   );
 }
 
+export function registerCheckDuplicatesTool(registry: ToolRegistry): void {
+  registry.register(
+    {
+      name: "check_duplicates",
+      description:
+        "Check if a task title is similar to existing pending tasks. " +
+        "Use proactively after creating a task to warn about potential duplicates.",
+      parameters: {
+        type: "object",
+        properties: {
+          title: {
+            type: "string",
+            description: "Task title to check against existing tasks",
+          },
+          threshold: {
+            type: "number",
+            description: "Jaccard similarity threshold (0-1, default 0.5)",
+          },
+        },
+        required: ["title"],
+      },
+    },
+    async (args, ctx) => {
+      const title = args.title as string;
+      const threshold = (args.threshold as number) ?? 0.5;
+
+      const pending = await ctx.taskService.list({ status: "pending" });
+      const inputTokens = tokenize(title);
+
+      if (inputTokens.size === 0) {
+        return JSON.stringify({ duplicatesFound: false, matches: [] });
+      }
+
+      const matches: { id: string; title: string; similarity: number }[] = [];
+
+      for (const task of pending) {
+        const taskTokens = tokenize(task.title);
+        const sim = jaccard(inputTokens, taskTokens);
+        if (sim >= threshold) {
+          matches.push({
+            id: task.id,
+            title: task.title,
+            similarity: Math.round(sim * 100) / 100,
+          });
+        }
+      }
+
+      matches.sort((a, b) => b.similarity - a.similarity);
+
+      return JSON.stringify({
+        duplicatesFound: matches.length > 0,
+        matches: matches.slice(0, 10),
+      });
+    },
+  );
+}
+
 function findAllSimilarGroups(tasks: Task[]): {
   groups: {
     tasks: { id: string; title: string; similarity: number }[];

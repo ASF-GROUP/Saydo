@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { ToolRegistry } from "../../src/ai/tools/registry.js";
 import { registerAnalyzePatternsTool } from "../../src/ai/tools/builtin/analyze-patterns.js";
-import { registerAnalyzeWorkloadTool } from "../../src/ai/tools/builtin/analyze-workload.js";
-import { registerSmartOrganizeTools } from "../../src/ai/tools/builtin/smart-organize.js";
+import { registerAnalyzeWorkloadTool, registerCheckOvercommitmentTool } from "../../src/ai/tools/builtin/analyze-workload.js";
+import { registerSmartOrganizeTools, registerCheckDuplicatesTool } from "../../src/ai/tools/builtin/smart-organize.js";
 import { registerEnergyRecommendationsTool } from "../../src/ai/tools/builtin/energy-recommendations.js";
 import { createDefaultToolRegistry } from "../../src/ai/provider.js";
 import { createTestServices } from "../integration/helpers.js";
@@ -22,7 +22,7 @@ function exec(
 // ── Default registry includes new tools ───────────────────────────────────────
 
 describe("Default tool registry includes smart tools", () => {
-  it("registers all 10 tools", () => {
+  it("registers all tools", () => {
     const registry = createDefaultToolRegistry();
     const names = registry.getDefinitions().map((t) => t.name);
     expect(names).toContain("analyze_completion_patterns");
@@ -30,7 +30,10 @@ describe("Default tool registry includes smart tools", () => {
     expect(names).toContain("suggest_tags");
     expect(names).toContain("find_similar_tasks");
     expect(names).toContain("get_energy_recommendations");
-    expect(registry.size).toBe(10);
+    expect(names).toContain("break_down_task");
+    expect(names).toContain("check_duplicates");
+    expect(names).toContain("check_overcommitment");
+    expect(registry.size).toBe(22);
   });
 });
 
@@ -675,5 +678,236 @@ describe("get_energy_recommendations", () => {
     // "Ship" has subtasks so it should be deep work despite short title
     expect(result.deepWork.some((t: { title: string }) => t.title === "Ship"))
       .toBe(true);
+  });
+});
+
+// ── check_duplicates ──────────────────────────────────────────────────────────
+
+describe("check_duplicates", () => {
+  let registry: ToolRegistry;
+  let ctx: ToolContext;
+  let taskService: TaskService;
+
+  beforeEach(() => {
+    registry = new ToolRegistry();
+    registerCheckDuplicatesTool(registry);
+    const services = createTestServices();
+    taskService = services.taskService;
+    ctx = { taskService, projectService: services.projectService };
+  });
+
+  it("returns no matches for unique title", async () => {
+    await taskService.create({ title: "Buy groceries at the store", tags: [] });
+
+    const result = await exec(
+      registry,
+      "check_duplicates",
+      { title: "Deploy production server immediately" },
+      ctx,
+    );
+    expect(result.duplicatesFound).toBe(false);
+    expect(result.matches).toHaveLength(0);
+  });
+
+  it("detects duplicate title (high similarity)", async () => {
+    await taskService.create({ title: "Buy groceries at the store", tags: [] });
+
+    const result = await exec(
+      registry,
+      "check_duplicates",
+      { title: "Buy groceries at the store" },
+      ctx,
+    );
+    expect(result.duplicatesFound).toBe(true);
+    expect(result.matches.length).toBeGreaterThanOrEqual(1);
+    expect(result.matches[0].similarity).toBeGreaterThanOrEqual(0.5);
+  });
+
+  it("respects threshold parameter", async () => {
+    await taskService.create({ title: "Buy groceries milk eggs", tags: [] });
+
+    // Low threshold should find the match
+    const resultLow = await exec(
+      registry,
+      "check_duplicates",
+      { title: "Buy groceries milk bread", threshold: 0.3 },
+      ctx,
+    );
+    expect(resultLow.duplicatesFound).toBe(true);
+
+    // Very high threshold should not
+    const resultHigh = await exec(
+      registry,
+      "check_duplicates",
+      { title: "Buy groceries milk bread", threshold: 0.99 },
+      ctx,
+    );
+    expect(resultHigh.duplicatesFound).toBe(false);
+  });
+
+  it("returns similarity score", async () => {
+    await taskService.create({ title: "Buy milk from store", tags: [] });
+
+    const result = await exec(
+      registry,
+      "check_duplicates",
+      { title: "Buy milk from store", threshold: 0.3 },
+      ctx,
+    );
+    expect(result.matches[0].similarity).toBe(1);
+  });
+
+  it("only checks pending tasks (not completed)", async () => {
+    const task = await taskService.create({ title: "Buy groceries at store", tags: [] });
+    await taskService.complete(task.id);
+
+    const result = await exec(
+      registry,
+      "check_duplicates",
+      { title: "Buy groceries at store" },
+      ctx,
+    );
+    expect(result.duplicatesFound).toBe(false);
+  });
+
+  it("handles empty task list", async () => {
+    const result = await exec(
+      registry,
+      "check_duplicates",
+      { title: "Any task title" },
+      ctx,
+    );
+    expect(result.duplicatesFound).toBe(false);
+    expect(result.matches).toHaveLength(0);
+  });
+});
+
+// ── check_overcommitment ──────────────────────────────────────────────────────
+
+describe("check_overcommitment", () => {
+  let registry: ToolRegistry;
+  let ctx: ToolContext;
+  let taskService: TaskService;
+
+  beforeEach(() => {
+    registry = new ToolRegistry();
+    registerCheckOvercommitmentTool(registry);
+    const services = createTestServices();
+    taskService = services.taskService;
+    ctx = { taskService, projectService: services.projectService };
+  });
+
+  it("returns not overloaded for light day", async () => {
+    const today = new Date().toISOString().split("T")[0];
+    await taskService.create({
+      title: "One task",
+      tags: [],
+      dueDate: `${today}T12:00:00.000Z`,
+    });
+
+    const result = await exec(
+      registry,
+      "check_overcommitment",
+      { date: today },
+      ctx,
+    );
+    expect(result.isOverloaded).toBe(false);
+    expect(result.taskCount).toBe(1);
+    expect(result.suggestion).toBeNull();
+  });
+
+  it("returns overloaded when >5 tasks on date", async () => {
+    const today = new Date().toISOString().split("T")[0];
+    for (let i = 0; i < 6; i++) {
+      await taskService.create({
+        title: `Task ${i}`,
+        tags: [],
+        dueDate: `${today}T12:00:00.000Z`,
+      });
+    }
+
+    const result = await exec(
+      registry,
+      "check_overcommitment",
+      { date: today },
+      ctx,
+    );
+    expect(result.isOverloaded).toBe(true);
+    expect(result.taskCount).toBe(6);
+    expect(result.suggestion).toBeTruthy();
+  });
+
+  it("returns overloaded when priority weight >12", async () => {
+    const today = new Date().toISOString().split("T")[0];
+    // 4 P1 tasks = priority weight 16 (4 * 4)
+    for (let i = 0; i < 4; i++) {
+      await taskService.create({
+        title: `Urgent ${i}`,
+        tags: [],
+        priority: 1,
+        dueDate: `${today}T12:00:00.000Z`,
+      });
+    }
+
+    const result = await exec(
+      registry,
+      "check_overcommitment",
+      { date: today },
+      ctx,
+    );
+    expect(result.isOverloaded).toBe(true);
+    expect(result.priorityWeight).toBe(16);
+  });
+
+  it("counts overdue tasks", async () => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split("T")[0];
+
+    await taskService.create({
+      title: "Overdue task",
+      tags: [],
+      dueDate: `${yesterdayStr}T12:00:00.000Z`,
+    });
+
+    const result = await exec(
+      registry,
+      "check_overcommitment",
+      {},
+      ctx,
+    );
+    expect(result.overdue).toBe(1);
+  });
+
+  it("defaults to today when no date provided", async () => {
+    const today = new Date().toISOString().split("T")[0];
+
+    const result = await exec(
+      registry,
+      "check_overcommitment",
+      {},
+      ctx,
+    );
+    expect(result.date).toBe(today);
+  });
+
+  it("suggests lighter day when overloaded", async () => {
+    const today = new Date().toISOString().split("T")[0];
+    for (let i = 0; i < 6; i++) {
+      await taskService.create({
+        title: `Task ${i}`,
+        tags: [],
+        dueDate: `${today}T12:00:00.000Z`,
+      });
+    }
+
+    const result = await exec(
+      registry,
+      "check_overcommitment",
+      { date: today },
+      ctx,
+    );
+    expect(result.suggestion).toMatch(/You have 6 tasks/);
+    expect(result.suggestion).toMatch(/Consider/);
   });
 });

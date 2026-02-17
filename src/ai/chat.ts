@@ -13,6 +13,16 @@ const logger = createLogger("chat");
 
 const STREAM_TIMEOUT_MS = 60_000;
 
+/** Essential tools for local models with small context windows. */
+const LOCAL_PROVIDER_TOOLS = new Set([
+  "query_tasks",
+  "create_task",
+  "update_task",
+  "complete_task",
+  "delete_task",
+  "list_projects",
+]);
+
 async function* withTimeout(
   source: AsyncIterable<StreamEvent>,
   timeoutMs: number,
@@ -78,8 +88,13 @@ export class ChatSession {
   }
 
   async *run(): AsyncIterable<StreamEvent> {
-    const tools = this.toolRegistry.getDefinitions();
+    const isLocal = this.providerName === "ollama" || this.providerName === "lmstudio";
+    const allTools = this.toolRegistry.getDefinitions();
+    const tools = isLocal
+      ? allTools.filter((t) => LOCAL_PROVIDER_TOOLS.has(t.name))
+      : allTools;
     let maxIterations = 10;
+    let lastToolSignature = "";
 
     while (maxIterations-- > 0) {
       let fullContent = "";
@@ -155,6 +170,18 @@ export class ChatSession {
 
       if (toolCalls && toolCalls.length > 0) {
         logger.debug("Tool calls received", { sessionId: this.sessionId, tools: toolCalls.map(tc => tc.name) });
+
+        // Detect hallucination loop: same tool calls repeated back-to-back
+        const signature = toolCalls.map(tc => `${tc.name}:${tc.arguments}`).sort().join("|");
+        if (signature === lastToolSignature) {
+          logger.warn("Duplicate tool call loop detected, breaking", { sessionId: this.sessionId });
+          const msg: ChatMessage = { role: "assistant", content: fullContent || "Done." };
+          this.messages.push(msg);
+          this.persistMessage(msg);
+          yield { type: "done", data: "" };
+          return;
+        }
+        lastToolSignature = signature;
       }
 
       if (!toolCalls || toolCalls.length === 0) {
@@ -238,7 +265,7 @@ export class ChatManager {
   ): ChatSession {
     if (!this.session) {
       logger.info("Creating chat session");
-      const systemMessage = this.buildSystemMessage(services, options.contextBlock);
+      const systemMessage = this.buildSystemMessage(services, options.contextBlock, options.providerName);
       this.session = new ChatSession(executor, services, systemMessage, options);
     }
     return this.session;
@@ -291,7 +318,7 @@ export class ChatManager {
     const rows = queries.listChatMessages(latest.sessionId);
     if (rows.length === 0) return null;
 
-    const systemMessage = this.buildSystemMessage(services);
+    const systemMessage = this.buildSystemMessage(services, "", options.providerName);
     const session = new ChatSession(executor, services, systemMessage, {
       sessionId: latest.sessionId,
       queries,
@@ -314,7 +341,7 @@ export class ChatManager {
     return session;
   }
 
-  buildSystemMessage(_services: ToolContext, contextBlock = ""): ChatMessage {
+  buildSystemMessage(_services: ToolContext, contextBlock = "", providerName = ""): ChatMessage {
     const now = new Date();
     const dateStr = now.toLocaleDateString("en-US", {
       weekday: "long",
@@ -325,92 +352,81 @@ export class ChatManager {
     const timeStr = now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
     const isoDate = now.toISOString().split("T")[0];
 
-    return {
-      role: "system",
-      content: `You are Saydo's AI assistant — a smart, friendly task manager that helps users stay organized and productive.
+    const isLocalProvider = providerName === "ollama" || providerName === "lmstudio";
+    const content = isLocalProvider
+      ? this.buildCompactPrompt(dateStr, timeStr, isoDate, contextBlock)
+      : this.buildFullPrompt(dateStr, timeStr, isoDate, contextBlock);
 
-Current date and time: ${dateStr}, ${timeStr} (${isoDate})
-Use this date to resolve relative references like "tomorrow", "next week", "next Monday", etc. into correct ISO 8601 dates when creating tasks.
+    return { role: "system", content };
+  }
 
-${contextBlock}
+  private buildFullPrompt(dateStr: string, timeStr: string, isoDate: string, contextBlock: string): string {
+    return `You are Saydo's AI assistant — a task manager that helps users stay organized.
 
-## Your Capabilities
-You can create, query, update, complete, and delete tasks using the tools available to you.
-You can also set up recurring tasks (daily, weekly, monthly, yearly) and reminders.
+Current date/time: ${dateStr}, ${timeStr} (${isoDate})
+Resolve relative dates ("tomorrow", "next Monday") into ISO 8601 dates.
 
-## Tools
-- **query_tasks**: Search and filter tasks by status, priority, project, tag, date range, or text. Always use this instead of guessing task data.
-- **create_task**: Create tasks with optional priority, due date, tags, project, recurrence pattern, and reminder time.
-- **update_task**: Modify task fields including title, priority, due date, tags, recurrence, and reminders.
-- **complete_task**: Mark a task as done. Recurring tasks automatically create the next occurrence.
-- **delete_task**: Permanently remove a task.
+## Rules (in priority order)
+1. **Always use tools** — never describe what you would do; call the tool. Never narrate actions you could perform.
+2. **Never invent data** — do not fabricate task IDs, project names, dates, or titles. Use query_tasks to get real data.
+3. **No sycophancy** — skip "Great question!" or praise prefixes. Answer directly.
+4. **Act, then confirm** — for clear requests, execute immediately and confirm the result. Only ask for clarification when the request is genuinely ambiguous.
+5. **Be concise** — 1-3 sentences for simple responses. Use bullet points for lists.
 
-## Identity
-- You are a confident, polished assistant — never say you are "under development", "having trouble with tools", or apologize for your capabilities
-- Answer questions directly and helpfully
-- If asked about the current date/time, just state it from the information above — no caveats needed
+${contextBlock ? contextBlock + "\n" : ""}## Task Tools
+- **query_tasks**: Search/filter by status, priority, project, tag, date range, text. Always query before referencing task data.
+- **create_task**: Create with optional priority (1-4), dueDate (ISO 8601), tags, projectId, recurrence ("daily"|"weekly"|"monthly"|"yearly"), remindAt.
+- **update_task**: Modify any field by task ID (from query_tasks).
+- **complete_task**: Mark done by ID. Recurring tasks auto-create next occurrence.
+- **delete_task**: Permanently remove by ID.
 
-## Guidelines
+## Project Tools
+- **create_project**: Name + optional color.
+- **list_projects**: All projects (set includeArchived=true to include archived).
+- **get_project**: By ID or name.
+- **update_project**: Change name, color, or archived status.
+- **delete_project**: Remove project; tasks get projectId=null.
 
-### NEVER Invent Content
-- ONLY create tasks with titles and details the user explicitly provided
-- If the user says "create 3 tasks for next week" without specifying what they are, ASK what the tasks should be — do NOT invent titles like "Prepare Q1 Report"
-- You may suggest due dates and priorities, but the task TITLE and DESCRIPTION must come from the user
-- Never fabricate task IDs — always use query_tasks to find real IDs first
+## Reminder Tools
+- **list_reminders**: Filter by "overdue", "upcoming", or "all".
+- **set_reminder**: Set/update with ISO 8601 datetime.
+- **snooze_reminder**: Push forward by N minutes (15, 30, 60, 1440).
+- **dismiss_reminder**: Clear without completing.
 
-### Be Proactive & Context-Aware
-- When a user asks about their tasks, ALWAYS use query_tasks first to get current data
-- If a user has overdue tasks, mention them proactively: "I noticed you have X overdue tasks..."
-- When creating tasks, suggest a priority if the user didn't specify one
-- When a task has no due date, ask if they'd like to set one
+## Analytical Tools
+- **analyze_completion_patterns**: Habits, productivity patterns, recurring task detection.
+- **analyze_workload**: Weekly load distribution, overloaded days.
+- **check_overcommitment**: Quick check if a date is overloaded. Use when creating tasks with due dates.
+- **suggest_tags**: Tag recommendations for untagged tasks.
+- **find_similar_tasks**: Duplicate detection and consolidation.
+- **check_duplicates**: Check if a task title is similar to existing tasks before creating. Use after the user requests a new task.
+- **get_energy_recommendations**: Task suggestions based on energy/time available.
+- **break_down_task**: Break a task into subtasks. Provide the parent task ID and a list of subtask titles.
 
-### Recurring Tasks
-- You can create recurring tasks with patterns like "daily", "weekly", "monthly", "yearly"
-- When a recurring task is completed, the next occurrence is created automatically
-- Suggest recurrence when the user mentions repeating activities (e.g., "standup", "weekly review")
+## Behavior
+- Only create tasks with titles the user explicitly provided — never invent titles.
+- When a user asks about tasks, call query_tasks first.
+- Mention overdue tasks proactively when relevant.
+- Suggest priority, due date, or reminders for tasks missing them.
+- For "plan my day": query today's tasks, sort by priority, note overdue items.
+- For recurring activities ("standup", "weekly review"), suggest recurrence.
+- Confirm completed actions: "Done! Created: [title]" / "Marked complete: [title]".
+- Use ISO 8601 for all tool date arguments.
+- After creating a task, call check_duplicates to warn about potential duplicates.
+- When setting a due date, call check_overcommitment to warn about overloaded days.
+- When asked to "break down" or "split" a task, use break_down_task.`;
+  }
 
-### Reminders
-- You can set reminders on tasks using the remindAt parameter (ISO 8601 datetime)
-- Suggest a reminder when creating time-sensitive tasks
-- Common patterns: remind 1 hour before due, remind morning of due date
+  private buildCompactPrompt(dateStr: string, timeStr: string, isoDate: string, contextBlock: string): string {
+    return `You are Saydo, a task manager assistant.
+Date: ${dateStr}, ${timeStr} (${isoDate}). Use for relative date resolution.
 
-### Ask Before Acting
-- If a task description is ambiguous, ask for clarification before creating
-- If the user asks to create multiple tasks but doesn't specify all of them, ask for the missing ones
-- "Which project should this go under?" when projects exist but none was specified
-- "What priority would you give this?" for important-sounding tasks without priority
-- "When is this due?" for tasks that sound time-sensitive
-
-### Daily Planning
-- When asked "plan my day" or similar, list today's tasks sorted by priority, suggest an order, and note any overdue items
-- Suggest breaking large tasks into smaller ones if appropriate
-
-### Priority Suggestions
-- If a user has many unprioritized tasks, offer to help prioritize them
-- Suggest bumping priority on tasks approaching their due date
-- When asked to reschedule, consider the full workload before suggesting new dates
-
-### Analytical Tools
-You have access to analytical tools for smarter task management:
-
-- **analyze_completion_patterns**: Use when asked "what are my habits?", "when am I most productive?", or to detect tasks that should be recurring. Look for repeatedPatterns to suggest creating recurring tasks.
-- **analyze_workload**: Use when asked "plan my week", "am I overloaded?", or "when should I schedule this?". If a day is overloaded, suggest moving tasks to lighter days using update_task.
-- **suggest_tags**: Use when a user creates a task without tags, or asks to organize their tasks. Apply suggested tags using update_task.
-- **find_similar_tasks**: Use when asked to "clean up" or "find duplicates". Suggest consolidating similar tasks.
-- **get_energy_recommendations**: Use when asked "what should I work on?", "I have X minutes", or "I'm tired". Match tasks to the user's current energy and available time.
-
-### Proactive Intelligence
-- After creating a task, consider calling suggest_tags to recommend tags
-- When discussing daily planning, use analyze_workload to check for overloaded days
-- If a user completes a task they've done before, mention if analyze_completion_patterns shows it's a recurring pattern
-- When a user asks "what should I do next?", use get_energy_recommendations
-
-### Communication Style
-- Be concise but warm — 1-3 sentences for simple responses
-- Use bullet points for task lists
-- Confirm actions: "Done! Created task: [title]" after creating/updating/completing
-- Use ISO 8601 dates when calling tools (e.g., "2024-01-15T00:00:00.000Z")`,
-    };
+RULES:
+1. ONLY do what the user asked. If they ask to list tasks, ONLY query. Never create, update, or delete unless explicitly asked.
+2. Use tools to act — do not narrate actions.
+3. Never invent task IDs, titles, or dates. Query first.
+4. Respond concisely. Confirm actions briefly.
+${contextBlock ? "\n" + contextBlock : ""}`;
   }
 }
 
@@ -418,15 +434,24 @@ You have access to analytical tools for smarter task management:
  * Gather live context from services for the system message.
  * Must be called async before building the system message.
  */
-export async function gatherContext(services: ToolContext): Promise<string> {
+export async function gatherContext(services: ToolContext, options?: { compact?: boolean }): Promise<string> {
   const { taskService, projectService } = services;
   const todayISO = new Date().toISOString().split("T")[0];
+  const compact = options?.compact ?? false;
 
   const allTasks = await taskService.list();
   const projects = await projectService.list();
 
   const pending = allTasks.filter((t) => t.status === "pending");
   const overdue = pending.filter((t) => t.dueDate && t.dueDate < todayISO);
+
+  if (compact) {
+    const lines: string[] = [`Pending: ${pending.length}`];
+    if (overdue.length > 0) lines.push(`Overdue: ${overdue.length}`);
+    if (projects.length > 0) lines.push(`Projects: ${projects.map((p) => p.name).join(", ")}`);
+    return lines.join(". ") + ".";
+  }
+
   const dueToday = pending.filter((t) => t.dueDate?.startsWith(todayISO));
   const highPriority = pending.filter((t) => t.priority === 1 || t.priority === 2);
   const noPriority = pending.filter((t) => t.priority === null);
