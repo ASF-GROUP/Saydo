@@ -4,6 +4,7 @@ import type { Task, UpdateTaskInput } from "../../core/types.js";
 import { DatePicker } from "./DatePicker.js";
 import { TagsInput } from "./TagsInput.js";
 import { RecurrencePicker, formatRecurrenceLabel } from "./RecurrencePicker.js";
+import { useGeneralSettings } from "../context/SettingsContext.js";
 
 const PRIORITIES = [
   { value: 1, label: "P1", activeClass: "bg-priority-1/15 text-priority-1" },
@@ -25,12 +26,19 @@ export function TaskMetadataSidebar({
   onDelete,
   availableTags = [],
 }: TaskMetadataSidebarProps) {
+  const { settings } = useGeneralSettings();
   const currentRemindAt = (task as any).remindAt ?? null;
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showRecurrencePicker, setShowRecurrencePicker] = useState(false);
   const [remindAtInput, setRemindAtInput] = useState(
     currentRemindAt ? currentRemindAt.slice(0, 16) : "",
   );
+
+  // Build tag name → color lookup for colored chips
+  const tagColors: Record<string, string> = {};
+  for (const tag of task.tags) {
+    if (tag.color) tagColors[tag.name] = tag.color;
+  }
 
   // Reset local state when task changes
   // (parent resets via key prop or we track task.id)
@@ -89,7 +97,7 @@ export function TaskMetadataSidebar({
   };
 
   return (
-    <div className="w-64 border-l border-border overflow-auto p-5 space-y-5 flex-shrink-0">
+    <div className="w-full border-t md:w-64 md:border-t-0 md:border-l border-border overflow-auto p-4 md:p-5 space-y-5 flex-shrink-0">
       {/* Due Date */}
       <div className="relative">
         <label className="text-xs font-medium text-on-surface-muted uppercase tracking-wider flex items-center gap-1.5">
@@ -157,6 +165,7 @@ export function TaskMetadataSidebar({
             value={task.tags.map((t) => t.name)}
             onChange={handleTagsChange}
             suggestions={availableTags}
+            tagColors={tagColors}
           />
         </div>
       </div>
@@ -227,7 +236,12 @@ export function TaskMetadataSidebar({
 
       {/* Delete */}
       <button
-        onClick={() => onDelete(task.id)}
+        onClick={() => {
+          if (settings.confirm_delete === "true") {
+            if (!window.confirm("Delete this task? This cannot be undone.")) return;
+          }
+          onDelete(task.id);
+        }}
         className="text-sm text-error hover:text-error/80 flex items-center gap-1.5 transition-colors w-full"
       >
         <Trash2 size={14} />

@@ -119,9 +119,9 @@ export function Upcoming({
     <div>
       <div className="flex items-center gap-3 mb-1">
         <Clock size={24} className="text-accent" />
-        <h1 className="text-2xl font-bold text-on-surface">Upcoming</h1>
+        <h1 className="text-xl md:text-2xl font-bold text-on-surface">Upcoming</h1>
       </div>
-      <p className="text-sm text-on-surface-muted mb-6">{totalCount} tasks</p>
+      <p className="text-sm text-on-surface-muted mb-4 md:mb-6">{totalCount} tasks</p>
 
       <TaskInput
         onSubmit={onCreateTask}

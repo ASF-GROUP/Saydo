@@ -3,6 +3,7 @@ import { ArrowLeft, Inbox } from "lucide-react";
 import type { Task, UpdateTaskInput } from "../../core/types.js";
 import { TaskMetadataSidebar } from "../components/TaskMetadataSidebar.js";
 import { SubtaskSection } from "../components/SubtaskSection.js";
+import { useGeneralSettings } from "../context/SettingsContext.js";
 
 interface TaskPageProps {
   task: Task;
@@ -31,6 +32,7 @@ export function TaskPage({
   onReorder,
   availableTags = [],
 }: TaskPageProps) {
+  const { settings } = useGeneralSettings();
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description ?? "");
 
@@ -84,6 +86,9 @@ export function TaskPage({
   }, []);
 
   const handleDelete = () => {
+    if (settings.confirm_delete === "true") {
+      if (!window.confirm("Delete this task? This cannot be undone.")) return;
+    }
     onDelete(task.id);
     onNavigateBack();
   };
@@ -111,7 +116,7 @@ export function TaskPage({
       </div>
 
       {/* Two-column layout */}
-      <div className="flex flex-1 overflow-hidden gap-6">
+      <div className="flex flex-col md:flex-row flex-1 overflow-hidden gap-4 md:gap-6">
         {/* Left column — main content */}
         <div className="flex-1 overflow-auto space-y-4">
           <input

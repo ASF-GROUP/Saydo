@@ -1,0 +1,148 @@
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+  type ReactNode,
+} from "react";
+import { api } from "../api/index.js";
+
+export interface GeneralSettings {
+  accent_color: string;
+  density: "compact" | "default" | "comfortable";
+  week_start: "sunday" | "monday" | "saturday";
+  date_format: "relative" | "short" | "long" | "iso";
+  time_format: "12h" | "24h";
+  default_priority: "none" | "p1" | "p2" | "p3" | "p4";
+  confirm_delete: "true" | "false";
+  start_view: "inbox" | "today" | "upcoming";
+}
+
+const DEFAULT_SETTINGS: GeneralSettings = {
+  accent_color: "#3b82f6",
+  density: "default",
+  week_start: "sunday",
+  date_format: "relative",
+  time_format: "12h",
+  default_priority: "none",
+  confirm_delete: "true",
+  start_view: "inbox",
+};
+
+const SETTING_KEYS = Object.keys(DEFAULT_SETTINGS) as (keyof GeneralSettings)[];
+
+interface SettingsContextValue {
+  settings: GeneralSettings;
+  loaded: boolean;
+  updateSetting: <K extends keyof GeneralSettings>(key: K, value: GeneralSettings[K]) => void;
+}
+
+const SettingsContext = createContext<SettingsContextValue>({
+  settings: DEFAULT_SETTINGS,
+  loaded: false,
+  updateSetting: () => {},
+});
+
+/** Darken a hex color by reducing lightness in HSL space. */
+function darkenColor(hex: string, amount: number): string {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0;
+  let s = 0;
+  let l = (max + min) / 2;
+
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+    else if (max === g) h = ((b - r) / d + 2) / 6;
+    else h = ((r - g) / d + 4) / 6;
+  }
+
+  l = Math.max(0, l - amount);
+
+  const hue2rgb = (p: number, q: number, t: number) => {
+    if (t < 0) t += 1;
+    if (t > 1) t -= 1;
+    if (t < 1 / 6) return p + (q - p) * 6 * t;
+    if (t < 1 / 2) return q;
+    if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+    return p;
+  };
+
+  const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+  const p = 2 * l - q;
+  const rr = Math.round(hue2rgb(p, q, h + 1 / 3) * 255);
+  const gg = Math.round(hue2rgb(p, q, h) * 255);
+  const bb = Math.round(hue2rgb(p, q, h - 1 / 3) * 255);
+
+  return `#${rr.toString(16).padStart(2, "0")}${gg.toString(16).padStart(2, "0")}${bb.toString(16).padStart(2, "0")}`;
+}
+
+function applyAccentColor(color: string) {
+  document.documentElement.style.setProperty("--color-accent", color);
+  document.documentElement.style.setProperty("--color-accent-hover", darkenColor(color, 0.08));
+}
+
+function applyDensity(density: GeneralSettings["density"]) {
+  const el = document.documentElement;
+  el.classList.remove("density-compact", "density-comfortable");
+  if (density === "compact") el.classList.add("density-compact");
+  else if (density === "comfortable") el.classList.add("density-comfortable");
+}
+
+export function SettingsProvider({ children }: { children: ReactNode }) {
+  const [settings, setSettings] = useState<GeneralSettings>(DEFAULT_SETTINGS);
+  const [loaded, setLoaded] = useState(false);
+
+  // Load all settings on mount
+  useEffect(() => {
+    let mounted = true;
+    Promise.all(SETTING_KEYS.map((key) => api.getAppSetting(key)))
+      .then((values) => {
+        if (!mounted) return;
+        const next = { ...DEFAULT_SETTINGS };
+        SETTING_KEYS.forEach((key, i) => {
+          if (values[i] !== null) {
+            (next as any)[key] = values[i];
+          }
+        });
+        setSettings(next);
+        applyAccentColor(next.accent_color);
+        applyDensity(next.density);
+        setLoaded(true);
+      })
+      .catch(() => {
+        if (mounted) setLoaded(true);
+      });
+    return () => { mounted = false; };
+  }, []);
+
+  const updateSetting = useCallback(
+    <K extends keyof GeneralSettings>(key: K, value: GeneralSettings[K]) => {
+      setSettings((prev) => {
+        const next = { ...prev, [key]: value };
+        if (key === "accent_color") applyAccentColor(value as string);
+        if (key === "density") applyDensity(value as GeneralSettings["density"]);
+        return next;
+      });
+      api.setAppSetting(key, String(value)).catch(() => {});
+    },
+    [],
+  );
+
+  return (
+    <SettingsContext.Provider value={{ settings, loaded, updateSetting }}>
+      {children}
+    </SettingsContext.Provider>
+  );
+}
+
+export function useGeneralSettings() {
+  return useContext(SettingsContext);
+}

@@ -10,8 +10,14 @@ export interface STTOptions {
 
 export interface TTSOptions {
   voice?: string;
+  model?: string;
   speed?: number;
   responseFormat?: string;
+}
+
+export interface TTSModel {
+  id: string;
+  name: string;
 }
 
 export interface Voice {
@@ -43,6 +49,9 @@ export interface TTSProviderPlugin {
 
   /** List available voices. */
   getVoices?(): Promise<Voice[]>;
+
+  /** List available models. */
+  getModels?(): Promise<TTSModel[]>;
 
   /** Check if this provider is available in the current environment. */
   isAvailable(): Promise<boolean>;

@@ -10,10 +10,13 @@ import type { VoiceProviderRegistry } from "../../../ai/voice/registry.js";
 import type { ModelStatus } from "../../../ai/voice/adapters/whisper-local-stt.js";
 
 export function VoiceTab() {
-  const { settings, updateSettings, registry, ttsVoices } = useVoiceContext();
+  const { settings, updateSettings, registry, ttsVoices, ttsModels } = useVoiceContext();
 
   const sttProviders = registry.listSTT();
   const ttsProviders = registry.listTTS();
+
+  const selectedSTT = sttProviders.find((p) => p.id === settings.sttProviderId);
+  const selectedTTS = ttsProviders.find((p) => p.id === settings.ttsProviderId);
 
   return (
     <section className="mb-8">
@@ -49,6 +52,14 @@ export function VoiceTab() {
               ))}
             </select>
           </div>
+
+          {selectedSTT?.needsApiKey && (
+            <ProviderApiKeyInput
+              providerId={selectedSTT.id}
+              settings={settings}
+              updateSettings={updateSettings}
+            />
+          )}
         </fieldset>
 
         {/* ── Text-to-Speech ── */}
@@ -71,6 +82,33 @@ export function VoiceTab() {
               ))}
             </select>
           </div>
+
+          {selectedTTS?.needsApiKey && (
+            <ProviderApiKeyInput
+              providerId={selectedTTS.id}
+              settings={settings}
+              updateSettings={updateSettings}
+            />
+          )}
+
+          {ttsModels.length > 0 && (
+            <div>
+              <label className="block text-xs font-medium text-on-surface-secondary mb-1">
+                Model
+              </label>
+              <select
+                value={settings.ttsModel}
+                onChange={(e) => updateSettings({ ttsModel: e.target.value })}
+                className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-on-surface"
+              >
+                {ttsModels.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {ttsVoices.length > 0 && (
             <div>
@@ -149,30 +187,63 @@ export function VoiceTab() {
         {/* ── Local Models ── */}
         <LocalModelsSection registry={registry} />
 
-        {/* ── Groq API Key ── */}
-        <fieldset className="space-y-4">
-          <legend className="text-sm font-semibold text-on-surface mb-2">Groq Cloud Voice</legend>
-          <div>
-            <label className="block text-xs font-medium text-on-surface-secondary mb-1">
-              API Key
-              {settings.groqApiKey && (
-                <span className="font-normal text-success ml-2">Set</span>
-              )}
-            </label>
-            <input
-              type="password"
-              value={settings.groqApiKey}
-              onChange={(e) => updateSettings({ groqApiKey: e.target.value })}
-              placeholder="Enter Groq API key"
-              className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-on-surface"
-            />
-            <p className="mt-1 text-xs text-on-surface-muted">
-              Enables Groq Whisper (STT) and PlayAI (TTS). Free tier available at groq.com.
-            </p>
-          </div>
-        </fieldset>
       </div>
     </section>
+  );
+}
+
+/** Maps a voice provider ID to the settings key holding its API key. */
+const PROVIDER_KEY_MAP: Record<string, { settingsKey: keyof VoiceSettings; placeholder: string; helpText: string }> = {
+  "groq-stt": {
+    settingsKey: "groqApiKey",
+    placeholder: "Enter Groq API key",
+    helpText: "Enables Groq Whisper (STT) and PlayAI (TTS). Free tier available at groq.com.",
+  },
+  "groq-tts": {
+    settingsKey: "groqApiKey",
+    placeholder: "Enter Groq API key",
+    helpText: "Enables Groq Whisper (STT) and PlayAI (TTS). Free tier available at groq.com.",
+  },
+  "inworld-tts": {
+    settingsKey: "inworldApiKey",
+    placeholder: "Enter Inworld API credential",
+    helpText: "High-quality TTS with voice cloning. Get credentials at platform.inworld.ai.",
+  },
+};
+
+function ProviderApiKeyInput({
+  providerId,
+  settings,
+  updateSettings,
+}: {
+  providerId: string;
+  settings: VoiceSettings;
+  updateSettings: (patch: Partial<VoiceSettings>) => void;
+}) {
+  const info = PROVIDER_KEY_MAP[providerId];
+  if (!info) return null;
+
+  const currentValue = settings[info.settingsKey] as string;
+
+  return (
+    <div>
+      <label className="block text-xs font-medium text-on-surface-secondary mb-1">
+        API Key
+        {currentValue && (
+          <span className="font-normal text-success ml-2">Set</span>
+        )}
+      </label>
+      <input
+        type="password"
+        value={currentValue}
+        onChange={(e) => updateSettings({ [info.settingsKey]: e.target.value })}
+        placeholder={info.placeholder}
+        className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-on-surface"
+      />
+      <p className="mt-1 text-xs text-on-surface-muted">
+        {info.helpText}
+      </p>
+    </div>
   );
 }
 

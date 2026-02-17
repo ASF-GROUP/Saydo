@@ -89,9 +89,9 @@ export function Inbox({
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-3 mb-4 md:mb-6">
         <InboxIcon size={24} className="text-accent" />
-        <h1 className="text-2xl font-bold text-on-surface">Inbox</h1>
+        <h1 className="text-xl md:text-2xl font-bold text-on-surface">Inbox</h1>
         <span className="text-sm text-on-surface-muted">{inboxTasks.length} tasks</span>
       </div>
       <TaskInput onSubmit={onCreateTask} autoFocusTrigger={autoFocusTrigger} />

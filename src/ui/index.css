@@ -16,3 +16,24 @@
     font-family: var(--font-heading);
   }
 }
+
+@layer base {
+  :root {
+    --density-scale: 1;
+  }
+  .density-compact {
+    --density-scale: 0.875;
+  }
+  .density-comfortable {
+    --density-scale: 1.125;
+  }
+}
+
+@layer utilities {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .border-l-3 {
+    border-left-width: 3px;
+  }
+}

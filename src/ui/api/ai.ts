@@ -187,7 +187,8 @@ export async function sendChatMessage(message: string): Promise<ReadableStream<U
         projectService: svc.projectService,
       };
 
-      const contextBlock = await gatherContext(toolServices);
+      const isLocalProvider = providerSetting.value === "ollama" || providerSetting.value === "lmstudio";
+      const contextBlock = await gatherContext(toolServices, { compact: isLocalProvider });
       const session = svc.chatManager.getOrCreateSession(
         executor,
         toolServices,

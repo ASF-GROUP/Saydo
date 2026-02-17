@@ -6,11 +6,15 @@ import { StatusBar } from "./components/StatusBar.js";
 import { TaskDetailPanel } from "./components/TaskDetailPanel.js";
 import { BulkActionBar } from "./components/BulkActionBar.js";
 import { RightActionRail } from "./components/RightActionRail.js";
+import { BottomNavBar } from "./components/BottomNavBar.js";
+import { MobileDrawer } from "./components/MobileDrawer.js";
+import { FAB } from "./components/FAB.js";
 import { TaskProvider, useTaskContext } from "./context/TaskContext.js";
 import { PluginProvider, usePluginContext } from "./context/PluginContext.js";
 import { AIProvider } from "./context/AIContext.js";
-import { VoiceProvider } from "./context/VoiceContext.js";
+import { VoiceProvider, useVoiceContext } from "./context/VoiceContext.js";
 import { UndoProvider, useUndoContext } from "./context/UndoContext.js";
+import { SettingsProvider } from "./context/SettingsContext.js";
 import { AIChatPanel } from "./components/AIChatPanel.js";
 import { FocusMode } from "./components/FocusMode.js";
 import { TemplateSelector } from "./components/TemplateSelector.js";
@@ -23,6 +27,7 @@ import { useTaskHandlers } from "./hooks/useTaskHandlers.js";
 import { useBulkActions } from "./hooks/useBulkActions.js";
 import { useAppShortcuts } from "./hooks/useAppShortcuts.js";
 import { useAppCommands } from "./hooks/useAppCommands.js";
+import { useIsMobile } from "./hooks/useIsMobile.js";
 import { shortcutManager } from "./shortcutManagerInstance.js";
 import { Inbox } from "./views/Inbox.js";
 import { Today } from "./views/Today.js";
@@ -90,6 +95,8 @@ function AppContent() {
     if (typeof window === "undefined") return false;
     return window.localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY) === "1";
   });
+  const isMobile = useIsMobile();
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [templateSelectorOpen, setTemplateSelectorOpen] = useState(false);
   const [projects, setProjects] = useState<ProjectType[]>([]);
@@ -105,6 +112,7 @@ function AppContent() {
     views: pluginViews,
     executeCommand,
   } = usePluginContext();
+  const voice = useVoiceContext();
 
   // ── Data fetching ──
   const fetchProjects = useCallback(async () => {
@@ -166,6 +174,11 @@ function AppContent() {
     window.localStorage.setItem(AI_CHAT_EXPANDED_STORAGE_KEY, chatPanelOpen ? "1" : "0");
   }, [chatPanelOpen]);
 
+  // ── Close drawer on navigation ──
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [currentView, selectedProjectId, selectedPluginViewId]);
+
   // ── Clear selected task on navigation ──
   useEffect(() => {
     setSelectedTaskId(null);
@@ -212,6 +225,15 @@ function AppContent() {
     }
     return counts;
   }, [state.tasks]);
+
+  // ── Mobile AI voice handler ──
+  const handleOpenVoice = useCallback(() => {
+    setChatPanelOpen(true);
+    // Enable push-to-talk if voice is off
+    if (voice.settings.voiceMode === "off") {
+      voice.updateSettings({ voiceMode: "push-to-talk" });
+    }
+  }, [voice]);
 
   // ── Add task handler for sidebar button ──
   const handleAddTask = useCallback(() => {
@@ -471,7 +493,7 @@ function AppContent() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-surface text-on-surface">
+    <div className="flex flex-col h-screen bg-surface text-on-surface pb-[--height-bottom-nav] md:pb-0">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-accent focus:text-white focus:rounded-lg focus:text-sm"
@@ -479,23 +501,26 @@ function AppContent() {
         Skip to main content
       </a>
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar
-          currentView={currentView}
-          onNavigate={handleNavigate}
-          onOpenSettings={handleOpenSettings}
-          projects={projects}
-          selectedProjectId={selectedProjectId}
-          panels={panels}
-          pluginViews={pluginViews}
-          selectedPluginViewId={selectedPluginViewId}
-          collapsed={sidebarCollapsed}
-          onToggleCollapsed={() => setSidebarCollapsed((value) => !value)}
-          projectTaskCounts={projectTaskCounts}
-          onAddTask={handleAddTask}
-          inboxCount={inboxTaskCount}
-          todayCount={todayTaskCount}
-        />
-        <main id="main-content" tabIndex={-1} className="flex-1 overflow-auto p-6">
+        {/* Desktop sidebar */}
+        <div className="hidden md:flex">
+          <Sidebar
+            currentView={currentView}
+            onNavigate={handleNavigate}
+            onOpenSettings={handleOpenSettings}
+            projects={projects}
+            selectedProjectId={selectedProjectId}
+            panels={panels}
+            pluginViews={pluginViews}
+            selectedPluginViewId={selectedPluginViewId}
+            collapsed={sidebarCollapsed}
+            onToggleCollapsed={() => setSidebarCollapsed((value) => !value)}
+            projectTaskCounts={projectTaskCounts}
+            onAddTask={handleAddTask}
+            inboxCount={inboxTaskCount}
+            todayCount={todayTaskCount}
+          />
+        </div>
+        <main id="main-content" tabIndex={-1} className="flex-1 overflow-auto p-3 md:p-6">
           <BulkActionBar
             selectedCount={multiSelectedIds.size}
             onCompleteAll={handleBulkComplete}
@@ -516,20 +541,77 @@ function AppContent() {
           )}
         </main>
         {chatPanelOpen && (
-          <AIChatPanel
-            onClose={() => setChatPanelOpen(false)}
-            onOpenSettings={() => {
-              setSettingsOpen(true);
-              setChatPanelOpen(false);
-            }}
-          />
+          isMobile ? (
+            <div className="fixed inset-0 z-50">
+              <AIChatPanel
+                onClose={() => setChatPanelOpen(false)}
+                onOpenSettings={() => {
+                  setSettingsOpen(true);
+                  setChatPanelOpen(false);
+                }}
+              />
+            </div>
+          ) : (
+            <AIChatPanel
+              onClose={() => setChatPanelOpen(false)}
+              onOpenSettings={() => {
+                setSettingsOpen(true);
+                setChatPanelOpen(false);
+              }}
+            />
+          )
         )}
-        <RightActionRail
-          chatOpen={chatPanelOpen}
-          onToggleChat={() => setChatPanelOpen((open) => !open)}
-          onFocusMode={() => setFocusModeOpen(true)}
-        />
+        <div className="hidden md:flex">
+          <RightActionRail
+            chatOpen={chatPanelOpen}
+            onToggleChat={() => setChatPanelOpen((open) => !open)}
+            onFocusMode={() => setFocusModeOpen(true)}
+          />
+        </div>
       </div>
+
+      {/* Mobile drawer */}
+      <MobileDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)}>
+        <Sidebar
+          currentView={currentView}
+          onNavigate={handleNavigate}
+          onOpenSettings={() => {
+            setDrawerOpen(false);
+            handleOpenSettings();
+          }}
+          projects={projects}
+          selectedProjectId={selectedProjectId}
+          panels={panels}
+          pluginViews={pluginViews}
+          selectedPluginViewId={selectedPluginViewId}
+          collapsed={false}
+          projectTaskCounts={projectTaskCounts}
+          onAddTask={() => {
+            setDrawerOpen(false);
+            handleAddTask();
+          }}
+          inboxCount={inboxTaskCount}
+          todayCount={todayTaskCount}
+        />
+      </MobileDrawer>
+
+      {/* Mobile bottom nav + FAB */}
+      {isMobile && (
+        <>
+          <FAB onClick={handleAddTask} />
+          <BottomNavBar
+            currentView={currentView}
+            onNavigate={handleNavigate}
+            onMenuOpen={() => setDrawerOpen(true)}
+            onOpenChat={() => setChatPanelOpen(true)}
+            onOpenVoice={handleOpenVoice}
+            chatOpen={chatPanelOpen}
+            inboxCount={inboxTaskCount}
+            todayCount={todayTaskCount}
+          />
+        </>
+      )}
+
       {selectedTask && currentView !== "task" && (
         <TaskDetailPanel
           task={selectedTask}
@@ -574,7 +656,9 @@ function AppContent() {
           setTemplateSelectorOpen(false);
         }}
       />
-      <StatusBar />
+      <div className="hidden md:block">
+        <StatusBar />
+      </div>
       <CommandPalette
         commands={commands}
         isOpen={commandPaletteOpen}
@@ -597,17 +681,19 @@ export { shortcutManager };
 export function App() {
   return (
     <ErrorBoundary>
-      <TaskProvider>
-        <PluginProvider>
-          <AIProvider>
-            <VoiceProvider>
-              <UndoProvider>
-                <AppContent />
-              </UndoProvider>
-            </VoiceProvider>
-          </AIProvider>
-        </PluginProvider>
-      </TaskProvider>
+      <SettingsProvider>
+        <TaskProvider>
+          <PluginProvider>
+            <AIProvider>
+              <VoiceProvider>
+                <UndoProvider>
+                  <AppContent />
+                </UndoProvider>
+              </VoiceProvider>
+            </AIProvider>
+          </PluginProvider>
+        </TaskProvider>
+      </SettingsProvider>
     </ErrorBoundary>
   );
 }

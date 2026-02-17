@@ -11,9 +11,11 @@ import { GroqTTSProvider } from "./adapters/groq-tts.js";
 import { WhisperLocalSTTProvider } from "./adapters/whisper-local-stt.js";
 import { KokoroLocalTTSProvider } from "./adapters/kokoro-local-tts.js";
 import { PiperLocalTTSProvider } from "./adapters/piper-local-tts.js";
+import { InworldTTSProvider } from "./adapters/inworld-tts.js";
 
 export interface VoiceProviderConfig {
   groqApiKey?: string;
+  inworldApiKey?: string;
 }
 
 /** Create a VoiceProviderRegistry with built-in providers. */
@@ -34,6 +36,9 @@ export function createDefaultVoiceRegistry(config?: VoiceProviderConfig): VoiceP
     registry.registerSTT(new GroqSTTProvider(config.groqApiKey));
     registry.registerTTS(new GroqTTSProvider(config.groqApiKey));
   }
+
+  // Always register Inworld TTS (shows in dropdown; requires API key to function)
+  registry.registerTTS(new InworldTTSProvider(config?.inworldApiKey ?? ""));
 
   return registry;
 }

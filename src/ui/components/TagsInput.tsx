@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { X } from "lucide-react";
+import { hexToRgba } from "../../utils/color.js";
 
 interface TagsInputProps {
   value: string[];
   onChange: (tags: string[]) => void;
   suggestions?: string[];
   placeholder?: string;
+  tagColors?: Record<string, string>;
 }
 
 export function TagsInput({
@@ -13,6 +15,7 @@ export function TagsInput({
   onChange,
   suggestions = [],
   placeholder = "Add tag...",
+  tagColors = {},
 }: TagsInputProps) {
   const [inputValue, setInputValue] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -84,21 +87,31 @@ export function TagsInput({
   return (
     <div ref={containerRef} className="relative">
       <div className="flex flex-wrap gap-1.5 items-center p-1.5 bg-surface-secondary border border-border rounded-md min-h-[34px]">
-        {value.map((tag) => (
-          <span
-            key={tag}
-            className="font-mono inline-flex items-center gap-1 bg-surface-tertiary text-on-surface-secondary rounded-full px-2 py-0.5 text-xs"
-          >
-            {tag}
-            <button
-              onClick={() => removeTag(tag)}
-              className="text-on-surface-muted hover:text-on-surface transition-colors"
-              aria-label={`Remove tag ${tag}`}
+        {value.map((tag) => {
+          const color = tagColors[tag];
+          return (
+            <span
+              key={tag}
+              className={`font-mono inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${
+                color ? "" : "bg-surface-tertiary text-on-surface-secondary"
+              }`}
+              style={
+                color
+                  ? { backgroundColor: hexToRgba(color, 0.15), color }
+                  : undefined
+              }
             >
-              <X size={10} />
-            </button>
-          </span>
-        ))}
+              {tag}
+              <button
+                onClick={() => removeTag(tag)}
+                className="opacity-60 hover:opacity-100 transition-opacity"
+                aria-label={`Remove tag ${tag}`}
+              >
+                <X size={10} />
+              </button>
+            </span>
+          );
+        })}
         <input
           ref={inputRef}
           type="text"

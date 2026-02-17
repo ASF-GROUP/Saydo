@@ -14,7 +14,7 @@ import {
 } from "react";
 import { VoiceProviderRegistry } from "../../ai/voice/registry.js";
 import { createDefaultVoiceRegistry } from "../../ai/voice/provider.js";
-import type { STTProviderPlugin, TTSProviderPlugin, Voice } from "../../ai/voice/interface.js";
+import type { STTProviderPlugin, TTSProviderPlugin, TTSModel, Voice } from "../../ai/voice/interface.js";
 import { BrowserTTSProvider } from "../../ai/voice/adapters/browser-tts.js";
 import { playAudioBuffer } from "../../ai/voice/audio-utils.js";
 
@@ -27,7 +27,9 @@ export interface VoiceSettings {
   ttsEnabled: boolean;
   autoSend: boolean;
   ttsVoice: string;
+  ttsModel: string;
   groqApiKey: string;
+  inworldApiKey: string;
   microphoneId: string;
 }
 
@@ -38,7 +40,9 @@ const DEFAULT_SETTINGS: VoiceSettings = {
   ttsEnabled: false,
   autoSend: true,
   ttsVoice: "",
+  ttsModel: "",
   groqApiKey: "",
+  inworldApiKey: "",
   microphoneId: "",
 };
 
@@ -70,6 +74,7 @@ interface VoiceContextValue {
   sttProvider: STTProviderPlugin | undefined;
   ttsProvider: TTSProviderPlugin | undefined;
   ttsVoices: Voice[];
+  ttsModels: TTSModel[];
   isListening: boolean;
   isTranscribing: boolean;
   isSpeaking: boolean;
@@ -88,16 +93,23 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [ttsVoices, setTTSVoices] = useState<Voice[]>([]);
+  const [ttsModels, setTTSModels] = useState<TTSModel[]>([]);
   const speechCancelledRef = useRef(false);
 
-  // Build registry whenever groqApiKey changes
+  // Build registry whenever API keys change
   const [registry, setRegistry] = useState<VoiceProviderRegistry>(() =>
-    createDefaultVoiceRegistry({ groqApiKey: settings.groqApiKey || undefined }),
+    createDefaultVoiceRegistry({
+      groqApiKey: settings.groqApiKey || undefined,
+      inworldApiKey: settings.inworldApiKey || undefined,
+    }),
   );
 
   useEffect(() => {
-    setRegistry(createDefaultVoiceRegistry({ groqApiKey: settings.groqApiKey || undefined }));
-  }, [settings.groqApiKey]);
+    setRegistry(createDefaultVoiceRegistry({
+      groqApiKey: settings.groqApiKey || undefined,
+      inworldApiKey: settings.inworldApiKey || undefined,
+    }));
+  }, [settings.groqApiKey, settings.inworldApiKey]);
 
   const sttProvider = registry.getSTT(settings.sttProviderId);
   const ttsProvider = registry.getTTS(settings.ttsProviderId);
@@ -108,6 +120,15 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
       ttsProvider.getVoices().then(setTTSVoices).catch(() => setTTSVoices([]));
     } else {
       setTTSVoices([]);
+    }
+  }, [ttsProvider]);
+
+  // Fetch TTS models when provider changes
+  useEffect(() => {
+    if (ttsProvider?.getModels) {
+      ttsProvider.getModels().then(setTTSModels).catch(() => setTTSModels([]));
+    } else {
+      setTTSModels([]);
     }
   }, [ttsProvider]);
 
@@ -172,18 +193,19 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
         } else {
           const buffer = await ttsProvider.synthesize(truncated, {
             voice: settings.ttsVoice || undefined,
+            model: settings.ttsModel || undefined,
           });
           if (!speechCancelledRef.current && buffer.byteLength > 0) {
             await playAudioBuffer(buffer);
           }
         }
-      } catch {
-        // TTS failed — silently ignore to avoid crashing the app
+      } catch (err) {
+        console.warn("[TTS] Speech synthesis failed:", err);
       } finally {
         setIsSpeaking(false);
       }
     },
-    [ttsProvider, settings.ttsEnabled, settings.ttsVoice],
+    [ttsProvider, settings.ttsEnabled, settings.ttsVoice, settings.ttsModel],
   );
 
   const cancelSpeech = useCallback(() => {
@@ -203,6 +225,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
         sttProvider,
         ttsProvider,
         ttsVoices,
+        ttsModels,
         isListening,
         isTranscribing,
         isSpeaking,

@@ -45,6 +45,7 @@
     "drizzle-orm": "^0.45.1",
     "kokoro-js": "^1.2.1",
     "lucide-react": "^0.564.0",
+    "onnxruntime-web": "^1.24.1",
     "openai": "^6.21.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

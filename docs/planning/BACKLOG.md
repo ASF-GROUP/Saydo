@@ -166,6 +166,25 @@ All work items for ASF Saydo, organized by area and prioritized within each sect
 | A-24 | Local AI voice models (STT/TTS) | needs-design | — | Local speech-to-text and text-to-speech models for mobile & desktop (Whisper, Piper, etc.) |
 | A-25 | Pluggable LLM core (LLMPipeline, LLMExecutor, ToolRegistry) | done | S20 | Refactored AI layer into pipeline/executor/registry pattern |
 | A-26 | AI intelligence tools (analyze-patterns, workload, smart-organize, energy) | done | S22 | 5 analytical tools in src/ai/tools/builtin/ |
+| A-30 | Tiered system prompts (SOTA full + compact local) | done | S26 | Full prompt for cloud, compact for Ollama/LM Studio, tool filtering, duplicate loop detection |
+| A-31 | AI task breakdown (break_down_task tool) | idea | — | LLM breaks a task into subtasks using parentId. Inspired by Todoist Assist, dypt, ClickUp. |
+| A-32 | Morning briefing / daily plan (plan_my_day tool) | idea | — | Query today's tasks + overdue, sort by priority/deadline, suggest an order. Inspired by Sunsama, Morgen. |
+| A-33 | Shutdown / daily review (daily_review tool) | idea | — | Summarize completions, slipped tasks, tomorrow's outlook. Reflection prompts. Inspired by Sunsama. |
+| A-34 | Overcommitment warning | idea | — | Proactive warning when creating tasks: "You have 8 tasks due tomorrow." Enhance analyze_workload. Inspired by Sunsama. |
+| A-35 | Smart nudges / proactive alerts | idea | — | System-level notifications: overdue at morning, deadline approaching, stale tasks (2+ weeks pending), streaks. Rule-based, no LLM needed. |
+| A-36 | AI time estimation (estimatedMinutes field) | idea | — | Track actual completion times. Suggest estimates from similar past tasks. Show accuracy stats. Inspired by Sunsama, Motion. |
+| A-37 | Weekly review & productivity analytics (weekly_review tool) | idea | — | Completion rate, tasks created vs done, busiest day, most productive time, neglected projects. Inspired by Reclaim, Sunsama. |
+| A-38 | Enhanced voice-to-structured-tasks | idea | — | Parse voice into multiple structured tasks in one session. Multi-task extraction from speech. Inspired by Todoist Ramble. |
+| A-39 | Meeting notes to tasks (extract_tasks_from_text tool) | idea | — | Paste meeting notes or any text, LLM extracts action items and creates tasks. Inspired by Motion, Notion. |
+| A-40 | Duplicate detection on task create | idea | — | Auto-check for similar existing tasks when creating. Warn before creating duplicates. Trigger existing find_similar_tasks. Inspired by Linear. |
+| A-41 | Energy-aware suggestions (enhanced) | idea | — | User sets peak hours in settings. get_energy_recommendations uses time-of-day to suggest what to work on. Inspired by rivva, Morgen. |
+| A-42 | Habit / recurring task intelligence | idea | — | Detect tasks completed on a regular cadence and suggest creating recurring tasks. Proactive suggestion in weekly review. Inspired by Reclaim. |
+| A-43 | Project planning from description | idea | — | "Plan a product launch" → LLM generates full project with tasks and milestones. Multi-step agent pattern. Inspired by Notion AI. |
+| A-44 | Adaptive learning (AI preference tracking) | idea | — | Track which AI suggestions users accept vs reject. Feed back into future suggestions. Requires feedback table + prompt injection. |
+| A-45 | ICS calendar export/import | idea | — | Export tasks with due dates as .ics files. Import .ics to create tasks. Enables calendar interop without live APIs. Inspired by Morgen, Reclaim. |
+| A-46 | Conversational daily planning (voice) | idea | — | "Talk me through my day" — AI walks through tasks, asks priorities, builds plan via multi-turn voice conversation. Inspired by Sunsama. |
+| A-47 | Auto-scheduling into time blocks | idea | — | Given tasks with durations + available hours, algorithmically schedule into time blocks. Output as timeline or ICS. Inspired by Motion, Morgen. |
+| A-48 | Plugin-contributed AI tools | idea | — | Let plugins register custom AI tools at runtime via ToolRegistry. E.g., a Gmail plugin adds import_emails_as_tasks. Architecture already supports this. |
 
 ## Storage & Data
 

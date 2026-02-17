@@ -69,9 +69,9 @@ export function Completed({ tasks, projects }: CompletedProps) {
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-3 mb-4 md:mb-6">
         <CheckCircle2 size={24} className="text-success" />
-        <h1 className="text-2xl font-bold text-on-surface">Completed</h1>
+        <h1 className="text-xl md:text-2xl font-bold text-on-surface">Completed</h1>
       </div>
 
       <div className="mb-4">

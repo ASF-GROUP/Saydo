@@ -13,6 +13,7 @@ import {
 import type { Task, UpdateTaskInput } from "../../core/types.js";
 import { SubtaskSection } from "./SubtaskSection.js";
 import { TaskMetadataSidebar } from "./TaskMetadataSidebar.js";
+import { useGeneralSettings } from "../context/SettingsContext.js";
 
 interface TaskDetailPanelProps {
   task: Task;
@@ -55,6 +56,7 @@ export function TaskDetailPanel({
   projectName = "Inbox",
   availableTags = [],
 }: TaskDetailPanelProps) {
+  const { settings } = useGeneralSettings();
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description ?? "");
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
@@ -152,7 +154,7 @@ export function TaskDetailPanel({
       onClick={onClose}
     >
       <div
-        className="bg-surface rounded-lg shadow-xl border border-border w-full max-w-4xl h-[85vh] flex flex-col mx-4"
+        className="bg-surface shadow-xl border border-border flex flex-col fixed bottom-0 left-0 right-0 h-[90vh] rounded-t-xl md:relative md:inset-auto md:rounded-lg md:w-full md:max-w-4xl md:h-[85vh] md:mx-4"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header — Todoist style */}
@@ -241,6 +243,9 @@ export function TaskDetailPanel({
                   <button
                     onClick={() => {
                       setMoreMenuOpen(false);
+                      if (settings.confirm_delete === "true") {
+                        if (!window.confirm("Delete this task? This cannot be undone.")) return;
+                      }
                       onDelete(task.id);
                     }}
                     className="w-full text-left px-3 py-2 flex items-center gap-2.5 hover:bg-surface-tertiary transition-colors text-error"
@@ -277,9 +282,9 @@ export function TaskDetailPanel({
         </div>
 
         {/* Two-column body */}
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-col md:flex-row flex-1 overflow-hidden">
           {/* Left column — main content */}
-          <div className="flex-1 overflow-auto p-6 space-y-4">
+          <div className="flex-1 overflow-auto p-4 md:p-6 space-y-4">
             <input
               type="text"
               value={title}

@@ -2,6 +2,9 @@ import React, { useState, useMemo, useRef, useEffect } from "react";
 import { Plus } from "lucide-react";
 import { parseTask } from "../../parser/task-parser.js";
 import { formatRecurrenceLabel } from "./RecurrencePicker.js";
+import { useGeneralSettings } from "../context/SettingsContext.js";
+
+const PRIORITY_MAP: Record<string, number> = { p1: 1, p2: 2, p3: 3, p4: 4 };
 
 interface TaskInputProps {
   onSubmit: (input: ReturnType<typeof parseTask>) => void;
@@ -12,6 +15,7 @@ interface TaskInputProps {
 export function TaskInput({ onSubmit, placeholder, autoFocusTrigger }: TaskInputProps) {
   const [value, setValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const { settings } = useGeneralSettings();
 
   useEffect(() => {
     if (autoFocusTrigger && autoFocusTrigger > 0) {
@@ -29,6 +33,10 @@ export function TaskInput({ onSubmit, placeholder, autoFocusTrigger }: TaskInput
     if (!value.trim()) return;
 
     const parsed = parseTask(value);
+    // Apply default priority from settings if user didn't specify one
+    if (parsed.priority === null && settings.default_priority !== "none") {
+      parsed.priority = PRIORITY_MAP[settings.default_priority] ?? null;
+    }
     onSubmit(parsed);
     setValue("");
   };

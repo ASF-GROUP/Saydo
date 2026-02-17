@@ -84,7 +84,7 @@ export function Today({
     <div>
       <div className="flex items-center gap-3 mb-1">
         <CalendarDays size={24} className="text-accent" />
-        <h1 className="text-2xl font-bold text-on-surface">Today</h1>
+        <h1 className="text-xl md:text-2xl font-bold text-on-surface">Today</h1>
         <span className="text-sm text-on-surface-muted">
           {new Date().toLocaleDateString(undefined, {
             weekday: "long",
@@ -93,7 +93,7 @@ export function Today({
           })}
         </span>
       </div>
-      <p className="text-sm text-on-surface-muted mb-6">{totalCount} tasks</p>
+      <p className="text-sm text-on-surface-muted mb-4 md:mb-6">{totalCount} tasks</p>
 
       <TaskInput
         onSubmit={onCreateTask}

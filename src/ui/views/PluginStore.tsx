@@ -101,7 +101,7 @@ export function PluginStore({
     <div>
       <div className="flex items-center gap-3 mb-2">
         <Puzzle size={24} className="text-accent" />
-        <h1 className="text-2xl font-bold text-on-surface">Plugin Store</h1>
+        <h1 className="text-xl md:text-2xl font-bold text-on-surface">Plugin Store</h1>
       </div>
       <p className="text-on-surface-muted mb-4 text-sm">Browse community plugins for Saydo.</p>
 

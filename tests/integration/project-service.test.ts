@@ -98,6 +98,63 @@ describe("ProjectService (integration)", () => {
     });
   });
 
+  describe("update", () => {
+    it("updates project name", async () => {
+      const project = await projectService.create("Old Name");
+
+      const updated = await projectService.update(project.id, {
+        name: "New Name",
+      });
+      expect(updated).not.toBeNull();
+      expect(updated!.name).toBe("New Name");
+      expect(updated!.color).toBe("#3b82f6"); // unchanged
+    });
+
+    it("updates project color", async () => {
+      const project = await projectService.create("Colorful");
+
+      const updated = await projectService.update(project.id, {
+        color: "#ef4444",
+      });
+      expect(updated).not.toBeNull();
+      expect(updated!.color).toBe("#ef4444");
+      expect(updated!.name).toBe("Colorful"); // unchanged
+    });
+
+    it("updates multiple fields at once", async () => {
+      const project = await projectService.create("Multi");
+
+      const updated = await projectService.update(project.id, {
+        name: "Updated Multi",
+        color: "#a855f7",
+        archived: true,
+      });
+      expect(updated).not.toBeNull();
+      expect(updated!.name).toBe("Updated Multi");
+      expect(updated!.color).toBe("#a855f7");
+      expect(updated!.archived).toBe(true);
+    });
+
+    it("returns null for non-existent project", async () => {
+      const result = await projectService.update("nonexistent", {
+        name: "Nope",
+      });
+      expect(result).toBeNull();
+    });
+
+    it("partial update does not clear other fields", async () => {
+      const project = await projectService.create("Partial", "#22c55e");
+
+      const updated = await projectService.update(project.id, {
+        archived: true,
+      });
+      expect(updated).not.toBeNull();
+      expect(updated!.name).toBe("Partial");
+      expect(updated!.color).toBe("#22c55e");
+      expect(updated!.archived).toBe(true);
+    });
+  });
+
   describe("archive", () => {
     it("archives a project", async () => {
       const project = await projectService.create("To Archive");

@@ -122,7 +122,7 @@ export function AIChatPanel({ onClose, onOpenSettings }: AIChatPanelProps) {
 
   if (!isConfigured) {
     return (
-      <aside className="w-80 border-l border-border flex flex-col bg-surface">
+      <aside className="w-full h-full md:w-80 md:h-auto border-l-0 md:border-l border-border flex flex-col bg-surface">
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <h3 className="font-semibold text-sm text-on-surface">AI Chat</h3>
           <button
@@ -154,7 +154,7 @@ export function AIChatPanel({ onClose, onOpenSettings }: AIChatPanelProps) {
   }
 
   return (
-    <aside className="w-80 border-l border-border flex flex-col bg-surface">
+    <aside className="w-full h-full md:w-80 md:h-auto border-l-0 md:border-l border-border flex flex-col bg-surface">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <h3 className="font-semibold text-sm text-on-surface flex items-center gap-2">

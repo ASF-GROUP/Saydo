@@ -4,6 +4,15 @@ import type { Task } from "../../core/types.js";
 import { getPriority } from "../../core/priorities.js";
 import { DatePicker } from "./DatePicker.js";
 import { formatRecurrenceLabel } from "./RecurrencePicker.js";
+import { hexToRgba } from "../../utils/color.js";
+
+/** Priority → row styling: left border + optional background wash */
+const PRIORITY_ROW_STYLES: Record<number, { border: string; bg: string }> = {
+  1: { border: "border-l-3 border-l-priority-1", bg: "bg-priority-1/[0.06]" },
+  2: { border: "border-l-3 border-l-priority-2", bg: "bg-priority-2/[0.04]" },
+  3: { border: "border-l-2 border-l-priority-3", bg: "" },
+  4: { border: "", bg: "" },
+};
 
 interface TaskItemProps {
   task: Task;
@@ -89,8 +98,10 @@ export const TaskItem = React.memo(function TaskItem({
           ? "bg-accent/10 ring-1 ring-accent"
           : isSelected
             ? "bg-accent/5 ring-1 ring-accent/50"
-            : "hover:bg-surface-secondary"
-      }`}
+            : task.status !== "completed" && task.priority && PRIORITY_ROW_STYLES[task.priority]
+              ? `${PRIORITY_ROW_STYLES[task.priority].bg} hover:bg-surface-secondary`
+              : "hover:bg-surface-secondary"
+      } ${task.status !== "completed" && task.priority && PRIORITY_ROW_STYLES[task.priority] ? PRIORITY_ROW_STYLES[task.priority].border : ""}`}
       onClick={handleClick}
     >
       {/* Vertical connector line for nested tasks */}
@@ -193,7 +204,14 @@ export const TaskItem = React.memo(function TaskItem({
             {task.tags.map((tag) => (
               <span
                 key={tag.id}
-                className="font-mono text-xs px-1.5 py-0 rounded-md bg-surface-tertiary text-on-surface-secondary"
+                className={`font-mono text-xs px-1.5 py-0 rounded-md ${
+                  tag.color ? "" : "bg-surface-tertiary text-on-surface-secondary"
+                }`}
+                style={
+                  tag.color
+                    ? { backgroundColor: hexToRgba(tag.color, 0.15), color: tag.color }
+                    : undefined
+                }
               >
                 {tag.name}
               </span>
@@ -222,14 +240,14 @@ export const TaskItem = React.memo(function TaskItem({
       </div>
 
       {/* Hover action buttons */}
-      <div className="relative flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex-shrink-0">
+      <div className="relative flex items-center gap-0.5 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-150 flex-shrink-0">
         <button
           onClick={(e) => {
             e.stopPropagation();
             onSelect(task.id);
           }}
           aria-label="Edit task"
-          className="p-1 rounded hover:bg-surface-tertiary text-on-surface-muted hover:text-on-surface transition-colors"
+          className="p-2 md:p-1 rounded hover:bg-surface-tertiary text-on-surface-muted hover:text-on-surface transition-colors"
         >
           <Pencil size={14} />
         </button>
@@ -239,7 +257,7 @@ export const TaskItem = React.memo(function TaskItem({
             setShowDatePicker((prev) => !prev);
           }}
           aria-label="Set due date"
-          className="p-1 rounded hover:bg-surface-tertiary text-on-surface-muted hover:text-on-surface transition-colors"
+          className="p-2 md:p-1 rounded hover:bg-surface-tertiary text-on-surface-muted hover:text-on-surface transition-colors"
         >
           <Calendar size={14} />
         </button>

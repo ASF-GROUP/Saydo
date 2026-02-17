@@ -215,11 +215,11 @@ describe("ChatSession", () => {
     expect(assistantMsg!.content).toBe("partial");
   });
 
-  it("emits structured error for too many iterations", async () => {
+  it("detects duplicate tool call loops and exits gracefully", async () => {
     const { taskService, projectService } = createTestServices();
     const toolRegistry = createToolRegistry();
 
-    // Executor always returns tool calls, never text-only
+    // Executor always returns the same tool call (hallucination loop)
     let callCount = 0;
     const executor: LLMExecutor = {
       getCapabilities: () => ({ ...DEFAULT_CAPABILITIES }),
@@ -252,11 +252,54 @@ describe("ChatSession", () => {
       events.push(event);
     }
 
+    // Duplicate detector should catch it after 2 calls, exiting cleanly
+    expect(callCount).toBe(2);
+    expect(events.some((e) => e.type === "done")).toBe(true);
+    expect(events.some((e) => e.type === "error")).toBe(false);
+  });
+
+  it("emits structured error for too many iterations with varying calls", async () => {
+    const { taskService, projectService } = createTestServices();
+    const toolRegistry = createToolRegistry();
+
+    // Executor returns different args each time (bypasses duplicate detection)
+    let callCount = 0;
+    const executor: LLMExecutor = {
+      getCapabilities: () => ({ ...DEFAULT_CAPABILITIES }),
+      execute: async (): Promise<PipelineResult> => {
+        callCount++;
+        return {
+          mode: "stream",
+          events: (async function* () {
+            yield {
+              type: "tool_call" as const,
+              data: JSON.stringify([
+                { id: `call_${callCount}`, name: "query_tasks", arguments: JSON.stringify({ search: `query_${callCount}` }) },
+              ]),
+            };
+          })(),
+        };
+      },
+    };
+
+    const session = new ChatSession(
+      executor,
+      { taskService, projectService },
+      { role: "system", content: "You are helpful." },
+      { toolRegistry },
+    );
+
+    session.addUserMessage("List tasks forever");
+    const events: StreamEvent[] = [];
+    for await (const event of session.run()) {
+      events.push(event);
+    }
+
     const errorEvent = events.find((e) => e.type === "error");
     expect(errorEvent).toBeDefined();
     const parsed = JSON.parse(errorEvent!.data);
     expect(parsed.message).toBe("Too many tool call iterations");
-    expect(parsed.category).toBe("unknown");
+    expect(callCount).toBe(10);
   });
 
   it("handles tool call loop", async () => {

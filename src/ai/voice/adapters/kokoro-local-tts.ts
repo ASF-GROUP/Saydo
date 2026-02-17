@@ -117,7 +117,8 @@ export class KokoroLocalTTSProvider implements TTSProviderPlugin {
       this.handleWorkerMessage(e.data);
     });
 
-    worker.addEventListener("error", () => {
+    worker.addEventListener("error", (e) => {
+      console.warn("[Kokoro Worker] Error:", e?.message ?? e);
       this.handleWorkerCrash();
     });
 

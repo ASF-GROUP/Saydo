@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { SettingsTab } from "../views/settings/types.js";
+import { useGeneralSettings } from "../context/SettingsContext.js";
 
 export type View =
   | "inbox"
@@ -41,14 +42,15 @@ function decodePathSegment(segment: string | undefined): string | null {
   }
 }
 
-function parseRouteStateFromHash(hash: string): RouteState {
+function parseRouteStateFromHash(hash: string, defaultView: View = "inbox"): RouteState {
   const hashValue = hash.startsWith("#") ? hash.slice(1) : hash;
-  const normalized = hashValue.startsWith("/") ? hashValue : "/inbox";
+  const hasExplicitPath = hashValue.startsWith("/") && hashValue.length > 1;
+  const normalized = hasExplicitPath ? hashValue : `/${defaultView}`;
   const [rawPath, rawQuery = ""] = normalized.split("?");
   const pathSegments = rawPath.split("/").filter(Boolean);
   const params = new URLSearchParams(rawQuery);
   const route: RouteState = { ...DEFAULT_ROUTE_STATE };
-  const root = pathSegments[0] ?? "inbox";
+  const root = pathSegments[0] ?? defaultView;
 
   switch (root) {
     case "inbox":
@@ -91,7 +93,7 @@ function parseRouteStateFromHash(hash: string): RouteState {
       route.view = "completed";
       break;
     default:
-      route.view = "inbox";
+      route.view = defaultView;
       break;
   }
 
@@ -150,7 +152,9 @@ function buildHashFromRoute(route: RouteState): string {
 }
 
 export function useRouting() {
-  const [currentView, setCurrentView] = useState<View>("inbox");
+  const { settings } = useGeneralSettings();
+  const startView = settings.start_view as View;
+  const [currentView, setCurrentView] = useState<View>(startView);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [selectedRouteTaskId, setSelectedRouteTaskId] = useState<string | null>(null);
   const [selectedPluginViewId, setSelectedPluginViewId] = useState<string | null>(null);
@@ -174,7 +178,7 @@ export function useRouting() {
   // Sync from hash on mount and popstate/hashchange
   useEffect(() => {
     const syncRouteFromLocation = () => {
-      const route = parseRouteStateFromHash(window.location.hash);
+      const route = parseRouteStateFromHash(window.location.hash, startView);
       applyRouteState(route);
       navigationKeyRef.current = `${route.view}:${route.projectId ?? ""}:${route.taskId ?? ""}:${route.pluginViewId ?? ""}`;
     };
@@ -188,7 +192,7 @@ export function useRouting() {
       window.removeEventListener("popstate", syncRouteFromLocation);
       window.removeEventListener("hashchange", syncRouteFromLocation);
     };
-  }, [applyRouteState]);
+  }, [applyRouteState, startView]);
 
   // Push/replace hash when route state changes
   useEffect(() => {

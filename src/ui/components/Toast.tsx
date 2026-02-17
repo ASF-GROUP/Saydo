@@ -19,7 +19,7 @@ export function Toast({ message, actionLabel, onAction, onDismiss, duration = 50
     <div
       role="alert"
       aria-live="assertive"
-      className="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2.5 bg-on-surface text-surface rounded-lg shadow-lg text-sm"
+      className="fixed bottom-[calc(var(--height-bottom-nav)+1rem)] md:bottom-16 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2.5 bg-on-surface text-surface rounded-lg shadow-lg text-sm"
     >
       <span>{message}</span>
       {actionLabel && onAction && (

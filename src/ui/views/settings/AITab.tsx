@@ -2,6 +2,14 @@ import { useState, useEffect } from "react";
 import { useAIContext } from "../../context/AIContext.js";
 import { api, type AIProviderInfo, type ModelDiscoveryInfo } from "../../api/index.js";
 
+const PROVIDER_HELP: Record<string, string> = {
+  openai: "Get your API key at platform.openai.com.",
+  anthropic: "Get your API key at console.anthropic.com.",
+  openrouter: "Unified gateway for 100+ models. Get your key at openrouter.ai.",
+  ollama: "Free local models. Install at ollama.com, no API key needed.",
+  lmstudio: "Local model server. Download at lmstudio.ai, no API key needed.",
+};
+
 export function AITab() {
   const { config, isConfigured, updateConfig, refreshConfig } = useAIContext();
   const [providers, setProviders] = useState<AIProviderInfo[]>([]);
@@ -170,7 +178,7 @@ export function AITab() {
                     <span className="font-normal text-on-surface-muted ml-1">(optional)</span>
                   )}
                   {config?.hasApiKey && (
-                    <span className="font-normal text-success ml-2">Saved</span>
+                    <span className="font-normal text-success ml-2">Set</span>
                   )}
                 </label>
                 <input
@@ -180,6 +188,11 @@ export function AITab() {
                   placeholder={config?.hasApiKey ? "Enter new key to update" : currentProvider?.optionalApiKey ? "Enter API key for remote servers" : "Enter API key"}
                   className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-on-surface"
                 />
+                {PROVIDER_HELP[provider] && (
+                  <p className="mt-1 text-xs text-on-surface-muted">
+                    {PROVIDER_HELP[provider]}
+                  </p>
+                )}
               </div>
             )}
 

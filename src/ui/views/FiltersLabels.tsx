@@ -94,9 +94,9 @@ export function FiltersLabels({ tasks, onNavigateToFilter }: FiltersLabelsProps)
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex items-center gap-3 mb-4 md:mb-6">
         <SlidersHorizontal size={24} className="text-accent" />
-        <h1 className="text-2xl font-bold text-on-surface">Filters & Labels</h1>
+        <h1 className="text-xl md:text-2xl font-bold text-on-surface">Filters & Labels</h1>
       </div>
 
       {/* My Filters Section */}
@@ -217,7 +217,14 @@ export function FiltersLabels({ tasks, onNavigateToFilter }: FiltersLabelsProps)
                     className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-secondary transition-colors cursor-pointer"
                     onClick={() => onNavigateToFilter(`#${tag.name}`)}
                   >
-                    <Tag size={16} className="text-on-surface-muted flex-shrink-0" />
+                    {tag.color ? (
+                      <span
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: tag.color }}
+                      />
+                    ) : (
+                      <Tag size={16} className="text-on-surface-muted flex-shrink-0" />
+                    )}
                     <span className="flex-1 text-sm text-on-surface">{tag.name}</span>
                     {count > 0 && (
                       <span className="text-xs px-1.5 py-0.5 rounded-full bg-surface-tertiary text-on-surface-secondary">

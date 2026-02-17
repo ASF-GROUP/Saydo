@@ -44,6 +44,16 @@ export class ProjectService {
     return this.create(name);
   }
 
+  async update(
+    id: string,
+    data: Partial<Pick<Project, "name" | "color" | "icon" | "archived">>,
+  ): Promise<Project | null> {
+    const result = this.queries.updateProject(id, data);
+    if (result.changes === 0) return null;
+    logger.debug("Project updated", { id, fields: Object.keys(data) });
+    return this.get(id);
+  }
+
   async archive(id: string): Promise<boolean> {
     const result = this.queries.updateProject(id, { archived: true });
     if (result.changes > 0) logger.debug("Project archived", { id });
