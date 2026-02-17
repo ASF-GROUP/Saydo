@@ -434,10 +434,11 @@ ${contextBlock ? "\n" + contextBlock : ""}`;
  * Gather live context from services for the system message.
  * Must be called async before building the system message.
  */
-export async function gatherContext(services: ToolContext, options?: { compact?: boolean }): Promise<string> {
+export async function gatherContext(services: ToolContext, options?: { compact?: boolean; voiceCall?: boolean }): Promise<string> {
   const { taskService, projectService } = services;
   const todayISO = new Date().toISOString().split("T")[0];
   const compact = options?.compact ?? false;
+  const voiceCall = options?.voiceCall ?? false;
 
   const allTasks = await taskService.list();
   const projects = await projectService.list();
@@ -445,11 +446,26 @@ export async function gatherContext(services: ToolContext, options?: { compact?:
   const pending = allTasks.filter((t) => t.status === "pending");
   const overdue = pending.filter((t) => t.dueDate && t.dueDate < todayISO);
 
+  const voiceCallBlock = voiceCall
+    ? `## Voice Call Mode
+You are in a live voice call with the user. Follow these rules:
+- Be conversational and concise — speak in short sentences
+- Confirm actions briefly: "Done, created Buy groceries for tomorrow"
+- Ask follow-up questions naturally: "Anything else?"
+- When user says multiple tasks in one sentence, create each one separately
+- For "plan my day" or "what's on my plate": query tasks, summarize briefly, suggest an order
+- Don't use markdown formatting — your response will be spoken aloud
+- Keep responses under 3 sentences unless the user asks for details
+- End your responses in a way that invites the user to continue talking
+
+`
+    : "";
+
   if (compact) {
     const lines: string[] = [`Pending: ${pending.length}`];
     if (overdue.length > 0) lines.push(`Overdue: ${overdue.length}`);
     if (projects.length > 0) lines.push(`Projects: ${projects.map((p) => p.name).join(", ")}`);
-    return lines.join(". ") + ".";
+    return voiceCallBlock + lines.join(". ") + ".";
   }
 
   const dueToday = pending.filter((t) => t.dueDate?.startsWith(todayISO));
@@ -505,7 +521,7 @@ export async function gatherContext(services: ToolContext, options?: { compact?:
     lines.push(`- Tasks completed in last 7 days: ${completedRecently.length}`);
   }
 
-  return lines.join("\n");
+  return voiceCallBlock + lines.join("\n");
 }
 
 // ── Backward-compatibility exports ──

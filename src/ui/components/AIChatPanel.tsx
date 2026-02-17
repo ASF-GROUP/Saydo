@@ -3,6 +3,7 @@ import {
   X,
   Send,
   Mic,
+  Phone,
   Bot,
   Trash2,
   Settings,
@@ -17,6 +18,8 @@ import remarkGfm from "remark-gfm";
 import { useAIContext } from "../context/AIContext.js";
 import { useVoiceContext } from "../context/VoiceContext.js";
 import { useVAD } from "../hooks/useVAD.js";
+import { useVoiceCall } from "../hooks/useVoiceCall.js";
+import { VoiceCallOverlay } from "./VoiceCallOverlay.js";
 import { BrowserSTTProvider } from "../../ai/voice/adapters/browser-stt.js";
 import { createAudioRecorder } from "../../ai/voice/audio-utils.js";
 import type { AIChatMessage } from "../api/index.js";
@@ -35,6 +38,7 @@ export function AIChatPanel({ onClose, onOpenSettings }: AIChatPanelProps) {
     clearChat,
     restoreMessages,
     retryLastMessage,
+    setVoiceCallMode,
   } = useAIContext();
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -72,16 +76,29 @@ export function AIChatPanel({ onClose, onOpenSettings }: AIChatPanelProps) {
   const voice = useVoiceContext();
   const wasStreamingRef = useRef(false);
 
+  const ttsAvailable = !!(voice.ttsProvider && voice.settings.ttsEnabled);
+
+  const voiceCall = useVoiceCall({
+    speak: voice.speak,
+    cancelSpeech: voice.cancelSpeech,
+    isSpeaking: voice.isSpeaking,
+    isStreaming,
+    messages,
+    ttsAvailable,
+    setVoiceCallMode,
+  });
+
   const handleVoiceResult = useCallback(
     (transcript: string) => {
       if (!transcript.trim()) return;
-      if (voice.settings.autoSend) {
+      // During voice call, always auto-send
+      if (voiceCall.isCallActive || voice.settings.autoSend) {
         sendMessage(transcript);
       } else {
         setInput((prev) => (prev ? prev + " " + transcript : transcript));
       }
     },
-    [voice.settings.autoSend, sendMessage],
+    [voice.settings.autoSend, sendMessage, voiceCall.isCallActive],
   );
 
   // VAD integration — auto-detect speech and transcribe
@@ -97,19 +114,27 @@ export function AIChatPanel({ onClose, onOpenSettings }: AIChatPanelProps) {
     [voice, handleVoiceResult],
   );
 
+  // VAD enabled when: normal VAD mode OR voice call is in listening state
+  const vadEnabled =
+    (voice.settings.voiceMode === "vad" && !isStreaming && !voice.isSpeaking && !voiceCall.isCallActive) ||
+    voiceCall.vadEnabled;
+
   useVAD({
     onSpeechEnd: handleVADSpeechEnd,
-    enabled: voice.settings.voiceMode === "vad" && !isStreaming && !voice.isSpeaking,
+    enabled: vadEnabled,
     deviceId: voice.settings.microphoneId || undefined,
   });
 
   // Voice conversation loop: TTS when AI finishes responding (streaming → done)
+  // Skip when voice call is active — the hook handles TTS
   useEffect(() => {
     const wasStreaming = wasStreamingRef.current;
     wasStreamingRef.current = isStreaming;
 
     // Only trigger TTS when streaming just finished
     if (!wasStreaming || isStreaming) return;
+    // Voice call hook handles its own TTS
+    if (voiceCall.isCallActive) return;
     if (!voice.settings.ttsEnabled || voice.settings.voiceMode === "off") return;
 
     const lastMsg = messages[messages.length - 1];
@@ -118,7 +143,7 @@ export function AIChatPanel({ onClose, onOpenSettings }: AIChatPanelProps) {
         // TTS failed — silently ignore
       });
     }
-  }, [isStreaming, messages, voice]);
+  }, [isStreaming, messages, voice, voiceCall.isCallActive]);
 
   if (!isConfigured) {
     return (
@@ -228,27 +253,48 @@ export function AIChatPanel({ onClose, onOpenSettings }: AIChatPanelProps) {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <form onSubmit={handleSubmit} className="p-3 border-t border-border">
-        <div className="flex items-center gap-2">
-          <input
-            ref={inputRef}
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask about your tasks..."
-            className="min-w-0 flex-1 px-3 py-2 text-sm border border-border rounded-lg bg-surface text-on-surface placeholder-on-surface-muted focus:outline-none focus:ring-2 focus:ring-accent"
+      {/* Input / Voice Call Overlay */}
+      {voiceCall.isCallActive ? (
+        <div className="p-3 border-t border-border">
+          <VoiceCallOverlay
+            callState={voiceCall.callState as Exclude<typeof voiceCall.callState, "idle">}
+            callDuration={voiceCall.callDuration}
+            onEndCall={voiceCall.endCall}
           />
-          <VoiceButton onResult={handleVoiceResult} disabled={isStreaming} voice={voice} />
-          <button
-            type="submit"
-            disabled={isStreaming || !input.trim()}
-            className="shrink-0 px-3 py-2 text-sm bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <Send size={16} />
-          </button>
         </div>
-      </form>
+      ) : (
+        <form onSubmit={handleSubmit} className="p-3 border-t border-border">
+          <div className="flex items-center gap-2">
+            <input
+              ref={inputRef}
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask about your tasks..."
+              className="min-w-0 flex-1 px-3 py-2 text-sm border border-border rounded-lg bg-surface text-on-surface placeholder-on-surface-muted focus:outline-none focus:ring-2 focus:ring-accent"
+            />
+            <VoiceButton onResult={handleVoiceResult} disabled={isStreaming} voice={voice} />
+            {voice.sttProvider && ttsAvailable && (
+              <button
+                type="button"
+                onClick={voiceCall.startCall}
+                disabled={isStreaming}
+                title="Start voice call"
+                className="shrink-0 px-2 py-2 text-sm rounded-lg border border-border text-on-surface-muted hover:bg-surface-secondary disabled:opacity-50 transition-colors"
+              >
+                <Phone size={16} />
+              </button>
+            )}
+            <button
+              type="submit"
+              disabled={isStreaming || !input.trim()}
+              className="shrink-0 px-3 py-2 text-sm bg-accent text-white rounded-lg hover:bg-accent-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <Send size={16} />
+            </button>
+          </div>
+        </form>
+      )}
     </aside>
   );
 }

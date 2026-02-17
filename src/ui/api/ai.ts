@@ -150,7 +150,7 @@ export async function updateAIConfig(config: {
   );
 }
 
-export async function sendChatMessage(message: string): Promise<ReadableStream<Uint8Array> | null> {
+export async function sendChatMessage(message: string, options?: { voiceCall?: boolean }): Promise<ReadableStream<Uint8Array> | null> {
   if (isTauri()) {
     const svc = await getServices();
     const providerSetting = svc.storage.getAppSetting("ai_provider");
@@ -188,7 +188,7 @@ export async function sendChatMessage(message: string): Promise<ReadableStream<U
       };
 
       const isLocalProvider = providerSetting.value === "ollama" || providerSetting.value === "lmstudio";
-      const contextBlock = await gatherContext(toolServices, { compact: isLocalProvider });
+      const contextBlock = await gatherContext(toolServices, { compact: isLocalProvider, voiceCall: options?.voiceCall });
       const session = svc.chatManager.getOrCreateSession(
         executor,
         toolServices,
@@ -237,7 +237,7 @@ export async function sendChatMessage(message: string): Promise<ReadableStream<U
   const res = await fetch(`${BASE}/ai/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, voiceCall: options?.voiceCall }),
   });
   return res.body;
 }

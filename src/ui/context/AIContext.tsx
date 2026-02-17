@@ -29,6 +29,8 @@ interface AIContextValue extends AIState {
   }) => Promise<void>;
   refreshConfig: () => Promise<void>;
   retryLastMessage: () => void;
+  voiceCallActive: boolean;
+  setVoiceCallMode: (active: boolean) => void;
 }
 
 const AIContext = createContext<AIContextValue | null>(null);
@@ -66,6 +68,8 @@ export function AIProvider({ children }: { children: ReactNode }) {
   const [config, setConfig] = useState<AIConfigInfo | null>(null);
   const [messages, setMessages] = useState<AIChatMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [voiceCallActive, setVoiceCallActive] = useState(false);
+  const voiceCallActiveRef = useRef(false);
   const lastUserMessageRef = useRef<string>("");
   const { refreshTasks } = useTaskContext();
 
@@ -111,7 +115,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
     let hadTaskMutation = false;
 
     try {
-      const stream = await api.sendChatMessage(text);
+      const stream = await api.sendChatMessage(text, { voiceCall: voiceCallActiveRef.current });
       if (!stream) {
         setIsStreaming(false);
         return;
@@ -242,6 +246,11 @@ export function AIProvider({ children }: { children: ReactNode }) {
     }
   }, [refreshTasks]);
 
+  const setVoiceCallMode = useCallback((active: boolean) => {
+    setVoiceCallActive(active);
+    voiceCallActiveRef.current = active;
+  }, []);
+
   const retryLastMessage = useCallback(() => {
     const text = lastUserMessageRef.current;
     if (!text) return;
@@ -293,6 +302,8 @@ export function AIProvider({ children }: { children: ReactNode }) {
         updateConfig,
         refreshConfig,
         retryLastMessage,
+        voiceCallActive,
+        setVoiceCallMode,
       }}
     >
       {children}
