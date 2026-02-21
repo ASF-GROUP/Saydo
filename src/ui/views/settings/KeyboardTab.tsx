@@ -50,9 +50,7 @@ export function KeyboardTab() {
         api.setAppSetting("keyboard_shortcuts", JSON.stringify(json));
       } else if ("conflict" in result && result.conflict) {
         setConflictForId(recordingId);
-        setConflictMessage(
-          `"${combo}" is already used by "${result.conflict}"`,
-        );
+        setConflictMessage(`"${combo}" is already used by "${result.conflict}"`);
       }
       setRecordingId(null);
     };
@@ -65,9 +63,7 @@ export function KeyboardTab() {
     if (!searchQuery.trim()) return shortcuts;
     const q = searchQuery.toLowerCase();
     return shortcuts.filter(
-      (s) =>
-        s.description.toLowerCase().includes(q) ||
-        s.currentKey.toLowerCase().includes(q),
+      (s) => s.description.toLowerCase().includes(q) || s.currentKey.toLowerCase().includes(q),
     );
   }, [shortcuts, searchQuery]);
 

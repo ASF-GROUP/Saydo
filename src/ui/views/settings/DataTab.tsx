@@ -80,7 +80,10 @@ function DataSection() {
 
   useEffect(() => {
     if (showFilters) {
-      api.listProjects().then(setProjects).catch(() => {});
+      api
+        .listProjects()
+        .then(setProjects)
+        .catch(() => {});
     }
   }, [showFilters]);
 

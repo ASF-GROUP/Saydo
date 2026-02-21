@@ -199,8 +199,14 @@ export function AboutTab() {
 
     Promise.all([
       api.getStorageInfo().catch(() => ({ mode: "unknown" })),
-      api.exportAllData().then((d) => d.tasks.length).catch(() => 0),
-      api.listPlugins().then((p) => p.length).catch(() => 0),
+      api
+        .exportAllData()
+        .then((d) => d.tasks.length)
+        .catch(() => 0),
+      api
+        .listPlugins()
+        .then((p) => p.length)
+        .catch(() => 0),
     ]).then(([storageInfo, taskCount, pluginCount]) => {
       setSystemInfo({
         storage: (storageInfo as any).mode === "markdown" ? "Markdown" : "SQLite",

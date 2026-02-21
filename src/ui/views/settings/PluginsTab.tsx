@@ -19,9 +19,7 @@ export function PluginsTab() {
     if (!searchQuery.trim()) return builtin;
     const q = searchQuery.toLowerCase();
     return builtin.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.description.toLowerCase().includes(q),
+      (p) => p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q),
     );
   }, [plugins, searchQuery]);
 
@@ -30,9 +28,7 @@ export function PluginsTab() {
     if (!searchQuery.trim()) return community;
     const q = searchQuery.toLowerCase();
     return community.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.description.toLowerCase().includes(q),
+      (p) => p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q),
     );
   }, [plugins, searchQuery]);
 
