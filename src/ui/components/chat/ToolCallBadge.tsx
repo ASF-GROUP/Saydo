@@ -17,6 +17,8 @@ import {
   Zap,
   Puzzle,
   Brain,
+  Sun,
+  Sunset,
   type LucideIcon,
 } from "lucide-react";
 
@@ -52,6 +54,8 @@ export const TOOL_META: Record<string, { icon: LucideIcon; emoji: string; verb: 
   get_energy_recommendations: { icon: Zap, emoji: "\u26a1", verb: "Getting recommendations" },
   break_down_task: { icon: Puzzle, emoji: "\ud83e\udde9", verb: "Breaking down" },
   smart_organize: { icon: Brain, emoji: "\ud83e\udde0", verb: "Organizing" },
+  plan_my_day: { icon: Sun, emoji: "\u2600\ufe0f", verb: "Planning your day" },
+  daily_review: { icon: Sunset, emoji: "\ud83c\udf05", verb: "Reviewing your day" },
 };
 
 export const ToolCallBadge = memo(function ToolCallBadge({

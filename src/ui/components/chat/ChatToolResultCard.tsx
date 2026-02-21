@@ -13,6 +13,10 @@ import {
   Search,
   Puzzle,
   Bell,
+  Sun,
+  Sunset,
+  Flame,
+  ArrowRight,
   type LucideIcon,
 } from "lucide-react";
 
@@ -39,6 +43,8 @@ const TOOL_CARD_META: Record<string, { icon: LucideIcon; title: string }> = {
   check_duplicates: { icon: Search, title: "Duplicate Check" },
   list_projects: { icon: FolderOpen, title: "Projects" },
   list_reminders: { icon: Bell, title: "Reminders" },
+  plan_my_day: { icon: Sun, title: "Day Plan" },
+  daily_review: { icon: Sunset, title: "Daily Review" },
 };
 
 function CardWrapper({ toolName, children }: { toolName: string; children: React.ReactNode }) {
@@ -121,6 +127,12 @@ function ToolResultVisual({
       break;
     case "list_reminders":
       content = <ReminderList data={parsed} />;
+      break;
+    case "plan_my_day":
+      content = <DayPlanCard data={parsed} />;
+      break;
+    case "daily_review":
+      content = <DailyReviewCard data={parsed} />;
       break;
     default:
       return null; // Fall back to badge display in MessageBubble
@@ -629,6 +641,330 @@ function ReminderList({ data }: { data: Record<string, unknown> }) {
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+// --- Day Plan Card (plan_my_day) ---
+
+interface FocusBlock {
+  type: "quick_win" | "deep_work";
+  tasks: { id?: string; title?: string; priority?: number }[];
+}
+
+function WorkloadBar({
+  assessment,
+  total,
+  weight,
+}: {
+  assessment: string;
+  total: number;
+  weight: number;
+}) {
+  const color =
+    assessment === "heavy"
+      ? "bg-error/70"
+      : assessment === "normal"
+        ? "bg-warning/60"
+        : "bg-success/60";
+  const label = assessment === "heavy" ? "Heavy" : assessment === "normal" ? "Normal" : "Light";
+  const pct = Math.min(100, Math.round((weight / 16) * 100));
+
+  return (
+    <div className="flex items-center gap-2 text-xs">
+      <span className="text-on-surface-muted w-14 shrink-0">{total} tasks</span>
+      <div className="flex-1 h-2.5 bg-surface-tertiary rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-500 ${color}`}
+          style={{ width: `${Math.max(pct, 6)}%` }}
+        />
+      </div>
+      <span
+        className={`text-[10px] font-semibold ${
+          assessment === "heavy"
+            ? "text-error"
+            : assessment === "normal"
+              ? "text-warning"
+              : "text-success"
+        }`}
+      >
+        {label}
+      </span>
+    </div>
+  );
+}
+
+function DayPlanCard({ data }: { data: Record<string, unknown> }) {
+  const workload = (data.workload ?? {}) as {
+    totalToday?: number;
+    priorityWeight?: number;
+    assessment?: string;
+    overdueCount?: number;
+  };
+  const overdueTasks = (data.overdueTasks ?? []) as {
+    title?: string;
+    daysOverdue?: number;
+    priority?: number;
+  }[];
+  const focusBlocks = (data.focusBlocks ?? {}) as {
+    order?: string;
+    blocks?: FocusBlock[];
+  };
+  const remindersToday = (data.remindersToday ?? []) as {
+    title?: string;
+    remindAt?: string;
+  }[];
+  const productivityContext = data.productivityContext as {
+    insight?: string;
+    recentCompletionRate?: number;
+  } | null;
+
+  return (
+    <div className="space-y-3">
+      {/* Workload bar */}
+      <WorkloadBar
+        assessment={workload.assessment ?? "light"}
+        total={workload.totalToday ?? 0}
+        weight={workload.priorityWeight ?? 0}
+      />
+
+      {/* Overdue section */}
+      {overdueTasks.length > 0 && (
+        <div>
+          <p className="text-xs font-medium text-error flex items-center gap-1.5 mb-1.5">
+            <AlertTriangle size={12} />
+            {overdueTasks.length} Overdue
+          </p>
+          <div className="space-y-0.5">
+            {overdueTasks.slice(0, 5).map((t, i) => (
+              <div key={i} className="flex items-center gap-2 text-xs px-2 py-1 rounded-md">
+                <span className="flex-1 truncate text-on-surface">{t.title}</span>
+                {t.daysOverdue && (
+                  <span className="shrink-0 text-[10px] text-error font-medium">
+                    {t.daysOverdue}d late
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Focus blocks */}
+      {focusBlocks.blocks && focusBlocks.blocks.length > 0 && (
+        <div className="space-y-2">
+          {focusBlocks.blocks.map((block, i) => {
+            const isQuick = block.type === "quick_win";
+            return (
+              <div key={i}>
+                <p className="text-xs font-medium text-on-surface-secondary flex items-center gap-1.5 mb-1.5">
+                  {isQuick ? (
+                    <Zap size={12} className="text-warning" />
+                  ) : (
+                    <Brain size={12} className="text-info" />
+                  )}
+                  {isQuick ? "Quick Wins" : "Deep Work"}
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {block.tasks.map((t, j) => (
+                    <span
+                      key={j}
+                      className={`inline-flex px-2.5 py-1 text-xs rounded-lg font-medium ${
+                        isQuick ? "bg-warning/10 text-warning" : "bg-info/10 text-info"
+                      }`}
+                    >
+                      {t.title ?? `Task ${j + 1}`}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Reminders */}
+      {remindersToday.length > 0 && (
+        <div>
+          <p className="text-xs font-medium text-on-surface-secondary flex items-center gap-1.5 mb-1.5">
+            <Bell size={12} className="text-accent" />
+            Reminders Today
+          </p>
+          <div className="space-y-0.5">
+            {remindersToday.map((r, i) => (
+              <div key={i} className="flex items-center gap-2 text-xs px-2 py-1">
+                <span className="flex-1 truncate text-on-surface">{r.title}</span>
+                {r.remindAt && (
+                  <span className="shrink-0 text-[10px] text-on-surface-muted tabular-nums">
+                    {r.remindAt.slice(11, 16)}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Productivity insight */}
+      {productivityContext?.insight && (
+        <p className="text-[10px] text-on-surface-muted italic px-1">
+          {productivityContext.insight}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// --- Daily Review Card (daily_review) ---
+
+function DailyReviewCard({ data }: { data: Record<string, unknown> }) {
+  const stats = (data.stats ?? {}) as {
+    completedCount?: number;
+    plannedCount?: number;
+    completionRate?: number;
+    createdCount?: number;
+    netProgress?: number;
+  };
+  const streak = (data.streak ?? {}) as {
+    currentDays?: number;
+    isActive?: boolean;
+  };
+  const completedTasks = (data.completed ?? []) as { title?: string; priority?: number }[];
+  const carriedOver = (data.carriedOver ?? []) as { title?: string; priority?: number }[];
+  const tomorrow = (data.tomorrow ?? {}) as {
+    taskCount?: number;
+    tasks?: { title?: string; priority?: number }[];
+    assessment?: string;
+  };
+  const suggestions = (data.suggestions ?? []) as string[];
+
+  const completionRate = stats.completionRate ?? 0;
+  const rateColor =
+    completionRate >= 80 ? "text-success" : completionRate >= 50 ? "text-warning" : "text-error";
+  const rateBarColor =
+    completionRate >= 80 ? "bg-success/60" : completionRate >= 50 ? "bg-warning/60" : "bg-error/60";
+
+  return (
+    <div className="space-y-3">
+      {/* Stats summary row */}
+      <div className="flex items-center gap-3 text-xs">
+        <div className="flex items-center gap-1.5">
+          <CheckCircle2 size={12} className="text-success" />
+          <span className="font-semibold text-on-surface">{stats.completedCount ?? 0}</span>
+          <span className="text-on-surface-muted">done</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <ArrowRight size={12} className="text-warning" />
+          <span className="font-semibold text-on-surface">{carriedOver.length}</span>
+          <span className="text-on-surface-muted">carried</span>
+        </div>
+        {streak.isActive && streak.currentDays && streak.currentDays > 0 && (
+          <div className="flex items-center gap-1 ml-auto">
+            <Flame size={12} className="text-error" />
+            <span className="font-semibold text-on-surface tabular-nums">{streak.currentDays}</span>
+            <span className="text-on-surface-muted">day streak</span>
+          </div>
+        )}
+      </div>
+
+      {/* Completion rate bar */}
+      <div className="flex items-center gap-2 text-xs">
+        <span className="text-on-surface-muted w-10 shrink-0">Rate</span>
+        <div className="flex-1 h-2.5 bg-surface-tertiary rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${rateBarColor}`}
+            style={{ width: `${completionRate}%` }}
+          />
+        </div>
+        <span className={`w-8 text-right font-semibold tabular-nums ${rateColor}`}>
+          {completionRate}%
+        </span>
+      </div>
+
+      {/* Completed task list */}
+      {completedTasks.length > 0 && (
+        <div>
+          <p className="text-[10px] font-medium text-on-surface-muted uppercase tracking-wider mb-1.5">
+            Completed
+          </p>
+          <div className="space-y-0.5">
+            {completedTasks.slice(0, 5).map((t, i) => (
+              <div key={i} className="flex items-center gap-2 text-xs px-2 py-1 rounded-md">
+                <CheckCircle2 size={12} className="text-success shrink-0" />
+                <span className="flex-1 truncate text-on-surface line-through opacity-70">
+                  {t.title}
+                </span>
+              </div>
+            ))}
+            {completedTasks.length > 5 && (
+              <p className="text-[10px] text-on-surface-muted px-2">
+                +{completedTasks.length - 5} more
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Carried over section */}
+      {carriedOver.length > 0 && (
+        <div>
+          <p className="text-[10px] font-medium text-on-surface-muted uppercase tracking-wider mb-1.5">
+            Carried Over
+          </p>
+          <div className="space-y-0.5">
+            {carriedOver.slice(0, 5).map((t, i) => (
+              <div key={i} className="flex items-center gap-2 text-xs px-2 py-1 rounded-md">
+                <ArrowRight size={12} className="text-warning shrink-0" />
+                <span className="flex-1 truncate text-on-surface">{t.title}</span>
+                {t.priority && t.priority >= 1 && t.priority <= 4 && (
+                  <span
+                    className={`shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded ${PRIORITY_COLORS[t.priority]}`}
+                  >
+                    {PRIORITY_LABELS[t.priority]}
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Tomorrow preview */}
+      {tomorrow.taskCount != null && tomorrow.taskCount > 0 && (
+        <div>
+          <p className="text-[10px] font-medium text-on-surface-muted uppercase tracking-wider mb-1.5">
+            Tomorrow ({tomorrow.taskCount} tasks)
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {(tomorrow.tasks ?? []).slice(0, 5).map((t, i) => (
+              <span
+                key={i}
+                className="inline-flex px-2.5 py-1 text-xs bg-surface-tertiary text-on-surface-secondary rounded-lg font-medium"
+              >
+                {t.title}
+              </span>
+            ))}
+          </div>
+          {tomorrow.assessment === "heavy" && (
+            <p className="text-[10px] text-error mt-1 flex items-center gap-1">
+              <AlertTriangle size={10} />
+              Heavy day ahead
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Suggestions */}
+      {suggestions.length > 0 && (
+        <div className="space-y-1 pt-1 border-t border-border/50">
+          {suggestions.map((s, i) => (
+            <p key={i} className="text-[10px] text-on-surface-muted flex items-start gap-1.5">
+              <span className="text-accent mt-0.5">*</span>
+              {s}
+            </p>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
