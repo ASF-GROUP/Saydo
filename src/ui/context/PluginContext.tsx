@@ -86,16 +86,20 @@ export function PluginProvider({ children }: { children: React.ReactNode }) {
     [refreshStatusBar, refreshPanels],
   );
 
-  // Initial fetch
+  // Initial fetch — reset mountedRef on mount to handle StrictMode double-mount
   useEffect(() => {
+    mountedRef.current = true;
     refreshPlugins();
     refreshCommands();
     refreshStatusBar();
     refreshPanels();
     refreshViews();
+    return () => {
+      mountedRef.current = false;
+    };
   }, [refreshPlugins, refreshCommands, refreshStatusBar, refreshPanels, refreshViews]);
 
-  // Poll status bar and panels every 1s for live data
+  // Poll status bar and panels every 30s for live data
   useEffect(() => {
     const interval = setInterval(() => {
       refreshStatusBar();
@@ -103,12 +107,6 @@ export function PluginProvider({ children }: { children: React.ReactNode }) {
     }, 30000);
     return () => clearInterval(interval);
   }, [refreshStatusBar, refreshPanels]);
-
-  useEffect(() => {
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
 
   return (
     <PluginContext.Provider
