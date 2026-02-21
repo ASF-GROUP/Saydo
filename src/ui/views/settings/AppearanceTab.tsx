@@ -72,6 +72,18 @@ export function AppearanceTab() {
               onChange={(v) => updateSetting("font_size", v)}
             />
           </SettingRow>
+
+          <SettingRow label="Font family" description="Choose the typeface for the app">
+            <SegmentedControl
+              options={[
+                { value: "outfit" as const, label: "Outfit" },
+                { value: "inter" as const, label: "Inter" },
+                { value: "system" as const, label: "System" },
+              ]}
+              value={settings.font_family}
+              onChange={(v) => updateSetting("font_family", v)}
+            />
+          </SettingRow>
         </div>
       </section>
 

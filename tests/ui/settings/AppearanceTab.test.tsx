@@ -62,7 +62,8 @@ describe("AppearanceTab", () => {
   it("renders theme segmented control with system/light/dark", async () => {
     renderAppearanceTab();
     await waitFor(() => {
-      expect(screen.getByText("System")).toBeDefined();
+      // "System" appears in both theme and font family controls
+      expect(screen.getAllByText("System").length).toBeGreaterThanOrEqual(1);
     });
     expect(screen.getByText("Light")).toBeDefined();
     expect(screen.getByText("Dark")).toBeDefined();

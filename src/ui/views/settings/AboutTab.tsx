@@ -1,6 +1,8 @@
-import { useState } from "react";
-import { ExternalLink } from "lucide-react";
+import { useState, useEffect } from "react";
+import { ExternalLink, Bug, MessageSquarePlus } from "lucide-react";
 import { isTauri } from "../../../utils/tauri.js";
+import { APP_VERSION } from "../../../config/defaults.js";
+import { api } from "../../api/index.js";
 
 interface Credit {
   name: string;
@@ -165,12 +167,50 @@ const CREDITS: { category: string; items: Credit[] }[] = [
   },
 ];
 
+function detectOS(): string {
+  const ua = navigator.userAgent;
+  if (ua.includes("Win")) return "Windows";
+  if (ua.includes("Mac")) return "macOS";
+  if (ua.includes("Linux")) return "Linux";
+  if (ua.includes("Android")) return "Android";
+  if (ua.includes("iPhone") || ua.includes("iPad")) return "iOS";
+  return "Unknown";
+}
+
 export function AboutTab() {
   const [updateStatus, setUpdateStatus] = useState<
     "idle" | "checking" | "available" | "up-to-date" | "error"
   >("idle");
   const [updateVersion, setUpdateVersion] = useState("");
   const isTauriApp = isTauri();
+
+  // System info state
+  const [systemInfo, setSystemInfo] = useState<{
+    storage: string;
+    tasks: number;
+    plugins: number;
+    os: string;
+    runtime: string;
+  } | null>(null);
+
+  useEffect(() => {
+    const os = detectOS();
+    const runtime = isTauri() ? "Tauri (Desktop)" : "Browser";
+
+    Promise.all([
+      api.getStorageInfo().catch(() => ({ mode: "unknown" })),
+      api.exportAllData().then((d) => d.tasks.length).catch(() => 0),
+      api.listPlugins().then((p) => p.length).catch(() => 0),
+    ]).then(([storageInfo, taskCount, pluginCount]) => {
+      setSystemInfo({
+        storage: (storageInfo as any).mode === "markdown" ? "Markdown" : "SQLite",
+        tasks: taskCount,
+        plugins: pluginCount,
+        os,
+        runtime,
+      });
+    });
+  }, []);
 
   const handleCheckUpdate = async () => {
     setUpdateStatus("checking");
@@ -210,7 +250,8 @@ export function AboutTab() {
           <img src="/images/logo-192.png" alt="Saydo logo" className="w-12 h-12" />
           <div>
             <p className="text-sm font-semibold text-on-surface">
-              ASF Saydo <span className="font-mono text-on-surface-muted font-normal">v1.0.0</span>
+              ASF Saydo{" "}
+              <span className="font-mono text-on-surface-muted font-normal">v{APP_VERSION}</span>
             </p>
             <p className="text-xs text-on-surface-muted">
               Open-source, AI-native task manager with an Obsidian-style plugin system.
@@ -245,6 +286,50 @@ export function AboutTab() {
             )}
           </div>
         )}
+      </div>
+
+      {/* System Info */}
+      {systemInfo && (
+        <div>
+          <h3 className="text-sm font-semibold text-on-surface mb-2">System Info</h3>
+          <div className="grid grid-cols-2 gap-x-8 gap-y-1.5 max-w-sm text-xs">
+            <span className="text-on-surface-muted">Platform</span>
+            <span className="text-on-surface-secondary">{systemInfo.os}</span>
+            <span className="text-on-surface-muted">Runtime</span>
+            <span className="text-on-surface-secondary">{systemInfo.runtime}</span>
+            <span className="text-on-surface-muted">Storage</span>
+            <span className="text-on-surface-secondary">{systemInfo.storage}</span>
+            <span className="text-on-surface-muted">Tasks</span>
+            <span className="text-on-surface-secondary">{systemInfo.tasks}</span>
+            <span className="text-on-surface-muted">Plugins</span>
+            <span className="text-on-surface-secondary">{systemInfo.plugins}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Feedback Links */}
+      <div>
+        <h3 className="text-sm font-semibold text-on-surface mb-2">Feedback</h3>
+        <div className="flex gap-3">
+          <a
+            href="https://github.com/asf-org/saydo/issues/new?labels=bug"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-surface-secondary transition-colors text-on-surface-secondary"
+          >
+            <Bug size={14} />
+            Report a Bug
+          </a>
+          <a
+            href="https://github.com/asf-org/saydo/issues/new?labels=enhancement"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-3 py-1.5 text-sm border border-border rounded-lg hover:bg-surface-secondary transition-colors text-on-surface-secondary"
+          >
+            <MessageSquarePlus size={14} />
+            Request a Feature
+          </a>
+        </div>
       </div>
 
       {/* Credits */}

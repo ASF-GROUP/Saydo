@@ -51,7 +51,7 @@ export function KeyboardTab() {
       } else if ("conflict" in result && result.conflict) {
         setConflictForId(recordingId);
         setConflictMessage(
-          `"${combo}" is already used by "${result.conflict.description}"`,
+          `"${combo}" is already used by "${result.conflict}"`,
         );
       }
       setRecordingId(null);

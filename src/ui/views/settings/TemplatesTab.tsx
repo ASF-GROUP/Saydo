@@ -1,10 +1,51 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { api } from "../../api/index.js";
 import type { TaskTemplate, CreateTemplateInput } from "../../../core/types.js";
 import { createLogger } from "../../../utils/logger.js";
 
 const logger = createLogger("templates-tab");
+
+/** Extract {{variable}} patterns from text. */
+function extractVariables(text: string): string[] {
+  const matches = text.match(/\{\{(\w+)\}\}/g);
+  if (!matches) return [];
+  return [...new Set(matches.map((m) => m.slice(2, -2)))];
+}
+
+/** Smart sample values for common variable names. */
+const SAMPLE_VALUES: Record<string, string> = {
+  issue: "Login button not working",
+  title: "User authentication",
+  name: "Dashboard redesign",
+  feature: "Dark mode toggle",
+  component: "Sidebar",
+  module: "Auth module",
+  description: "Needs investigation",
+  user: "Alice",
+  date: "2026-03-01",
+  version: "2.1.0",
+  ticket: "SAYDO-42",
+  priority: "high",
+  assignee: "Bob",
+  team: "Frontend",
+  sprint: "Sprint 12",
+  endpoint: "/api/users",
+  error: "TypeError: undefined",
+  browser: "Firefox 135",
+  os: "Linux",
+  steps: "1. Click login\n2. Enter credentials\n3. Submit",
+};
+
+/** Replace {{variable}} with sample values. */
+function fillPreview(text: string, variables: string[]): string {
+  let result = text;
+  for (const v of variables) {
+    const sample = SAMPLE_VALUES[v.toLowerCase()] ?? `[${v}]`;
+    result = result.replaceAll(`{{${v}}}`, sample);
+  }
+  return result;
+}
 
 export function TemplatesTab() {
   const [templates, setTemplates] = useState<TaskTemplate[]>([]);
@@ -144,6 +185,18 @@ function TemplateForm({
   const [recurrence, setRecurrence] = useState(template?.recurrence ?? "");
   const [saving, setSaving] = useState(false);
 
+  const hasVariables = title.includes("{{") || description.includes("{{");
+
+  const previewData = useMemo(() => {
+    if (!hasVariables) return null;
+    const allText = title + " " + description;
+    const variables = extractVariables(allText);
+    return {
+      title: fillPreview(title, variables),
+      description: fillPreview(description, variables),
+    };
+  }, [title, description, hasVariables]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !title.trim()) return;
@@ -174,6 +227,11 @@ function TemplateForm({
       setSaving(false);
     }
   };
+
+  const parsedTags = tags
+    .split(",")
+    .map((t) => t.trim())
+    .filter(Boolean);
 
   return (
     <form
@@ -273,6 +331,38 @@ function TemplateForm({
           className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-on-surface placeholder-on-surface-muted focus:outline-none focus:ring-2 focus:ring-accent"
         />
       </div>
+
+      {/* Live Preview */}
+      {previewData && (
+        <div className="p-3 border border-border rounded-lg bg-surface-secondary">
+          <p className="text-xs font-medium text-on-surface-muted uppercase tracking-wider mb-2">
+            Preview
+          </p>
+          <p className="text-sm font-medium text-on-surface">{previewData.title}</p>
+          {previewData.description && (
+            <p className="text-xs text-on-surface-secondary mt-1 whitespace-pre-wrap">
+              {previewData.description}
+            </p>
+          )}
+          <div className="flex gap-1.5 mt-2">
+            {priority && (
+              <span className="text-xs px-1.5 py-0.5 rounded bg-warning/10 text-warning">
+                P{priority}
+              </span>
+            )}
+            {parsedTags.map((tag) => (
+              <span key={tag} className="text-xs px-1.5 py-0.5 rounded bg-accent/10 text-accent">
+                #{tag}
+              </span>
+            ))}
+            {recurrence && (
+              <span className="text-xs px-1.5 py-0.5 rounded bg-success/10 text-success">
+                {recurrence}
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="flex justify-end gap-2 pt-1">
         <button

@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { useTaskContext } from "../../context/TaskContext.js";
 import { api } from "../../api/index.js";
 import { exportJSON, exportCSV, exportMarkdown, type ExportData } from "../../../core/export.js";
 import { parseImport, type ImportPreview } from "../../../core/import.js";
+import { SegmentedControl } from "./components.js";
+import type { Project } from "../../../core/types.js";
 
 export function DataTab() {
   return (
@@ -69,17 +72,45 @@ function DataSection() {
   const [importError, setImportError] = useState<string | null>(null);
   const { refreshTasks } = useTaskContext();
 
+  // Export filter state
+  const [showFilters, setShowFilters] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "completed">("all");
+  const [projectFilter, setProjectFilter] = useState<string>("all");
+  const [projects, setProjects] = useState<Project[]>([]);
+
+  useEffect(() => {
+    if (showFilters) {
+      api.listProjects().then(setProjects).catch(() => {});
+    }
+  }, [showFilters]);
+
   const handleExport = async (format: "json" | "csv" | "markdown") => {
     setExporting(true);
     try {
       const data = await api.exportAllData();
+
+      // Apply filters
+      let filteredTasks = data.tasks;
+      if (statusFilter !== "all") {
+        filteredTasks = filteredTasks.filter((t: any) => t.status === statusFilter);
+      }
+      if (projectFilter !== "all") {
+        if (projectFilter === "none") {
+          filteredTasks = filteredTasks.filter((t: any) => !t.projectId);
+        } else {
+          filteredTasks = filteredTasks.filter((t: any) => t.projectId === projectFilter);
+        }
+      }
+
+      const filteredData = { ...data, tasks: filteredTasks };
+
       let content: string;
       let filename: string;
       let mimeType: string;
 
       if (format === "json") {
         const exportData: ExportData = {
-          ...data,
+          ...filteredData,
           exportedAt: new Date().toISOString(),
           version: "1.0",
         };
@@ -87,11 +118,11 @@ function DataSection() {
         filename = `saydo-export-${new Date().toISOString().split("T")[0]}.json`;
         mimeType = "application/json";
       } else if (format === "csv") {
-        content = exportCSV(data.tasks);
+        content = exportCSV(filteredTasks);
         filename = `saydo-tasks-${new Date().toISOString().split("T")[0]}.csv`;
         mimeType = "text/csv";
       } else {
-        content = exportMarkdown(data.tasks);
+        content = exportMarkdown(filteredTasks);
         filename = `saydo-tasks-${new Date().toISOString().split("T")[0]}.md`;
         mimeType = "text/markdown";
       }
@@ -161,7 +192,50 @@ function DataSection() {
       <h2 className="text-lg font-semibold mb-3 text-on-surface">Data</h2>
 
       <div className="mb-4">
-        <h3 className="text-sm font-medium mb-2 text-on-surface-secondary">Export</h3>
+        <div className="flex items-center gap-2 mb-2">
+          <h3 className="text-sm font-medium text-on-surface-secondary">Export</h3>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-1 text-xs text-accent hover:text-accent-hover"
+          >
+            Filters
+            {showFilters ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+          </button>
+        </div>
+
+        {showFilters && (
+          <div className="mb-3 p-3 border border-border rounded-lg bg-surface-secondary space-y-3 max-w-md">
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-sm text-on-surface-secondary">Status</span>
+              <SegmentedControl
+                options={[
+                  { value: "all" as const, label: "All" },
+                  { value: "pending" as const, label: "Pending" },
+                  { value: "completed" as const, label: "Completed" },
+                ]}
+                value={statusFilter}
+                onChange={setStatusFilter}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-sm text-on-surface-secondary">Project</span>
+              <select
+                value={projectFilter}
+                onChange={(e) => setProjectFilter(e.target.value)}
+                className="px-3 py-1.5 text-sm border border-border rounded-lg bg-surface text-on-surface"
+              >
+                <option value="all">All projects</option>
+                <option value="none">No project</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+
         <div className="flex gap-3">
           <button
             onClick={() => handleExport("json")}
