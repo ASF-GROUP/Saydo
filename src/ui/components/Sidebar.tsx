@@ -48,6 +48,7 @@ interface SidebarProps {
   inboxCount?: number;
   todayCount?: number;
   onOpenProjectModal?: () => void;
+  builtinPluginIds?: Set<string>;
 }
 
 const NAV_ITEMS: Array<{
@@ -106,9 +107,11 @@ export function Sidebar({
   inboxCount,
   todayCount,
   onOpenProjectModal,
+  builtinPluginIds = new Set(),
 }: SidebarProps) {
   const [projectsExpanded, setProjectsExpanded] = useState(true);
   const [favoritesExpanded, setFavoritesExpanded] = useState(true);
+  const [toolsExpanded, setToolsExpanded] = useState(true);
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
 
   const favoriteProjects = useMemo(
@@ -129,6 +132,28 @@ export function Sidebar({
     }
     return { roots, childrenMap };
   }, [projects]);
+
+  // ── Group views by slot ──
+  const viewsBySlot = useMemo(() => {
+    const navigation: ViewInfo[] = [];
+    const tools: ViewInfo[] = [];
+    const workspace: ViewInfo[] = [];
+
+    for (const view of pluginViews) {
+      const effectiveSlot =
+        view.slot === "navigation" && builtinPluginIds.has(view.pluginId)
+          ? "navigation"
+          : view.slot === "navigation"
+            ? "tools" // non-builtin plugins can't use navigation slot
+            : view.slot;
+
+      if (effectiveSlot === "navigation") navigation.push(view);
+      else if (effectiveSlot === "workspace") workspace.push(view);
+      else tools.push(view);
+    }
+
+    return { navigation, tools, workspace };
+  }, [pluginViews, builtinPluginIds]);
 
   const toggleParentExpanded = (id: string) => {
     setExpandedParents((prev) => {
@@ -152,7 +177,7 @@ export function Sidebar({
   const renderNavButton = (
     id: string,
     label: string,
-    Icon: typeof Inbox,
+    icon: typeof Inbox | string,
     isActive: boolean,
     onClick: () => void,
     count?: number,
@@ -169,7 +194,14 @@ export function Sidebar({
             : "text-on-surface-secondary hover:bg-surface-tertiary hover:text-on-surface"
         }`}
       >
-        <Icon size={18} strokeWidth={isActive ? 2.25 : 1.75} />
+        {typeof icon === "string" ? (
+          <span className="text-lg leading-none w-[18px] text-center flex-shrink-0">{icon}</span>
+        ) : (
+          (() => {
+            const Icon = icon;
+            return <Icon size={18} strokeWidth={isActive ? 2.25 : 1.75} />;
+          })()
+        )}
         {!collapsed && <span className="flex-1">{label}</span>}
         {!collapsed && count !== undefined && count > 0 && (
           <span className="text-xs tabular-nums text-on-surface-muted">{count}</span>
@@ -178,6 +210,17 @@ export function Sidebar({
       </button>
     </li>
   );
+
+  const renderPluginViewButton = (view: ViewInfo) => {
+    const isActive = currentView === "plugin-view" && selectedPluginViewId === view.id;
+    return renderNavButton(
+      `plugin-view-${view.id}`,
+      view.name,
+      view.icon,
+      isActive,
+      () => onNavigate("plugin-view", view.id),
+    );
+  };
 
   const renderProjectButton = (project: Project) => {
     const isActive = currentView === "project" && selectedProjectId === project.id;
@@ -210,6 +253,9 @@ export function Sidebar({
       </button>
     );
   };
+
+  // Whether we have tools-slot content to show
+  const hasToolsContent = viewsBySlot.tools.length > 0 || panels.length > 0;
 
   return (
     <aside
@@ -294,7 +340,7 @@ export function Sidebar({
         className={`flex-1 flex flex-col min-h-0 ${collapsed ? "px-2" : "px-3"}`}
       >
         <div className="flex-1 overflow-y-auto overflow-x-hidden">
-          {/* Nav items — no section header needed (it's the primary content) */}
+          {/* Nav items + navigation-slot plugin views */}
           <ul className="space-y-0.5">
             {NAV_ITEMS.map((item) =>
               renderNavButton(
@@ -306,6 +352,7 @@ export function Sidebar({
                 item.countKey ? countMap[item.countKey] : undefined,
               ),
             )}
+            {viewsBySlot.navigation.map((view) => renderPluginViewButton(view))}
           </ul>
 
           {/* ── Collapsed Projects ── */}
@@ -340,6 +387,33 @@ export function Sidebar({
                     </button>
                   </li>
                 ))}
+            </div>
+          )}
+
+          {/* ── Collapsed Tools ── */}
+          {collapsed && viewsBySlot.tools.length > 0 && (
+            <div className="space-y-0.5 mt-2">
+              {viewsBySlot.tools.map((view) => {
+                const isActive =
+                  currentView === "plugin-view" && selectedPluginViewId === view.id;
+                return (
+                  <li key={view.id}>
+                    <button
+                      onClick={() => onNavigate("plugin-view", view.id)}
+                      title={view.name}
+                      aria-current={isActive ? "page" : undefined}
+                      className={`group relative w-full flex items-center justify-center p-1.5 rounded-lg transition-colors ${
+                        isActive
+                          ? "bg-accent/10 text-accent"
+                          : "text-on-surface-secondary hover:bg-surface-tertiary hover:text-on-surface"
+                      }`}
+                    >
+                      <span className="text-base leading-none">{view.icon}</span>
+                      <CollapsedTooltip visible={collapsed} label={view.name} />
+                    </button>
+                  </li>
+                );
+              })}
             </div>
           )}
 
@@ -421,61 +495,43 @@ export function Sidebar({
             </>
           )}
 
-          {/* ── Plugin Panels ── */}
-          {!collapsed && panels.length > 0 && (
+          {/* ── Tools (plugin views + panels) ── */}
+          {!collapsed && hasToolsContent && (
             <>
-              <h3 className="text-[11px] font-semibold text-on-surface-muted uppercase tracking-wider mt-5 mb-1 px-3">
-                Plugin Panels
-              </h3>
-              <div className="space-y-1.5 px-3">
-                {panels.map((panel) => (
-                  <div
-                    key={panel.id}
-                    className="p-2 rounded-md bg-surface-tertiary border border-border"
-                  >
-                    <div className="flex items-center gap-1 text-xs font-medium text-on-surface-secondary mb-1">
-                      <span>{panel.icon}</span>
-                      <span>{panel.title}</span>
+              <SectionHeader
+                label="Tools"
+                expanded={toolsExpanded}
+                onToggle={() => setToolsExpanded(!toolsExpanded)}
+              />
+              {toolsExpanded && (
+                <>
+                  {viewsBySlot.tools.length > 0 && (
+                    <ul className="space-y-0.5">
+                      {viewsBySlot.tools.map((view) => renderPluginViewButton(view))}
+                    </ul>
+                  )}
+                  {panels.length > 0 && (
+                    <div className="space-y-1.5 px-3 mt-1">
+                      {panels.map((panel) => (
+                        <div
+                          key={panel.id}
+                          className="p-2 rounded-md bg-surface-tertiary border border-border"
+                        >
+                          <div className="flex items-center gap-1 text-xs font-medium text-on-surface-secondary mb-1">
+                            <span>{panel.icon}</span>
+                            <span>{panel.title}</span>
+                          </div>
+                          {panel.content && (
+                            <p className="text-xs text-on-surface-muted whitespace-pre-wrap">
+                              {panel.content}
+                            </p>
+                          )}
+                        </div>
+                      ))}
                     </div>
-                    {panel.content && (
-                      <p className="text-xs text-on-surface-muted whitespace-pre-wrap">
-                        {panel.content}
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-
-          {/* ── Custom Views ── */}
-          {!collapsed && pluginViews.length > 0 && (
-            <>
-              <h3 className="text-[11px] font-semibold text-on-surface-muted uppercase tracking-wider mt-5 mb-1 px-3">
-                Custom Views
-              </h3>
-              <ul className="space-y-0.5">
-                {pluginViews.map((view) => {
-                  const isActive =
-                    currentView === "plugin-view" && selectedPluginViewId === view.id;
-                  return (
-                    <li key={view.id}>
-                      <button
-                        onClick={() => onNavigate("plugin-view", view.id)}
-                        aria-current={isActive ? "page" : undefined}
-                        className={`w-full text-left px-3 py-1.5 rounded-md text-sm flex items-center gap-3 transition-colors ${
-                          isActive
-                            ? "bg-accent/10 text-accent font-medium"
-                            : "text-on-surface-secondary hover:bg-surface-tertiary hover:text-on-surface"
-                        }`}
-                      >
-                        <span>{view.icon}</span>
-                        {view.name}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
+                  )}
+                </>
+              )}
             </>
           )}
         </div>
@@ -490,6 +546,7 @@ export function Sidebar({
             </h3>
           )}
           <ul className="space-y-0.5">
+            {viewsBySlot.workspace.map((view) => renderPluginViewButton(view))}
             {renderNavButton("ai-chat", "AI Chat", MessageSquare, currentView === "ai-chat", () =>
               onNavigate("ai-chat"),
             )}

@@ -48,6 +48,9 @@ export interface ViewInfo {
   id: string;
   name: string;
   icon: string;
+  slot: "navigation" | "tools" | "workspace";
+  contentType: "text" | "structured";
+  pluginId: string;
 }
 
 export interface StorePluginInfo {
@@ -163,6 +166,9 @@ export async function getPluginViews(): Promise<ViewInfo[]> {
       id: view.id,
       name: view.name,
       icon: view.icon,
+      slot: view.slot,
+      contentType: view.contentType,
+      pluginId: view.pluginId,
     }));
   }
   const res = await fetch(`${BASE}/plugins/ui/views`);

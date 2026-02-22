@@ -431,7 +431,7 @@ describe("Plugin System Integration", () => {
     it("should remove all registrations for a plugin", () => {
       const registry = new UIRegistry();
       registry.addPanel({ id: "p1", pluginId: "test", title: "Panel", icon: "x", component: null });
-      registry.addView({ id: "v1", pluginId: "test", name: "View", icon: "x", component: null });
+      registry.addView({ id: "v1", pluginId: "test", name: "View", icon: "x", slot: "tools", contentType: "text", component: null });
       registry.addStatusBarItem({ id: "s1", pluginId: "test", text: "Status", icon: "x" });
 
       registry.removeByPlugin("test");
@@ -463,6 +463,8 @@ describe("Plugin System Integration", () => {
         pluginId: "test",
         name: "View",
         icon: "x",
+        slot: "tools",
+        contentType: "text",
         component: null,
         getContent: () => "Hello from view",
       });
@@ -474,7 +476,7 @@ describe("Plugin System Integration", () => {
     it("should return undefined for panel/view content without getContent", () => {
       const registry = new UIRegistry();
       registry.addPanel({ id: "p1", pluginId: "test", title: "Panel", icon: "x", component: null });
-      registry.addView({ id: "v1", pluginId: "test", name: "View", icon: "x", component: null });
+      registry.addView({ id: "v1", pluginId: "test", name: "View", icon: "x", slot: "tools", contentType: "text", component: null });
 
       expect(registry.getPanelContent("p1")).toBeUndefined();
       expect(registry.getViewContent("v1")).toBeUndefined();

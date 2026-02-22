@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from "@testing-library/react";
 
 vi.mock("lucide-react", () => ({
   AlertTriangle: (props: any) => <svg data-testid="alert-icon" {...props} />,
+  Calendar: (props: any) => <svg data-testid="calendar-icon" {...props} />,
   ChevronDown: (props: any) => <svg data-testid="chevron-down" {...props} />,
   ChevronRight: (props: any) => <svg data-testid="chevron-right" {...props} />,
 }));

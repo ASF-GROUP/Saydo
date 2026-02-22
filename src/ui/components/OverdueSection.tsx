@@ -1,6 +1,20 @@
 import { useState } from "react";
-import { AlertTriangle, ChevronDown, ChevronRight } from "lucide-react";
+import { AlertTriangle, Calendar, ChevronDown, ChevronRight } from "lucide-react";
 import type { Task, Project } from "../../core/types.js";
+
+/** Map priority level to Tailwind border color class for the checkbox circle */
+function getPriorityBorderClass(priority: number | null): string {
+  switch (priority) {
+    case 1:
+      return "border-priority-1";
+    case 2:
+      return "border-priority-2";
+    case 3:
+      return "border-priority-3";
+    default:
+      return "border-on-surface-muted/30";
+  }
+}
 
 interface OverdueSectionProps {
   tasks: Task[];
@@ -43,9 +57,10 @@ export function OverdueSection({
         </button>
       </div>
       {expanded && (
-        <div className="space-y-0.5">
+        <div>
           {tasks.map((task) => {
             const project = task.projectId ? projects.get(task.projectId) : null;
+            const borderClass = getPriorityBorderClass(task.priority);
             return (
               <div
                 key={task.id}
@@ -58,7 +73,7 @@ export function OverdueSection({
                     onSelectTask(task.id);
                   }
                 }}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors ${
+                className={`flex items-start gap-3 px-3 py-3 rounded-lg cursor-pointer transition-colors border-b border-border/30 last:border-b-0 ${
                   selectedTaskId === task.id
                     ? "bg-accent/5 ring-1 ring-accent/50"
                     : "hover:bg-surface-secondary"
@@ -70,11 +85,23 @@ export function OverdueSection({
                     onToggleTask(task.id);
                   }}
                   aria-label="Complete task"
-                  className="w-5 h-5 rounded-full border-2 border-error flex-shrink-0 transition-colors"
+                  className={`w-5 h-5 rounded-full border-2 ${borderClass} flex-shrink-0 transition-colors mt-0.5`}
                 />
-                <span className="flex-1 text-sm text-on-surface">{task.title}</span>
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm text-on-surface block truncate">{task.title}</span>
+                  <span className="text-xs text-error font-medium flex items-center gap-1 mt-0.5">
+                    <Calendar size={11} />
+                    {new Date(task.dueDate!).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
+                  </span>
+                </div>
                 {project && (
-                  <span className="flex items-center gap-1.5 text-xs text-on-surface-muted flex-shrink-0">
+                  <span className="flex items-center gap-1.5 text-xs text-on-surface-muted flex-shrink-0 mt-0.5">
                     <span
                       className="w-2 h-2 rounded-full"
                       style={{ backgroundColor: project.color }}
@@ -82,12 +109,6 @@ export function OverdueSection({
                     {project.name}
                   </span>
                 )}
-                <span className="text-xs text-error font-medium flex-shrink-0">
-                  {new Date(task.dueDate!).toLocaleDateString(undefined, {
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </span>
               </div>
             );
           })}

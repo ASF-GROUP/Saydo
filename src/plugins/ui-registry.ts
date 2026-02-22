@@ -7,11 +7,16 @@ export interface PanelRegistration {
   getContent?: () => string;
 }
 
+export type ViewSlot = "navigation" | "tools" | "workspace";
+export type ViewContentType = "text" | "structured";
+
 export interface ViewRegistration {
   id: string;
   pluginId: string;
   name: string;
   icon: string;
+  slot: ViewSlot;
+  contentType: ViewContentType;
   component?: unknown;
   getContent?: () => string;
 }

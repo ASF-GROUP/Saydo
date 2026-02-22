@@ -4,7 +4,7 @@ import type { TaskService } from "../core/tasks.js";
 import type { EventBus, EventName, EventCallback } from "../core/event-bus.js";
 import type { PluginSettingsManager } from "./settings.js";
 import type { CommandRegistry } from "./command-registry.js";
-import type { UIRegistry } from "./ui-registry.js";
+import type { UIRegistry, ViewSlot, ViewContentType } from "./ui-registry.js";
 import type { LLMProviderRegistry } from "../ai/provider/registry.js";
 import type { ToolRegistry } from "../ai/tools/registry.js";
 import type { LLMProviderPlugin } from "../ai/provider/interface.js";
@@ -97,8 +97,22 @@ export function createPluginAPI(options: PluginAPIOptions) {
           }
         : undefined,
       addView: hasPermission("ui:view")
-        ? (view: { id: string; name: string; icon: string; component?: unknown; render?: () => string }) => {
-            uiRegistry.addView({ ...view, pluginId, getContent: view.render });
+        ? (view: {
+            id: string;
+            name: string;
+            icon: string;
+            slot?: ViewSlot;
+            contentType?: ViewContentType;
+            component?: unknown;
+            render?: () => string;
+          }) => {
+            uiRegistry.addView({
+              ...view,
+              pluginId,
+              slot: view.slot ?? "tools",
+              contentType: view.contentType ?? "text",
+              getContent: view.render,
+            });
           }
         : undefined,
       addStatusBarItem: hasPermission("ui:status")

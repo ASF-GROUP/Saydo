@@ -271,9 +271,9 @@ export function Settings({ activeTab: initialTab, onClose }: SettingsProps) {
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
       onClick={handleBackdropClick}
     >
-      <div className="bg-surface rounded-xl shadow-xl border border-border max-w-3xl w-full h-[85vh] flex flex-row overflow-hidden">
+      <div className="bg-surface rounded-xl shadow-xl border border-border max-w-[960px] w-[90vw] h-[85vh] max-h-[800px] flex flex-row overflow-hidden">
         {/* Left sidebar nav */}
-        <div className="w-[220px] flex-shrink-0 border-r border-border bg-surface-secondary p-4 flex flex-col">
+        <div className="w-60 flex-shrink-0 border-r border-border bg-surface-secondary p-4 flex flex-col">
           <h2 className="text-lg font-bold text-on-surface mb-4 px-2">Settings</h2>
           <nav aria-label="Settings tabs" className="flex-1">
             <ul className="space-y-0.5">

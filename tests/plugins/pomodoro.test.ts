@@ -6,7 +6,7 @@ function createMockAPI() {
   const registeredCommands: { id: string; name: string; callback: () => void }[] = [];
   let statusBarText = "";
   let statusBarIcon = "";
-  let panelRender: (() => string) | null = null;
+  let viewRender: (() => string) | null = null;
 
   const api = {
     commands: {
@@ -25,10 +25,17 @@ function createMockAPI() {
           },
         };
       },
-      addSidebarPanel: (panel: { id: string; title: string; icon: string; render?: () => string }) => {
-        panelRender = panel.render ?? null;
+      addSidebarPanel: undefined,
+      addView: (view: {
+        id: string;
+        name: string;
+        icon: string;
+        slot?: string;
+        contentType?: string;
+        render?: () => string;
+      }) => {
+        viewRender = view.render ?? null;
       },
-      addView: undefined,
     },
     tasks: { list: undefined, create: undefined },
     storage: undefined,
@@ -44,7 +51,15 @@ function createMockAPI() {
     registeredCommands,
     getStatusBarText: () => statusBarText,
     getStatusBarIcon: () => statusBarIcon,
-    getPanelContent: () => panelRender?.() ?? "",
+    getViewContent: () => {
+      const raw = viewRender?.() ?? "";
+      try {
+        return JSON.parse(raw);
+      } catch {
+        return null;
+      }
+    },
+    getViewContentRaw: () => viewRender?.() ?? "",
     settings: api.settings as unknown as PluginSettingsAccessor,
   };
 }
@@ -59,6 +74,20 @@ function setupDefaultSettings(settingsGet: ReturnType<typeof vi.fn>) {
     };
     return defaults[key];
   });
+}
+
+/** Helper to extract text values from structured content elements */
+function findElement(content: { elements: Array<{ type: string; value?: string; variant?: string; elements?: unknown[] }> }, type: string, variant?: string) {
+  return content.elements.find(
+    (e: { type: string; variant?: string }) => e.type === type && (!variant || e.variant === variant),
+  );
+}
+
+function findBadges(content: { elements: Array<{ type: string; elements?: Array<{ type: string; value?: string }> }> }): Array<{ type: string; value?: string }> {
+  const row = content.elements.find(
+    (e) => e.type === "row" && e.elements?.some((child) => child.type === "badge"),
+  );
+  return (row?.elements?.filter((e) => e.type === "badge") ?? []) as Array<{ type: string; value?: string }>;
 }
 
 describe("Pomodoro Plugin", () => {
@@ -93,12 +122,27 @@ describe("Pomodoro Plugin", () => {
     expect(mock.getStatusBarText()).toBe("Ready");
   });
 
-  it("should show panel content with initial state", () => {
-    const content = mock.getPanelContent();
-    expect(content).toContain("Phase: Work");
-    expect(content).toContain("Time: 25:00");
-    expect(content).toContain("Session: 1/4");
-    expect(content).toContain("Status: idle");
+  it("should return valid structured JSON from view", () => {
+    const raw = mock.getViewContentRaw();
+    expect(() => JSON.parse(raw)).not.toThrow();
+
+    const content = mock.getViewContent();
+    expect(content).not.toBeNull();
+    expect(content.layout).toBe("center");
+    expect(Array.isArray(content.elements)).toBe(true);
+  });
+
+  it("should show view content with initial state", () => {
+    const content = mock.getViewContent();
+    const phaseLabel = findElement(content, "text", "subtitle");
+    expect(phaseLabel?.value).toBe("Work");
+
+    const timer = findElement(content, "text", "mono");
+    expect(timer?.value).toBe("25:00");
+
+    const badges = findBadges(content);
+    expect(badges.some((b) => b.value === "Session 1/4")).toBe(true);
+    expect(badges.some((b) => b.value === "Idle")).toBe(true);
   });
 
   describe("Timer operations", () => {
@@ -138,16 +182,20 @@ describe("Pomodoro Plugin", () => {
       executeCommand("Pomodoro: Reset");
       expect(mock.getStatusBarText()).toBe("Ready");
 
-      const content = mock.getPanelContent();
-      expect(content).toContain("Time: 25:00");
+      const content = mock.getViewContent();
+      const timer = findElement(content, "text", "mono");
+      expect(timer?.value).toBe("25:00");
     });
 
     it("should skip to next phase", () => {
       executeCommand("Pomodoro: Skip");
 
-      const content = mock.getPanelContent();
-      expect(content).toContain("Phase: Break");
-      expect(content).toContain("Time: 05:00");
+      const content = mock.getViewContent();
+      const phaseLabel = findElement(content, "text", "subtitle");
+      expect(phaseLabel?.value).toBe("Break");
+
+      const timer = findElement(content, "text", "mono");
+      expect(timer?.value).toBe("05:00");
     });
 
     it("should transition from work to break automatically", () => {
@@ -156,8 +204,9 @@ describe("Pomodoro Plugin", () => {
       // Advance through full 25 minutes
       vi.advanceTimersByTime(25 * 60 * 1000);
 
-      const content = mock.getPanelContent();
-      expect(content).toContain("Phase: Break");
+      const content = mock.getViewContent();
+      const phaseLabel = findElement(content, "text", "subtitle");
+      expect(phaseLabel?.value).toBe("Break");
     });
 
     it("should transition to long break after configured sessions", () => {
@@ -168,7 +217,7 @@ describe("Pomodoro Plugin", () => {
 
       // Session 1: work (25min) + break (5min) = 30min
       vi.advanceTimersByTime(25 * 60 * 1000); // work done → auto break
-      vi.advanceTimersByTime(5 * 60 * 1000);  // break done → auto work
+      vi.advanceTimersByTime(5 * 60 * 1000); // break done → auto work
 
       // Session 2: work (25min) + break (5min) = 30min
       vi.advanceTimersByTime(25 * 60 * 1000);
@@ -181,9 +230,12 @@ describe("Pomodoro Plugin", () => {
       // Session 4: work (25min) → should get long break
       vi.advanceTimersByTime(25 * 60 * 1000);
 
-      const content = mock.getPanelContent();
-      expect(content).toContain("Phase: Long Break");
-      expect(content).toContain("Time: 15:00");
+      const content = mock.getViewContent();
+      const phaseLabel = findElement(content, "text", "subtitle");
+      expect(phaseLabel?.value).toBe("Long Break");
+
+      const timer = findElement(content, "text", "mono");
+      expect(timer?.value).toBe("15:00");
     });
 
     it("should resume from paused state", () => {
@@ -197,6 +249,37 @@ describe("Pomodoro Plugin", () => {
       executeCommand("Pomodoro: Start");
       vi.advanceTimersByTime(1000);
       expect(mock.getStatusBarText()).toBe("24:54");
+    });
+
+    it("should show correct button labels for each state", () => {
+      // Idle — should show "Start"
+      let content = mock.getViewContent();
+      let buttonRow = content.elements.find(
+        (e: { type: string; elements?: Array<{ type: string }> }) =>
+          e.type === "row" && e.elements?.some((c: { type: string }) => c.type === "button"),
+      );
+      let buttons = buttonRow?.elements?.filter((e: { type: string }) => e.type === "button") ?? [];
+      expect(buttons[0]?.label).toBe("Start");
+
+      // Running — should show "Pause"
+      executeCommand("Pomodoro: Start");
+      content = mock.getViewContent();
+      buttonRow = content.elements.find(
+        (e: { type: string; elements?: Array<{ type: string }> }) =>
+          e.type === "row" && e.elements?.some((c: { type: string }) => c.type === "button"),
+      );
+      buttons = buttonRow?.elements?.filter((e: { type: string }) => e.type === "button") ?? [];
+      expect(buttons[0]?.label).toBe("Pause");
+
+      // Paused — should show "Resume"
+      executeCommand("Pomodoro: Pause");
+      content = mock.getViewContent();
+      buttonRow = content.elements.find(
+        (e: { type: string; elements?: Array<{ type: string }> }) =>
+          e.type === "row" && e.elements?.some((c: { type: string }) => c.type === "button"),
+      );
+      buttons = buttonRow?.elements?.filter((e: { type: string }) => e.type === "button") ?? [];
+      expect(buttons[0]?.label).toBe("Resume");
     });
   });
 
@@ -223,9 +306,12 @@ describe("Pomodoro Plugin", () => {
       customPlugin.settings = customMock.settings;
       await customPlugin.onLoad();
 
-      const content = customMock.getPanelContent();
-      expect(content).toContain("Time: 10:00");
-      expect(content).toContain("Session: 1/2");
+      const content = customMock.getViewContent();
+      const timer = findElement(content, "text", "mono");
+      expect(timer?.value).toBe("10:00");
+
+      const badges = findBadges(content);
+      expect(badges.some((b) => b.value === "Session 1/2")).toBe(true);
 
       await customPlugin.onUnload();
     });

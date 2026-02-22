@@ -178,8 +178,8 @@ All work items for ASF Saydo, organized by area and prioritized within each sect
 | A-26 | AI intelligence tools (analyze-patterns, workload, smart-organize, energy) | done | S22 | 5 analytical tools in src/ai/tools/builtin/ |
 | A-30 | Tiered system prompts (SOTA full + compact local) | done | S26 | Full prompt for cloud, compact for Ollama/LM Studio, tool filtering, duplicate loop detection |
 | A-31 | AI task breakdown (break_down_task tool) | done | S27 | LLM breaks a task into subtasks using parentId. Inspired by Todoist Assist, dypt, ClickUp. |
-| A-32 | Morning briefing / daily plan (plan_my_day tool) | idea | — | Query today's tasks + overdue, sort by priority/deadline, suggest an order. Inspired by Sunsama, Morgen. |
-| A-33 | Shutdown / daily review (daily_review tool) | idea | — | Summarize completions, slipped tasks, tomorrow's outlook. Reflection prompts. Inspired by Sunsama. |
+| A-32 | Morning briefing / daily plan (plan_my_day tool) | done | S33 | Query today's tasks + overdue, sort by priority/deadline, suggest an order. Inspired by Sunsama, Morgen. |
+| A-33 | Shutdown / daily review (daily_review tool) | done | S33 | Summarize completions, slipped tasks, tomorrow's outlook. Reflection prompts. Inspired by Sunsama. |
 | A-34 | Overcommitment warning (check_overcommitment tool) | done | S27 | Proactive warning when creating tasks: "You have 8 tasks due tomorrow." Enhance analyze_workload. Inspired by Sunsama. |
 | A-35 | Smart nudges / proactive alerts | idea | — | System-level notifications: overdue at morning, deadline approaching, stale tasks (2+ weeks pending), streaks. Rule-based, no LLM needed. |
 | A-36 | AI time estimation (estimatedMinutes field) | idea | — | Track actual completion times. Suggest estimates from similar past tasks. Show accuracy stats. Inspired by Sunsama, Motion. |
@@ -286,6 +286,8 @@ All work items for ASF Saydo, organized by area and prioritized within each sect
 | FE-21 | Daily completion ring | done | S32 | CompletionRing SVG in Today header |
 | FE-22 | Calendar view (week grid) | done | S32 | Calendar.tsx with week nav, task entries by due date |
 | FE-23 | Breadcrumb navigation | done | S32 | Breadcrumb component for project/task views |
+| FE-24 | Today view Todoist-inspired redesign | done | S33 | Large title, CompletionRing right-aligned, CheckCircle2 subtitle, bold date header with accent underline, TaskInput at bottom |
+| FE-25 | OverdueSection enhanced task rows | done | S33 | Priority-colored circles, two-line layout (title + due date below), separator lines, more padding |
 
 ## QA — Bugs Found (Feb 2026 Full App Test)
 
@@ -324,3 +326,72 @@ All work items for ASF Saydo, organized by area and prioritized within each sect
 | DOC-13 | Plugin API versioning docs | done | S13 | API Versioning & Stability section in API.md |
 | DOC-14 | v1.0 release planning docs update | done | S13 | ROADMAP, SPRINTS, BACKLOG updated |
 | DOC-15 | Rebrand Docket → Saydo across all docs and code | done | S23 | All identifiers, DB files, localStorage keys updated |
+
+---
+
+## v2.0 — Core Enhancements (Tier 1)
+
+Competitive parity features drawn from Todoist, TickTick, Linear, Things 3, Notion, and Amazing Marvin.
+
+| ID | Item | Status | Sprint | Notes |
+|----|------|--------|--------|-------|
+| V2-01 | Task duration / time estimates | ready | — | Add `estimatedMinutes` field. Show daily total in Today view ("3h 20m planned"). Capacity feedback. Inspired by TickTick, Akiflow, Sunsama, Marvin. |
+| V2-02 | Sections within projects | ready | — | Named groups inside a project (e.g., "Design", "Backend"). Become Kanban columns in board view. Inspired by Todoist, TickTick, Things 3. |
+| V2-03 | Kanban / Board view | ready | — | Tasks as cards in columns (by section, status, or priority). Drag between columns. Inspired by Todoist, TickTick, Notion, Linear. |
+| V2-04 | Task description with Markdown | ready | — | Rich text in descriptions: bold, italic, code blocks, checklists, links. Render with markdown. Inspired by Todoist, Notion, Things 3. |
+| V2-05 | "When" date vs. Deadline | ready | — | Two date fields: "when I plan to work on it" (soft, controls Today/Upcoming visibility) vs. "hard deadline" (shows warnings). Inspired by Things 3. |
+| V2-06 | Cancelled tasks view | ready | — | Dedicated filtered view for cancelled/won't-do tasks, separate from Completed. Extends existing U-27 status support. Inspired by TickTick. |
+| V2-07 | Composable keyboard shortcuts | ready | — | Pattern-based: `G+I` (go inbox), `G+T` (go today), `G+U` (go upcoming). Single-key in lists: `S` status, `P` priority, `L` label. Inspired by Linear, Akiflow. |
+| V2-08 | Productivity stats & streaks | ready | — | Daily/weekly completion counts, streak tracking, "best day" identification. Stats view in sidebar or settings. Inspired by Todoist Karma, TickTick. |
+| V2-09 | Task comments & activity log | ready | — | Timestamped log of changes per task. Optional user comments/notes with timestamps. Inspired by Todoist, Linear. |
+| V2-10 | Someday / Maybe list | ready | — | Smart list for "not now but eventually" tasks. Hidden from Today/Upcoming to reduce noise. Inspired by Things 3, Akiflow, Amazing Marvin. |
+
+## v2.0 — Smart Features (Tier 2)
+
+Higher-effort features that differentiate Saydo from competitors.
+
+| ID | Item | Status | Sprint | Notes |
+|----|------|--------|--------|-------|
+| V2-11 | Guided daily planning ritual | ready | — | Step-by-step morning flow: review overdue → pick today's tasks → estimate durations → set goals. AI-assisted. Builds on A-32. Inspired by Sunsama, Akiflow, Any.do Moments. |
+| V2-12 | Daily shutdown / review ritual | ready | — | End-of-day guided reflection: what got done, what slipped, tomorrow's outlook, optional journaling. Builds on A-33. Inspired by Sunsama, Akiflow. |
+| V2-13 | Workload capacity indicator | ready | — | Sum estimated durations vs. configurable daily limit. Yellow when approaching, red when exceeded. "6h planned for a 5h day." Inspired by Sunsama, Marvin. Depends on V2-01. |
+| V2-14 | Planned vs. actual time tracking | ready | — | Track actual time spent per task. Show estimation accuracy over time ("you underestimate coding by 40%"). Inspired by Sunsama, Marvin. Depends on V2-01. |
+| V2-15 | Task relations (blocks / blocked by) | ready | — | Simple dependency: "Task B is blocked by Task A." Show blocked indicator. AI can flag circular deps. Inspired by Linear, Notion. |
+| V2-16 | Dynamic saved views / filters + AI | ready | — | Named filter combos that auto-update. AI integration: describe in plain English ("overdue work tasks this week") → AI generates filter. Inspired by Linear, Todoist Filter Assist. |
+| V2-17 | Eisenhower matrix view | ready | — | Four-quadrant urgent/important grid. Drag tasks between quadrants. Auto-classify from priority + due date. Inspired by TickTick. |
+| V2-18 | Global quick capture (Tauri) | ready | — | System-wide hotkey opens floating task input over any app. Captures task without switching context. Auto-dismisses after entry. Inspired by Things 3, Akiflow. |
+| V2-19 | Project progress tracking | ready | — | Progress ring per project (X/Y tasks done). Project health status (on track, at risk, off track). Target date with milestone markers. Inspired by Things 3, Linear, Motion. |
+
+## v2.0 — Plugin Ideas (Tier 3)
+
+Features designed to be built as Saydo plugins, leveraging the existing plugin system.
+
+| ID | Item | Status | Sprint | Notes |
+|----|------|--------|--------|-------|
+| V2-20 | Pomodoro + white noise / ambient sounds | idea | — | Extend built-in Pomodoro plugin with ambient sounds (rain, cafe, wind, etc.). Inspired by TickTick. |
+| V2-21 | Habit tracker plugin | idea | — | Separate from tasks: recurring habits with streaks, frequency tracking, check-in stats. Inspired by TickTick. |
+| V2-22 | Eat the Frog (dread level) | idea | — | Add "dread" rating to tasks. Surface highest-dread tasks first in the morning. Frog icon scales with dread. Inspired by Amazing Marvin. |
+| V2-23 | Beat the Clock (gamified timer) | idea | — | Estimate duration, then race against your own estimate. Gamifies execution. Inspired by Amazing Marvin. |
+| V2-24 | Dopamine Menu (quick wins) | idea | — | Filtered list of short/easy tasks for when motivation is low. Instant momentum builder. Inspired by Amazing Marvin. |
+| V2-25 | Task Jar (random pick) | idea | — | Can't decide? Random task selection from today's list. Overcomes decision paralysis. Inspired by Amazing Marvin. |
+| V2-26 | Deep Work Timer | idea | — | Extended focus timer (Cal Newport style) tied to a specific task. Session tracking and stats. Inspired by Morgen. |
+| V2-27 | Gamification (points / levels / achievements) | idea | — | Points for completing tasks, daily streaks, level-up system, achievement badges. Inspired by TickTick, Amazing Marvin. |
+| V2-28 | Weekly review & analytics | idea | — | Completion rate, busiest day, time by project, neglected projects. Charts and insights. Extends A-37. Inspired by Reclaim, Sunsama. |
+| V2-29 | ICS calendar export / import | idea | — | Export tasks with due dates as .ics files. Import .ics to create tasks. Calendar interop. Extends A-45. Inspired by Morgen, Reclaim. |
+
+## v2.0 — Future / Motion-Inspired (Tier 4)
+
+Ambitious features for post-Tier 1-3 development. Heavy Motion/Amie/Notion inspiration.
+
+| ID | Item | Status | Sprint | Notes |
+|----|------|--------|--------|-------|
+| V2-30 | Timeline / Gantt view | idea | — | Horizontal timeline showing task durations, dependencies as arrows. Zoom: days/weeks/months. Inspired by TickTick, Notion. |
+| V2-31 | AI auto-scheduling | needs-design | — | Place tasks on a daily timeline optimally based on priority, deadline, duration, energy. Reshuffle on changes. Core Motion feature. Needs deep research. |
+| V2-32 | Split view (tasks + calendar side-by-side) | idea | — | Drag tasks from list onto calendar for time-blocking. The Akiflow/Amie core layout pattern. |
+| V2-33 | Year view with activity heatmap | idea | — | GitHub-style heatmap showing completion density across the year. Satisfying visualization. Inspired by TickTick v8.0. |
+| V2-34 | Meeting notes → tasks (AI extraction) | idea | — | Paste meeting notes or any text, AI extracts action items and creates tasks. Extends A-39. Inspired by Motion, Notion. |
+| V2-35 | Natural language filter creation (AI) | idea | — | "Show me overdue tasks in the Work project" → AI generates the filter query. Inspired by Todoist Filter Assist. |
+| V2-36 | Voice-to-tasks (Ramble-style batch creation) | idea | — | Speak naturally, AI creates multiple structured tasks from unstructured speech. Builds on existing voice system. Inspired by Todoist Ramble. |
+| V2-37 | Sequential projects | idea | — | Only show the next task in a project. Reduces overwhelm for ordered workflows. Inspired by Amazing Marvin. |
+| V2-38 | Email to task | idea | — | Forward emails to a local endpoint that creates tasks. Extract subject, body, dates. Plugin candidate. Inspired by Todoist, Akiflow. |
+| V2-39 | Joyful micro-animations (Framer Motion) | idea | — | Polished completion animations, smooth view transitions, playful micro-interactions. The "Amie feeling." Inspired by Amie, Things 3. |

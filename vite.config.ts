@@ -430,6 +430,8 @@ function apiPlugin() {
       async function ensurePlugins() {
         if (!pluginsInitialized) {
           const svc = await getServices();
+          // Use Vite's SSR module loader so .ts plugin files resolve correctly
+          svc.pluginLoader.setModuleLoader((path) => server.ssrLoadModule(path));
           await svc.pluginLoader.loadAll();
           pluginsInitialized = true;
         }
@@ -665,6 +667,9 @@ function apiPlugin() {
             id: view.id,
             name: view.name,
             icon: view.icon,
+            slot: view.slot,
+            contentType: view.contentType,
+            pluginId: view.pluginId,
           }));
           res.setHeader("Content-Type", "application/json");
           res.end(JSON.stringify(views));

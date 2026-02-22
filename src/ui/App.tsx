@@ -111,11 +111,17 @@ function AppContent() {
   const { state, refreshTasks } = useTaskContext();
   const { undo, redo, toast, dismissToast, showToast } = useUndoContext();
   const {
+    plugins,
     commands: pluginCommands,
     panels,
     views: pluginViews,
     executeCommand,
   } = usePluginContext();
+
+  const builtinPluginIds = useMemo(
+    () => new Set(plugins.filter((p) => p.builtin).map((p) => p.id)),
+    [plugins],
+  );
   const voice = useVoiceContext();
   const { dataMutationCount } = useAIContext();
 
@@ -536,12 +542,14 @@ function AppContent() {
         return (
           <Completed tasks={state.tasks} projects={projects} onSelectTask={handleSelectTask} />
         );
-      case "plugin-view":
+      case "plugin-view": {
+        const viewInfo = pluginViews.find((v) => v.id === selectedPluginViewId);
         return selectedPluginViewId ? (
-          <PluginView viewId={selectedPluginViewId} />
+          <PluginView viewId={selectedPluginViewId} viewInfo={viewInfo} />
         ) : (
           <p className="text-on-surface-muted">No plugin view selected.</p>
         );
+      }
       case "ai-chat":
         return (
           <AIChat onOpenSettings={() => setSettingsOpen(true)} onSelectTask={handleSelectTask} />
@@ -579,6 +587,7 @@ function AppContent() {
             inboxCount={inboxTaskCount}
             todayCount={todayTaskCount}
             onOpenProjectModal={() => setProjectModalOpen(true)}
+            builtinPluginIds={builtinPluginIds}
           />
         </div>
         <main
@@ -670,6 +679,7 @@ function AppContent() {
             setDrawerOpen(false);
             setProjectModalOpen(true);
           }}
+          builtinPluginIds={builtinPluginIds}
         />
       </MobileDrawer>
 

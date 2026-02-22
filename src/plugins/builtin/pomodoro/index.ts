@@ -40,18 +40,21 @@ export default class PomodoroPlugin extends Plugin {
     });
 
     // Status bar
-    this.statusHandle = this.app.ui.addStatusBarItem?.({
-      id: "pomodoro-timer",
-      text: "Ready",
-      icon: "\uD83C\uDF45",
-    }) ?? null;
+    this.statusHandle =
+      this.app.ui.addStatusBarItem?.({
+        id: "pomodoro-timer",
+        text: "Ready",
+        icon: "\uD83C\uDF45",
+      }) ?? null;
 
-    // Sidebar panel
-    this.app.ui.addSidebarPanel?.({
-      id: "pomodoro-panel",
-      title: "Pomodoro",
+    // View (replaces old sidebar panel)
+    this.app.ui.addView?.({
+      id: "pomodoro",
+      name: "Pomodoro",
       icon: "\uD83C\uDF45",
-      render: () => this.getPanelContent(),
+      slot: "tools",
+      contentType: "structured",
+      render: () => this.getViewContent(),
     });
   }
 
@@ -177,18 +180,69 @@ export default class PomodoroPlugin extends Plugin {
     }
   }
 
-  private getPanelContent(): string {
+  private getViewContent(): string {
     const time = this.formatTime(this.timeLeft);
     const phaseLabel = this.getPhaseLabel();
+    const totalSeconds = this.getPhaseSeconds();
+    const elapsed = totalSeconds - this.timeLeft;
     const sessionsBeforeLong = this.settings.get<number>("sessionsBeforeLongBreak");
 
-    const lines = [
-      `Phase: ${phaseLabel}`,
-      `Time: ${time}`,
-      `Session: ${this.session}/${sessionsBeforeLong}`,
-      `Status: ${this.state}`,
-    ];
+    // Build action buttons based on state
+    const buttons: unknown[] = [];
+    if (this.state === "running") {
+      buttons.push({ type: "button", label: "Pause", commandId: "pomodoro:pause", variant: "primary" });
+    } else {
+      buttons.push({
+        type: "button",
+        label: this.state === "paused" ? "Resume" : "Start",
+        commandId: "pomodoro:start",
+        variant: "primary",
+      });
+    }
+    buttons.push({ type: "button", label: "Reset", commandId: "pomodoro:reset", variant: "secondary" });
+    buttons.push({ type: "button", label: "Skip", commandId: "pomodoro:skip", variant: "ghost" });
 
-    return lines.join("\n");
+    const content = {
+      layout: "center",
+      elements: [
+        { type: "text", value: phaseLabel, variant: "subtitle" },
+        { type: "spacer", size: "sm" },
+        { type: "text", value: time, variant: "mono" },
+        { type: "spacer", size: "sm" },
+        {
+          type: "progress",
+          value: elapsed,
+          max: totalSeconds,
+          color: this.phase === "work" ? "accent" : "success",
+        },
+        { type: "spacer", size: "sm" },
+        { type: "row", elements: buttons, gap: "md", justify: "center" },
+        { type: "spacer", size: "sm" },
+        {
+          type: "row",
+          elements: [
+            {
+              type: "badge",
+              value: `Session ${this.session}/${sessionsBeforeLong}`,
+              color: "default",
+            },
+            {
+              type: "badge",
+              value: this.state.charAt(0).toUpperCase() + this.state.slice(1),
+              color:
+                this.state === "running"
+                  ? "success"
+                  : this.state === "paused"
+                    ? "warning"
+                    : "default",
+            },
+          ],
+          gap: "sm",
+          justify: "center",
+        },
+      ],
+    };
+
+    return JSON.stringify(content);
   }
 }

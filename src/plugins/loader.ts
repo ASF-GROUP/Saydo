@@ -40,12 +40,18 @@ export interface PluginServices {
  */
 export class PluginLoader {
   private plugins: Map<string, LoadedPlugin> = new Map();
+  private moduleLoader: ((path: string) => Promise<any>) | null = null;
 
   constructor(
     private pluginDir: string,
     private services: PluginServices,
     private builtinDir?: string,
   ) {}
+
+  /** Set a custom module loader (e.g. Vite's ssrLoadModule for dev). */
+  setModuleLoader(loader: (path: string) => Promise<any>): void {
+    this.moduleLoader = loader;
+  }
 
   /** Scan the plugins directory and validate all manifests. */
   async discover(): Promise<LoadedPlugin[]> {
@@ -221,7 +227,9 @@ export class PluginLoader {
     try {
       // Dynamic import of the plugin entry file
       const entryFile = path.join(loaded.path, loaded.manifest.main);
-      const module = await import(entryFile);
+      const module = this.moduleLoader
+        ? await this.moduleLoader(entryFile)
+        : await import(entryFile);
       const PluginClass = module.default;
 
       if (!PluginClass || typeof PluginClass !== "function") {

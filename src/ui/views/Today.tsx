@@ -1,5 +1,4 @@
 import { useMemo, useCallback } from "react";
-import { CalendarDays } from "lucide-react";
 import { parseTask } from "../../parser/task-parser.js";
 import { toDateKey } from "../../utils/format-date.js";
 import { TaskInput } from "../components/TaskInput.js";
@@ -29,11 +28,10 @@ interface TodayProps {
 
 function formatTodayHeader(): string {
   const now = new Date();
-  return now.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    weekday: "long",
-  });
+  const month = now.toLocaleDateString(undefined, { month: "short" });
+  const day = now.getDate();
+  const weekday = now.toLocaleDateString(undefined, { weekday: "long" });
+  return `${month} ${day} · Today · ${weekday}`;
 }
 
 export function Today({
@@ -87,31 +85,25 @@ export function Today({
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-1">
-        <CalendarDays size={24} className="text-accent" />
-        <h1 className="text-xl md:text-2xl font-bold text-on-surface">Today</h1>
-        <span className="text-sm text-on-surface-muted">
-          {new Date().toLocaleDateString(undefined, {
-            weekday: "long",
-            month: "long",
-            day: "numeric",
-          })}
-        </span>
-      </div>
-      <div className="flex items-center gap-3 mb-4 md:mb-6">
-        <p className="text-sm text-on-surface-muted">
-          {totalCount} {totalCount === 1 ? "task" : "tasks"}
-        </p>
-        {ringTotal > 0 && <CompletionRing completed={todayCompletedCount} total={ringTotal} />}
+      {/* Header row: "Today" title + task count + CompletionRing */}
+      <div className="flex items-center justify-between mb-4 md:mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold text-on-surface">Today</h1>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-on-surface-muted">
+            {totalCount} {totalCount === 1 ? "task" : "tasks"}
+          </span>
+          {ringTotal > 0 && <CompletionRing completed={todayCompletedCount} total={ringTotal} />}
+        </div>
       </div>
 
       <TaskInput
         onSubmit={onCreateTask}
-        placeholder='Add a task for today... (e.g., "buy milk p1")'
+        placeholder="Add a task for today..."
         autoFocusTrigger={autoFocusTrigger}
         defaultDueDate={new Date(today + "T00:00:00")}
       />
 
+      {/* Overdue section (unchanged behavior) */}
       <OverdueSection
         tasks={overdueTasks}
         projects={projectMap}
@@ -121,17 +113,20 @@ export function Today({
         selectedTaskId={selectedTaskId}
       />
 
-      {/* Today Section */}
+      {/* Today section with bold date header + accent underline */}
       <div>
-        <h2 className="text-xs font-semibold text-on-surface-muted uppercase tracking-wider mb-2 px-1">
-          {formatTodayHeader()} · Today
-        </h2>
+        <h2 className="text-base font-bold text-on-surface mb-1 px-1">{formatTodayHeader()}</h2>
+        <div className="h-0.5 bg-accent mb-3 rounded-full" />
         <TaskList
           tasks={todayTasks}
           onToggle={onToggleTask}
           onSelect={onSelectTask}
           selectedTaskId={selectedTaskId}
-          emptyMessage="Nothing due today!"
+          emptyMessage={
+            overdueTasks.length === 0
+              ? "No tasks for today. Add one above to get started!"
+              : "Nothing else due today."
+          }
           selectedTaskIds={selectedTaskIds}
           onMultiSelect={onMultiSelect}
           onReorder={onReorder}
@@ -139,6 +134,7 @@ export function Today({
           onUpdateDueDate={onUpdateDueDate}
         />
       </div>
+
     </div>
   );
 }
