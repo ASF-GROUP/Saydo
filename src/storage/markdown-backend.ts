@@ -17,6 +17,10 @@ import type {
   ChatMessageRow,
   ChatSessionInfo,
   TemplateRow,
+  SectionRow,
+  TaskCommentRow,
+  TaskActivityRow,
+  DailyStatRow,
   MutationResult,
 } from "./interface.js";
 
@@ -43,6 +47,10 @@ export class MarkdownBackend implements IStorage {
   private pluginPermissions = new Map<string, string[]>();
   private chatMessages = new Map<string, ChatMessageRow[]>(); // sessionId → messages
   private templateIndex = new Map<string, TemplateRow>();
+  private sectionIndex = new Map<string, SectionRow>();
+  private taskCommentIndex = new Map<string, TaskCommentRow[]>(); // taskId → comments
+  private taskActivityIndex = new Map<string, TaskActivityRow[]>(); // taskId → activities
+  private dailyStatIndex = new Map<string, DailyStatRow>(); // date → stat
 
   constructor(basePath: string) {
     this.basePath = basePath;
@@ -86,6 +94,15 @@ export class MarkdownBackend implements IStorage {
 
     // 7. Read _templates.yaml
     this.loadTemplates();
+
+    // 8. Read _sections.yaml
+    this.loadSections();
+
+    // 9. Read _daily_stats.yaml
+    this.loadDailyStatsFile();
+
+    // 10. Read _task_meta/*.yaml
+    this.loadTaskMeta();
 
     logger.info("Markdown backend ready", {
       tasks: this.taskIndex.size,
@@ -557,7 +574,164 @@ export class MarkdownBackend implements IStorage {
     return had ? OK : NOOP;
   }
 
+  // ── Sections ──
+
+  listSections(projectId: string): SectionRow[] {
+    return Array.from(this.sectionIndex.values()).filter((s) => s.projectId === projectId);
+  }
+
+  getSection(id: string): SectionRow | undefined {
+    return this.sectionIndex.get(id);
+  }
+
+  insertSection(section: SectionRow): MutationResult {
+    this.sectionIndex.set(section.id, section);
+    this.persistSections();
+    return OK;
+  }
+
+  updateSection(id: string, data: Partial<SectionRow>): MutationResult {
+    const existing = this.sectionIndex.get(id);
+    if (!existing) return NOOP;
+    this.sectionIndex.set(id, { ...existing, ...data });
+    this.persistSections();
+    return OK;
+  }
+
+  deleteSection(id: string): MutationResult {
+    const had = this.sectionIndex.has(id);
+    this.sectionIndex.delete(id);
+    // Clear sectionId on tasks that referenced this section
+    for (const [taskId, entry] of this.taskIndex) {
+      if ((entry.row as any).sectionId === id) {
+        this.updateTask(taskId, { sectionId: null } as any);
+      }
+    }
+    this.persistSections();
+    return had ? OK : NOOP;
+  }
+
+  // ── Task Comments ──
+
+  listTaskComments(taskId: string): TaskCommentRow[] {
+    return this.taskCommentIndex.get(taskId) ?? [];
+  }
+
+  insertTaskComment(comment: TaskCommentRow): MutationResult {
+    let comments = this.taskCommentIndex.get(comment.taskId);
+    if (!comments) {
+      comments = [];
+      this.taskCommentIndex.set(comment.taskId, comments);
+    }
+    comments.push(comment);
+    this.persistTaskMeta(comment.taskId);
+    return OK;
+  }
+
+  updateTaskComment(id: string, data: Partial<TaskCommentRow>): MutationResult {
+    for (const [taskId, comments] of this.taskCommentIndex) {
+      const idx = comments.findIndex((c) => c.id === id);
+      if (idx >= 0) {
+        comments[idx] = { ...comments[idx], ...data };
+        this.persistTaskMeta(taskId);
+        return OK;
+      }
+    }
+    return NOOP;
+  }
+
+  deleteTaskComment(id: string): MutationResult {
+    for (const [taskId, comments] of this.taskCommentIndex) {
+      const idx = comments.findIndex((c) => c.id === id);
+      if (idx >= 0) {
+        comments.splice(idx, 1);
+        this.persistTaskMeta(taskId);
+        return OK;
+      }
+    }
+    return NOOP;
+  }
+
+  // ── Task Activity ──
+
+  listTaskActivity(taskId: string): TaskActivityRow[] {
+    return this.taskActivityIndex.get(taskId) ?? [];
+  }
+
+  insertTaskActivity(activity: TaskActivityRow): MutationResult {
+    let activities = this.taskActivityIndex.get(activity.taskId);
+    if (!activities) {
+      activities = [];
+      this.taskActivityIndex.set(activity.taskId, activities);
+    }
+    activities.push(activity);
+    this.persistTaskMeta(activity.taskId);
+    return OK;
+  }
+
+  // ── Daily Stats ──
+
+  getDailyStat(date: string): DailyStatRow | undefined {
+    return this.dailyStatIndex.get(date);
+  }
+
+  upsertDailyStat(stat: DailyStatRow): MutationResult {
+    this.dailyStatIndex.set(stat.date, stat);
+    this.persistDailyStats();
+    return OK;
+  }
+
+  listDailyStats(startDate: string, endDate: string): DailyStatRow[] {
+    const results: DailyStatRow[] = [];
+    for (const stat of this.dailyStatIndex.values()) {
+      if (stat.date >= startDate && stat.date <= endDate) {
+        results.push(stat);
+      }
+    }
+    return results.sort((a, b) => a.date.localeCompare(b.date));
+  }
+
   // ── Private helpers ──
+
+  private persistSections(): void {
+    const sections = Array.from(this.sectionIndex.values());
+    const filePath = path.join(this.basePath, "_sections.yaml");
+    try {
+      fs.writeFileSync(filePath, YAML.stringify(sections), "utf-8");
+    } catch (err) {
+      throw new StorageError(`write ${filePath}`, err instanceof Error ? err : undefined);
+    }
+  }
+
+  private persistTaskMeta(taskId: string): void {
+    const comments = this.taskCommentIndex.get(taskId) ?? [];
+    const activities = this.taskActivityIndex.get(taskId) ?? [];
+    if (comments.length === 0 && activities.length === 0) return;
+    const metaDir = path.join(this.basePath, "_task_meta");
+    try {
+      fs.mkdirSync(metaDir, { recursive: true });
+    } catch {
+      // directory may already exist
+    }
+    const filePath = path.join(metaDir, `${taskId}.yaml`);
+    try {
+      fs.writeFileSync(filePath, YAML.stringify({ comments, activities }), "utf-8");
+    } catch (err) {
+      throw new StorageError(`write ${filePath}`, err instanceof Error ? err : undefined);
+    }
+  }
+
+  private persistDailyStats(): void {
+    const stats = Array.from(this.dailyStatIndex.values()).sort((a, b) =>
+      a.date.localeCompare(b.date),
+    );
+    const filePath = path.join(this.basePath, "_daily_stats.yaml");
+    try {
+      fs.writeFileSync(filePath, YAML.stringify(stats), "utf-8");
+    } catch (err) {
+      throw new StorageError(`write ${filePath}`, err instanceof Error ? err : undefined);
+    }
+  }
 
   private getTaskDir(projectId: string | null): string {
     if (!projectId) return path.join(this.basePath, "inbox");
@@ -820,6 +994,53 @@ export class MarkdownBackend implements IStorage {
       const messages = YAML.parse(content);
       if (Array.isArray(messages)) {
         this.chatMessages.set(sessionId, messages as ChatMessageRow[]);
+      }
+    }
+  }
+
+  private loadSections(): void {
+    const filePath = path.join(this.basePath, "_sections.yaml");
+    if (!fs.existsSync(filePath)) return;
+
+    const content = fs.readFileSync(filePath, "utf-8");
+    const sections = YAML.parse(content);
+    if (Array.isArray(sections)) {
+      for (const s of sections) {
+        this.sectionIndex.set(s.id, s as SectionRow);
+      }
+    }
+  }
+
+  private loadDailyStatsFile(): void {
+    const filePath = path.join(this.basePath, "_daily_stats.yaml");
+    if (!fs.existsSync(filePath)) return;
+
+    const content = fs.readFileSync(filePath, "utf-8");
+    const stats = YAML.parse(content);
+    if (Array.isArray(stats)) {
+      for (const s of stats) {
+        this.dailyStatIndex.set(s.date, s as DailyStatRow);
+      }
+    }
+  }
+
+  private loadTaskMeta(): void {
+    const metaDir = path.join(this.basePath, "_task_meta");
+    if (!fs.existsSync(metaDir)) return;
+
+    const files = fs.readdirSync(metaDir).filter((f) => f.endsWith(".yaml"));
+    for (const file of files) {
+      const taskId = file.replace(".yaml", "");
+      const filePath = path.join(metaDir, file);
+      const content = fs.readFileSync(filePath, "utf-8");
+      const data = YAML.parse(content);
+      if (data) {
+        if (Array.isArray(data.comments)) {
+          this.taskCommentIndex.set(taskId, data.comments as TaskCommentRow[]);
+        }
+        if (Array.isArray(data.activities)) {
+          this.taskActivityIndex.set(taskId, data.activities as TaskActivityRow[]);
+        }
       }
     }
   }

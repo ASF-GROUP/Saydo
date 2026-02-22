@@ -1,0 +1,159 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen } from "@testing-library/react";
+
+// Mock lucide-react
+vi.mock("lucide-react", () => ({
+  CheckCircle2: (props: any) => <svg data-testid="check-circle-icon" {...props} />,
+  AlertTriangle: (props: any) => <svg data-testid="alert-icon" {...props} />,
+  ChevronDown: (props: any) => <svg data-testid="chevron-down" {...props} />,
+  ChevronRight: (props: any) => <svg data-testid="chevron-right" {...props} />,
+  Calendar: (props: any) => <svg data-testid="calendar-icon" {...props} />,
+}));
+
+// Mock child components to isolate Today view tests
+vi.mock("../../../src/ui/components/TaskInput.js", () => ({
+  TaskInput: ({ placeholder }: { placeholder?: string }) => (
+    <div data-testid="task-input" data-placeholder={placeholder} />
+  ),
+}));
+
+vi.mock("../../../src/ui/components/TaskList.js", () => ({
+  TaskList: ({ tasks, emptyMessage }: { tasks: any[]; emptyMessage?: string }) => (
+    <div data-testid="task-list" data-count={tasks.length}>
+      {tasks.length === 0 && emptyMessage && <span>{emptyMessage}</span>}
+      {tasks.map((t: any) => (
+        <span key={t.id}>{t.title}</span>
+      ))}
+    </div>
+  ),
+}));
+
+vi.mock("../../../src/ui/components/CompletionRing.js", () => ({
+  CompletionRing: ({ completed, total }: { completed: number; total: number }) => (
+    <div data-testid="completion-ring" data-completed={completed} data-total={total} />
+  ),
+}));
+
+vi.mock("../../../src/utils/format-date.js", () => ({
+  toDateKey: (d: Date) => d.toISOString().split("T")[0],
+}));
+
+import { Today } from "../../../src/ui/views/Today.js";
+import type { Task } from "../../../src/core/types.js";
+
+const today = new Date().toISOString().split("T")[0];
+const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+
+function makeTask(overrides: Partial<Task> = {}): Task {
+  return {
+    id: "t1",
+    title: "Test task",
+    status: "pending",
+    priority: null,
+    dueDate: `${today}T10:00:00.000Z`,
+    dueTime: false,
+    projectId: null,
+    parentId: null,
+    tags: [],
+    sortOrder: 0,
+    recurrence: null,
+    description: null,
+    completedAt: null,
+    createdAt: "2026-02-16T10:00:00.000Z",
+    updatedAt: "2026-02-16T10:00:00.000Z",
+    ...overrides,
+  } as Task;
+}
+
+const defaultProps = {
+  tasks: [] as Task[],
+  projects: [],
+  onCreateTask: vi.fn(),
+  onToggleTask: vi.fn(),
+  onSelectTask: vi.fn(),
+  onUpdateTask: vi.fn(),
+  selectedTaskId: null,
+};
+
+describe("Today", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("renders 'Today' heading", () => {
+    render(<Today {...defaultProps} />);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Today");
+  });
+
+  it("shows task count in header", () => {
+    const tasks = [
+      makeTask({ id: "t1", title: "Task 1" }),
+      makeTask({ id: "t2", title: "Task 2" }),
+    ];
+    render(<Today {...defaultProps} tasks={tasks} />);
+    expect(screen.getByText("2 tasks")).toBeTruthy();
+  });
+
+  it("shows singular 'task' for 1 task", () => {
+    const tasks = [makeTask({ id: "t1", title: "Task 1" })];
+    render(<Today {...defaultProps} tasks={tasks} />);
+    expect(screen.getByText("1 task")).toBeTruthy();
+  });
+
+  it("shows overdue section when overdue tasks exist", () => {
+    const tasks = [
+      makeTask({ id: "t-overdue", title: "Overdue task", dueDate: `${yesterday}T10:00:00.000Z` }),
+    ];
+    render(<Today {...defaultProps} tasks={tasks} />);
+    expect(screen.getByText("Overdue")).toBeTruthy();
+  });
+
+  it("hides overdue section when no overdue tasks", () => {
+    const tasks = [makeTask({ id: "t1", title: "Today task" })];
+    render(<Today {...defaultProps} tasks={tasks} />);
+    expect(screen.queryByText("Overdue")).toBeNull();
+  });
+
+  it("shows today section header with formatted date", () => {
+    render(<Today {...defaultProps} />);
+    const header = screen.getByRole("heading", { level: 2 });
+    expect(header.textContent).toContain("Today");
+    expect(header.textContent).toContain("·");
+  });
+
+  it("renders TaskInput", () => {
+    render(<Today {...defaultProps} />);
+    expect(screen.getByTestId("task-input")).toBeTruthy();
+  });
+
+  it("renders TaskList for today's tasks", () => {
+    const tasks = [makeTask({ id: "t1", title: "Buy milk" })];
+    render(<Today {...defaultProps} tasks={tasks} />);
+    expect(screen.getByTestId("task-list")).toBeTruthy();
+    expect(screen.getByText("Buy milk")).toBeTruthy();
+  });
+
+  it("shows CompletionRing when there are tasks", () => {
+    const tasks = [makeTask({ id: "t1", title: "Task 1" })];
+    render(<Today {...defaultProps} tasks={tasks} />);
+    expect(screen.getByTestId("completion-ring")).toBeTruthy();
+  });
+
+  it("hides CompletionRing when no tasks at all", () => {
+    render(<Today {...defaultProps} />);
+    expect(screen.queryByTestId("completion-ring")).toBeNull();
+  });
+
+  it("shows encouraging empty message when no tasks and no overdue", () => {
+    render(<Today {...defaultProps} tasks={[]} />);
+    expect(screen.getByText("No tasks for today. Add one above to get started!")).toBeTruthy();
+  });
+
+  it("shows shorter empty message when overdue exist but no today tasks", () => {
+    const tasks = [
+      makeTask({ id: "t-overdue", title: "Old task", dueDate: `${yesterday}T10:00:00.000Z` }),
+    ];
+    render(<Today {...defaultProps} tasks={tasks} />);
+    expect(screen.getByText("Nothing else due today.")).toBeTruthy();
+  });
+});

@@ -41,6 +41,36 @@ function apiPlugin() {
         return services;
       }
 
+      // POST /api/test-reset — delete all data (for E2E tests)
+      server.middlewares.use(async (req, res, next) => {
+        if (req.url !== "/api/test-reset" || req.method !== "POST") return next();
+        try {
+          const svc = await getServices();
+          // Delete all tasks (cascades to comments, activity, task_tags)
+          const tasks = await svc.taskService.list();
+          if (tasks.length > 0) {
+            await svc.taskService.deleteMany(tasks.map((t: any) => t.id));
+          }
+          // Delete all projects (cascades to sections)
+          const projects = await svc.projectService.list();
+          for (const p of projects) {
+            await svc.projectService.delete(p.id);
+          }
+          // Delete all tags
+          const tags = await svc.tagService.list();
+          for (const t of tags) {
+            await svc.tagService.delete(t.id);
+          }
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ ok: true }));
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : "Internal server error";
+          res.statusCode = 500;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ error: message }));
+        }
+      });
+
       // POST /api/tasks — create task
       server.middlewares.use(async (req, res, next) => {
         if (req.url !== "/api/tasks") return next();
@@ -420,6 +450,220 @@ function apiPlugin() {
             res.end(JSON.stringify({ error: message }));
           }
           return;
+        }
+
+        next();
+      });
+
+      // ── Sections ─────────────────────────────────────
+
+      // GET/POST /api/sections
+      server.middlewares.use(async (req, res, next) => {
+        if (!req.url?.startsWith("/api/sections")) return next();
+
+        // POST /api/sections/reorder
+        if (req.url === "/api/sections/reorder" && req.method === "POST") {
+          try {
+            const svc = await getServices();
+            const body = await parseBody(req);
+            const { orderedIds } = body as { orderedIds: string[] };
+            await svc.sectionService.reorder(orderedIds);
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ ok: true }));
+          } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Internal server error";
+            res.statusCode = 500;
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ error: message }));
+          }
+          return;
+        }
+
+        // PATCH/DELETE /api/sections/:id
+        const idMatch = req.url.match(/^\/api\/sections\/([^/?]+)$/);
+        if (idMatch) {
+          const id = decodeURIComponent(idMatch[1]);
+          const svc = await getServices();
+
+          if (req.method === "PATCH") {
+            try {
+              const body = await parseBody(req);
+              const section = await svc.sectionService.update(id, body as any);
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify(section));
+            } catch (err: any) {
+              res.statusCode = err.name === "NotFoundError" ? 404 : 500;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ error: err.message }));
+            }
+            return;
+          }
+
+          if (req.method === "DELETE") {
+            try {
+              await svc.sectionService.delete(id);
+              res.statusCode = 204;
+              res.end();
+            } catch (err: unknown) {
+              const message = err instanceof Error ? err.message : "Internal server error";
+              res.statusCode = 500;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ error: message }));
+            }
+            return;
+          }
+
+          return next();
+        }
+
+        // GET/POST /api/sections
+        if (req.url === "/api/sections" || req.url.startsWith("/api/sections?")) {
+          try {
+            const svc = await getServices();
+
+            if (req.method === "GET") {
+              const url = new URL(req.url, `http://${req.headers.host}`);
+              const projectId = url.searchParams.get("projectId");
+              if (!projectId) {
+                res.statusCode = 400;
+                res.setHeader("Content-Type", "application/json");
+                res.end(JSON.stringify({ error: "projectId is required" }));
+                return;
+              }
+              const sections = await svc.sectionService.list(projectId);
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify(sections));
+              return;
+            }
+
+            if (req.method === "POST") {
+              const body = await parseBody(req);
+              const section = await svc.sectionService.create(body as any);
+              res.setHeader("Content-Type", "application/json");
+              res.statusCode = 201;
+              res.end(JSON.stringify(section));
+              return;
+            }
+          } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Internal server error";
+            res.statusCode = 500;
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ error: message }));
+          }
+          return;
+        }
+
+        next();
+      });
+
+      // ── Task Comments & Activity ───────────────────
+
+      // GET/POST /api/tasks/:id/comments, GET /api/tasks/:id/activity
+      server.middlewares.use(async (req, res, next) => {
+        const commentMatch = req.url?.match(/^\/api\/tasks\/([^/]+)\/comments$/);
+        if (commentMatch) {
+          const taskId = decodeURIComponent(commentMatch[1]);
+          const svc = await getServices();
+
+          if (req.method === "GET") {
+            try {
+              const comments = svc.storage.listTaskComments(taskId);
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify(comments));
+            } catch (err: unknown) {
+              const message = err instanceof Error ? err.message : "Internal server error";
+              res.statusCode = 500;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ error: message }));
+            }
+            return;
+          }
+
+          if (req.method === "POST") {
+            try {
+              const body = await parseBody(req);
+              const { generateId } = await import("./src/utils/ids.js");
+              const now = new Date().toISOString();
+              const comment = {
+                id: generateId(),
+                taskId,
+                content: body.content as string,
+                createdAt: now,
+                updatedAt: now,
+              };
+              svc.storage.insertTaskComment(comment);
+              res.setHeader("Content-Type", "application/json");
+              res.statusCode = 201;
+              res.end(JSON.stringify(comment));
+            } catch (err: unknown) {
+              const message = err instanceof Error ? err.message : "Internal server error";
+              res.statusCode = 500;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ error: message }));
+            }
+            return;
+          }
+
+          return next();
+        }
+
+        // GET /api/tasks/:id/activity
+        const activityMatch = req.url?.match(/^\/api\/tasks\/([^/]+)\/activity$/);
+        if (activityMatch && req.method === "GET") {
+          const taskId = decodeURIComponent(activityMatch[1]);
+          const svc = await getServices();
+          try {
+            const activity = svc.storage.listTaskActivity(taskId);
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify(activity));
+          } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Internal server error";
+            res.statusCode = 500;
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ error: message }));
+          }
+          return;
+        }
+
+        // PATCH/DELETE /api/comments/:id
+        const singleCommentMatch = req.url?.match(/^\/api\/comments\/([^/]+)$/);
+        if (singleCommentMatch) {
+          const commentId = decodeURIComponent(singleCommentMatch[1]);
+          const svc = await getServices();
+
+          if (req.method === "PATCH") {
+            try {
+              const body = await parseBody(req);
+              svc.storage.updateTaskComment(commentId, {
+                content: body.content as string,
+                updatedAt: new Date().toISOString(),
+              });
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ ok: true }));
+            } catch (err: unknown) {
+              const message = err instanceof Error ? err.message : "Internal server error";
+              res.statusCode = 500;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ error: message }));
+            }
+            return;
+          }
+
+          if (req.method === "DELETE") {
+            try {
+              svc.storage.deleteTaskComment(commentId);
+              res.statusCode = 204;
+              res.end();
+            } catch (err: unknown) {
+              const message = err instanceof Error ? err.message : "Internal server error";
+              res.statusCode = 500;
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify({ error: message }));
+            }
+            return;
+          }
+
+          return next();
         }
 
         next();

@@ -1,4 +1,4 @@
-import { eq, desc, inArray, and, lte, isNotNull, min, count } from "drizzle-orm";
+import { eq, desc, inArray, and, lte, gte, isNotNull, min, count } from "drizzle-orm";
 import type { BaseSQLiteDatabase } from "drizzle-orm/sqlite-core";
 import * as schema from "./schema.js";
 
@@ -219,6 +219,81 @@ export function createQueries(db: BaseSQLiteDatabase<"sync", any, typeof schema>
 
     deleteTemplate: (id: string) =>
       db.delete(schema.taskTemplates).where(eq(schema.taskTemplates.id, id)).run(),
+
+    // ── Sections ────────────────────────────────────
+    listSections: (projectId: string) =>
+      db
+        .select()
+        .from(schema.sections)
+        .where(eq(schema.sections.projectId, projectId))
+        .all(),
+
+    getSection: (id: string) =>
+      db.select().from(schema.sections).where(eq(schema.sections.id, id)).get(),
+
+    insertSection: (section: typeof schema.sections.$inferInsert) =>
+      db.insert(schema.sections).values(section).run(),
+
+    updateSection: (id: string, data: Partial<typeof schema.sections.$inferInsert>) =>
+      db.update(schema.sections).set(data).where(eq(schema.sections.id, id)).run(),
+
+    deleteSection: (id: string) =>
+      db.delete(schema.sections).where(eq(schema.sections.id, id)).run(),
+
+    // ── Task Comments ──────────────────────────────
+    listTaskComments: (taskId: string) =>
+      db
+        .select()
+        .from(schema.taskComments)
+        .where(eq(schema.taskComments.taskId, taskId))
+        .all(),
+
+    insertTaskComment: (comment: typeof schema.taskComments.$inferInsert) =>
+      db.insert(schema.taskComments).values(comment).run(),
+
+    updateTaskComment: (id: string, data: Partial<typeof schema.taskComments.$inferInsert>) =>
+      db.update(schema.taskComments).set(data).where(eq(schema.taskComments.id, id)).run(),
+
+    deleteTaskComment: (id: string) =>
+      db.delete(schema.taskComments).where(eq(schema.taskComments.id, id)).run(),
+
+    // ── Task Activity ──────────────────────────────
+    listTaskActivity: (taskId: string) =>
+      db
+        .select()
+        .from(schema.taskActivity)
+        .where(eq(schema.taskActivity.taskId, taskId))
+        .all(),
+
+    insertTaskActivity: (activity: typeof schema.taskActivity.$inferInsert) =>
+      db.insert(schema.taskActivity).values(activity).run(),
+
+    // ── Daily Stats ────────────────────────────────
+    getDailyStat: (date: string) =>
+      db.select().from(schema.dailyStats).where(eq(schema.dailyStats.date, date)).get(),
+
+    upsertDailyStat: (stat: typeof schema.dailyStats.$inferInsert) => {
+      db.insert(schema.dailyStats)
+        .values(stat)
+        .onConflictDoUpdate({
+          target: schema.dailyStats.date,
+          set: {
+            tasksCompleted: stat.tasksCompleted,
+            tasksCreated: stat.tasksCreated,
+            minutesTracked: stat.minutesTracked,
+            streak: stat.streak,
+          },
+        })
+        .run();
+      return { changes: 1 };
+    },
+
+    listDailyStats: (startDate: string, endDate: string) =>
+      db
+        .select()
+        .from(schema.dailyStats)
+        .where(and(gte(schema.dailyStats.date, startDate), lte(schema.dailyStats.date, endDate)))
+        .all(),
   };
 }
 

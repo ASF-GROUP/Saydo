@@ -10,6 +10,8 @@ export function useAppShortcuts(
   setSearchOpen?: React.Dispatch<React.SetStateAction<boolean>>,
   setFocusModeOpen?: React.Dispatch<React.SetStateAction<boolean>>,
   setQuickAddOpen?: React.Dispatch<React.SetStateAction<boolean>>,
+  handleNavigate?: (view: string, id?: string) => void,
+  chordsEnabled: boolean = true,
 ) {
   useEffect(() => {
     shortcutManager.register({
@@ -67,6 +69,38 @@ export function useAppShortcuts(
       });
     }
 
+    // Navigation chords: g then <key> to navigate
+    if (handleNavigate && chordsEnabled) {
+      shortcutManager.register({
+        id: "chord-go-inbox",
+        description: "Go to Inbox",
+        defaultKey: "",
+        chord: "g i",
+        callback: () => handleNavigate("inbox"),
+      });
+      shortcutManager.register({
+        id: "chord-go-today",
+        description: "Go to Today",
+        defaultKey: "",
+        chord: "g t",
+        callback: () => handleNavigate("today"),
+      });
+      shortcutManager.register({
+        id: "chord-go-upcoming",
+        description: "Go to Upcoming",
+        defaultKey: "",
+        chord: "g u",
+        callback: () => handleNavigate("upcoming"),
+      });
+      shortcutManager.register({
+        id: "chord-go-stats",
+        description: "Go to Stats",
+        defaultKey: "",
+        chord: "g s",
+        callback: () => handleNavigate("stats"),
+      });
+    }
+
     // Load custom bindings from settings
     api.getAppSetting("keyboard_shortcuts").then((val) => {
       if (val) {
@@ -82,6 +116,13 @@ export function useAppShortcuts(
       shortcutManager.handleKeyDown(e);
     };
     document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [undo, redo, setCommandPaletteOpen, setSearchOpen, setFocusModeOpen, setQuickAddOpen]);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      // Unregister chord shortcuts so they don't persist when chordsEnabled flips
+      shortcutManager.unregister("chord-go-inbox");
+      shortcutManager.unregister("chord-go-today");
+      shortcutManager.unregister("chord-go-upcoming");
+      shortcutManager.unregister("chord-go-stats");
+    };
+  }, [undo, redo, setCommandPaletteOpen, setSearchOpen, setFocusModeOpen, setQuickAddOpen, handleNavigate, chordsEnabled]);
 }

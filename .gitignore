@@ -42,6 +42,10 @@ Desktop.ini
 
 # Testing
 coverage/
+test-results/
+
+# Playwright MCP screenshots
+.playwright-mcp/
 
 # Logs
 *.log
@@ -54,3 +58,7 @@ plugins/*/dist/
 # Misc
 .cache/
 *.tsbuildinfo
+
+# Dev screenshots
+pomodoro-active.png
+settings-modal-size.png

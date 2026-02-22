@@ -43,6 +43,24 @@ export function registerTaskCrudTools(registry: ToolRegistry): void {
             description:
               "Reminder date/time as ISO 8601 string. When set, the user will be notified at this time.",
           },
+          estimatedMinutes: {
+            type: "integer",
+            description: "Estimated duration in minutes (e.g. 30 for a half-hour task)",
+          },
+          deadline: {
+            type: "string",
+            description:
+              "Hard deadline as ISO 8601 datetime string. Different from dueDate — a deadline is a non-negotiable cutoff.",
+          },
+          isSomeday: {
+            type: "boolean",
+            description:
+              'Mark as a "someday/maybe" task — not actively scheduled but saved for later.',
+          },
+          sectionId: {
+            type: "string",
+            description: "Section ID within a project to place the task in.",
+          },
         },
         required: ["title"],
       },
@@ -57,6 +75,10 @@ export function registerTaskCrudTools(registry: ToolRegistry): void {
         projectId: (args.projectId as string) ?? null,
         recurrence: (args.recurrence as string) ?? null,
         remindAt: (args.remindAt as string) ?? null,
+        estimatedMinutes: (args.estimatedMinutes as number) ?? null,
+        deadline: (args.deadline as string) ?? null,
+        isSomeday: (args.isSomeday as boolean) ?? false,
+        sectionId: (args.sectionId as string) ?? null,
       });
       return JSON.stringify({
         success: true,
@@ -77,7 +99,7 @@ export function registerTaskCrudTools(registry: ToolRegistry): void {
     {
       name: "update_task",
       description:
-        "Update an existing task's fields. Supports title, priority, due date, tags, recurrence, and reminder.",
+        "Update an existing task's fields. Supports title, priority, due date, tags, recurrence, reminder, estimated duration, deadline, someday flag, and section.",
       parameters: {
         type: "object",
         properties: {
@@ -108,6 +130,26 @@ export function registerTaskCrudTools(registry: ToolRegistry): void {
           remindAt: {
             type: "string",
             description: "Reminder date/time as ISO 8601 string. Set to empty string to remove.",
+          },
+          estimatedMinutes: {
+            type: "integer",
+            description:
+              "Estimated duration in minutes. Set to 0 or empty string to remove.",
+          },
+          deadline: {
+            type: "string",
+            description:
+              "Hard deadline as ISO 8601 datetime string. Set to empty string to remove.",
+          },
+          isSomeday: {
+            type: "boolean",
+            description:
+              'Set to true to mark as "someday/maybe", false to unmark.',
+          },
+          sectionId: {
+            type: "string",
+            description:
+              "Section ID within a project. Set to empty string to remove from section.",
           },
         },
         required: ["taskId"],

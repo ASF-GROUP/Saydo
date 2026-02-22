@@ -43,6 +43,13 @@
       "when": 1771643870596,
       "tag": "0005_aberrant_blur",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1771720678530,
+      "tag": "0006_solid_mephisto",
+      "breakpoints": true
     }
   ]
 }

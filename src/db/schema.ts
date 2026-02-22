@@ -16,6 +16,10 @@ export const tasks = sqliteTable("tasks", {
   parentId: text("parent_id").references((): any => tasks.id, { onDelete: "cascade" }),
   remindAt: text("remind_at"),
   sortOrder: integer("sort_order").notNull().default(0),
+  estimatedMinutes: integer("estimated_minutes"),
+  deadline: text("deadline"),
+  isSomeday: integer("is_someday", { mode: "boolean" }).notNull().default(false),
+  sectionId: text("section_id").references(() => sections.id, { onDelete: "set null" }),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });
@@ -87,5 +91,48 @@ export const chatMessages = sqliteTable("chat_messages", {
   content: text("content").notNull(),
   toolCallId: text("tool_call_id"),
   toolCalls: text("tool_calls"),
+  createdAt: text("created_at").notNull(),
+});
+
+export const sections = sqliteTable("sections", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id")
+    .notNull()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  isCollapsed: integer("is_collapsed", { mode: "boolean" }).notNull().default(false),
+  createdAt: text("created_at").notNull(),
+});
+
+export const taskComments = sqliteTable("task_comments", {
+  id: text("id").primaryKey(),
+  taskId: text("task_id")
+    .notNull()
+    .references(() => tasks.id, { onDelete: "cascade" }),
+  content: text("content").notNull(),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const taskActivity = sqliteTable("task_activity", {
+  id: text("id").primaryKey(),
+  taskId: text("task_id")
+    .notNull()
+    .references(() => tasks.id, { onDelete: "cascade" }),
+  action: text("action").notNull(),
+  field: text("field"),
+  oldValue: text("old_value"),
+  newValue: text("new_value"),
+  createdAt: text("created_at").notNull(),
+});
+
+export const dailyStats = sqliteTable("daily_stats", {
+  id: text("id").primaryKey(),
+  date: text("date").notNull().unique(),
+  tasksCompleted: integer("tasks_completed").notNull().default(0),
+  tasksCreated: integer("tasks_created").notNull().default(0),
+  minutesTracked: integer("minutes_tracked").notNull().default(0),
+  streak: integer("streak").notNull().default(0),
   createdAt: text("created_at").notNull(),
 });

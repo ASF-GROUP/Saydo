@@ -403,8 +403,8 @@ Resolve relative dates ("tomorrow", "next Monday") into ISO 8601 dates.
 
 ${contextBlock ? contextBlock + "\n" : ""}## Task Tools
 - **query_tasks**: Search/filter by status, priority, project, tag, date range, text. Always query before referencing task data.
-- **create_task**: Create with optional priority (1-4), dueDate (ISO 8601), tags, projectId, recurrence ("daily"|"weekly"|"monthly"|"yearly"), remindAt.
-- **update_task**: Modify any field by task ID (from query_tasks).
+- **create_task**: Create with optional priority (1-4), dueDate (ISO 8601), tags, projectId, recurrence ("daily"|"weekly"|"monthly"|"yearly"), remindAt, estimatedMinutes, deadline, isSomeday, sectionId.
+- **update_task**: Modify any field by task ID (from query_tasks). Supports estimatedMinutes, deadline, isSomeday, sectionId in addition to all create fields.
 - **complete_task**: Mark done by ID. Recurring tasks auto-create next occurrence.
 - **delete_task**: Permanently remove by ID.
 
@@ -439,6 +439,7 @@ ${contextBlock ? contextBlock + "\n" : ""}## Task Tools
 ## Planning Tools
 - **plan_my_day**: Morning briefing with today's tasks, overdue items, focus blocks, and productivity insights. Optional energy_level (low/medium/high).
 - **daily_review**: End-of-day review with completion stats, streaks, carried-over tasks, and tomorrow preview. Optional date (ISO).
+- **get_productivity_stats**: Productivity report with streak, completion counts, and trends. Optional startDate/endDate (ISO, defaults to last 30 days).
 
 ## Behavior
 - Only create tasks with titles the user explicitly provided — never invent titles.

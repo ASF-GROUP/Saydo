@@ -17,6 +17,10 @@ export const CreateTaskInput = z.object({
   parentId: z.string().nullable().optional(),
   remindAt: z.string().datetime().nullable().optional(),
   tags: z.array(z.string()).optional().default([]),
+  estimatedMinutes: z.number().int().min(1).nullable().optional(),
+  deadline: z.string().datetime().nullable().optional(),
+  isSomeday: z.boolean().optional(),
+  sectionId: z.string().nullable().optional(),
 });
 export type CreateTaskInput = z.infer<typeof CreateTaskInput>;
 
@@ -36,6 +40,10 @@ export interface Task {
   recurrence: string | null;
   parentId: string | null;
   remindAt: string | null;
+  estimatedMinutes: number | null;
+  deadline: string | null;
+  isSomeday: boolean;
+  sectionId: string | null;
   tags: Tag[];
   children?: Task[];
   sortOrder: number;
@@ -88,4 +96,47 @@ export interface TaskTemplate {
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface Section {
+  id: string;
+  projectId: string;
+  name: string;
+  sortOrder: number;
+  isCollapsed: boolean;
+  createdAt: string;
+}
+
+export const CreateSectionInput = z.object({
+  projectId: z.string().min(1),
+  name: z.string().min(1).max(200),
+});
+export type CreateSectionInput = z.infer<typeof CreateSectionInput>;
+
+export interface TaskComment {
+  id: string;
+  taskId: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TaskActivity {
+  id: string;
+  taskId: string;
+  action: string;
+  field: string | null;
+  oldValue: string | null;
+  newValue: string | null;
+  createdAt: string;
+}
+
+export interface DailyStat {
+  id: string;
+  date: string;
+  tasksCompleted: number;
+  tasksCreated: number;
+  minutesTracked: number;
+  streak: number;
+  createdAt: string;
 }

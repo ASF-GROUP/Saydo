@@ -4,6 +4,7 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  Clock,
   GripVertical,
   Pencil,
   Repeat,
@@ -11,6 +12,7 @@ import {
 } from "lucide-react";
 import type { Task } from "../../core/types.js";
 import { getPriority } from "../../core/priorities.js";
+import { useGeneralSettings } from "../context/SettingsContext.js";
 import { DatePicker } from "./DatePicker.js";
 import { formatRecurrenceLabel } from "./RecurrencePicker.js";
 import { hexToRgba } from "../../utils/color.js";
@@ -65,6 +67,7 @@ export const TaskItem = React.memo(function TaskItem({
   onUpdateDueDate,
   onContextMenu,
 }: TaskItemProps) {
+  const { settings } = useGeneralSettings();
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [animClass, setAnimClass] = useState("");
   const prevStatusRef = useRef(task.status);
@@ -100,7 +103,18 @@ export const TaskItem = React.memo(function TaskItem({
 
   const indentPadding = depth > 0 ? { paddingLeft: `${depth * 1.5 + 0.75}rem` } : undefined;
 
-  const hasMetadataLine = task.tags.length > 0 || task.dueDate || task.recurrence || task.remindAt;
+  const durationEnabled = settings.feature_duration !== "false";
+  const hasDuration = durationEnabled && task.estimatedMinutes != null && task.estimatedMinutes > 0;
+  const formattedDuration = hasDuration
+    ? task.estimatedMinutes! < 60
+      ? `${task.estimatedMinutes}m`
+      : Number.isInteger(task.estimatedMinutes! / 60)
+        ? `${task.estimatedMinutes! / 60}h`
+        : `${(task.estimatedMinutes! / 60).toFixed(1)}h`
+    : "";
+
+  const hasMetadataLine =
+    task.tags.length > 0 || task.dueDate || task.recurrence || task.remindAt || hasDuration;
 
   // Priority-based circle colors
   const priorityColorClass = task.priority
@@ -220,6 +234,14 @@ export const TaskItem = React.memo(function TaskItem({
             {task.title}
           </span>
 
+          {/* Duration badge */}
+          {hasDuration && (
+            <span className="text-xs px-1.5 py-0 rounded-md bg-surface-tertiary text-on-surface-secondary font-mono flex items-center gap-0.5 flex-shrink-0">
+              <Clock size={10} />
+              {formattedDuration}
+            </span>
+          )}
+
           {/* Subtask progress indicator (when collapsed) */}
           {totalChildCount > 0 && !expanded && (
             <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -271,6 +293,12 @@ export const TaskItem = React.memo(function TaskItem({
               <span className="text-xs flex items-center gap-0.5 text-on-surface-muted flex-shrink-0">
                 <Repeat size={11} />
                 {formatRecurrenceLabel(task.recurrence)}
+              </span>
+            )}
+            {hasDuration && (
+              <span className="text-xs flex items-center gap-0.5 text-on-surface-muted flex-shrink-0">
+                <Clock size={11} />
+                {formattedDuration}
               </span>
             )}
           </div>

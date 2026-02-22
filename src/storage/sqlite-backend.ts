@@ -12,6 +12,10 @@ import type {
   ChatMessageRow,
   ChatSessionInfo,
   TemplateRow,
+  SectionRow,
+  TaskCommentRow,
+  TaskActivityRow,
+  DailyStatRow,
   MutationResult,
 } from "./interface.js";
 
@@ -229,5 +233,69 @@ export class SQLiteBackend implements IStorage {
 
   deleteTemplate(id: string): MutationResult {
     return this.q.deleteTemplate(id);
+  }
+
+  // ── Sections ──
+
+  listSections(projectId: string): SectionRow[] {
+    return this.q.listSections(projectId) as unknown as SectionRow[];
+  }
+
+  getSection(id: string): SectionRow | undefined {
+    return this.q.getSection(id) as SectionRow | undefined;
+  }
+
+  insertSection(section: SectionRow): MutationResult {
+    return this.q.insertSection(section as any);
+  }
+
+  updateSection(id: string, data: Partial<SectionRow>): MutationResult {
+    return this.q.updateSection(id, data as any);
+  }
+
+  deleteSection(id: string): MutationResult {
+    return this.q.deleteSection(id);
+  }
+
+  // ── Task Comments ──
+
+  listTaskComments(taskId: string): TaskCommentRow[] {
+    return this.q.listTaskComments(taskId) as unknown as TaskCommentRow[];
+  }
+
+  insertTaskComment(comment: TaskCommentRow): MutationResult {
+    return this.q.insertTaskComment(comment as any);
+  }
+
+  updateTaskComment(id: string, data: Partial<TaskCommentRow>): MutationResult {
+    return this.q.updateTaskComment(id, data as any);
+  }
+
+  deleteTaskComment(id: string): MutationResult {
+    return this.q.deleteTaskComment(id);
+  }
+
+  // ── Task Activity ──
+
+  listTaskActivity(taskId: string): TaskActivityRow[] {
+    return this.q.listTaskActivity(taskId) as unknown as TaskActivityRow[];
+  }
+
+  insertTaskActivity(activity: TaskActivityRow): MutationResult {
+    return this.q.insertTaskActivity(activity as any);
+  }
+
+  // ── Daily Stats ──
+
+  getDailyStat(date: string): DailyStatRow | undefined {
+    return this.q.getDailyStat(date) as DailyStatRow | undefined;
+  }
+
+  upsertDailyStat(stat: DailyStatRow): MutationResult {
+    return this.q.upsertDailyStat(stat as any);
+  }
+
+  listDailyStats(startDate: string, endDate: string): DailyStatRow[] {
+    return this.q.listDailyStats(startDate, endDate) as unknown as DailyStatRow[];
   }
 }

@@ -13,9 +13,50 @@ export interface TaskRow {
   recurrence: string | null;
   parentId: string | null;
   remindAt: string | null;
+  estimatedMinutes: number | null;
+  deadline: string | null;
+  isSomeday: boolean;
+  sectionId: string | null;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface SectionRow {
+  id: string;
+  projectId: string;
+  name: string;
+  sortOrder: number;
+  isCollapsed: boolean;
+  createdAt: string;
+}
+
+export interface TaskCommentRow {
+  id: string;
+  taskId: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TaskActivityRow {
+  id: string;
+  taskId: string;
+  action: string;
+  field: string | null;
+  oldValue: string | null;
+  newValue: string | null;
+  createdAt: string;
+}
+
+export interface DailyStatRow {
+  id: string;
+  date: string;
+  tasksCompleted: number;
+  tasksCreated: number;
+  minutesTracked: number;
+  streak: number;
+  createdAt: string;
 }
 
 export interface ProjectRow {
@@ -155,4 +196,26 @@ export interface IStorage {
   insertTemplate(template: TemplateRow): MutationResult;
   updateTemplate(id: string, data: Partial<TemplateRow>): MutationResult;
   deleteTemplate(id: string): MutationResult;
+
+  // ── Sections ──
+  listSections(projectId: string): SectionRow[];
+  getSection(id: string): SectionRow | undefined;
+  insertSection(section: SectionRow): MutationResult;
+  updateSection(id: string, data: Partial<SectionRow>): MutationResult;
+  deleteSection(id: string): MutationResult;
+
+  // ── Task Comments ──
+  listTaskComments(taskId: string): TaskCommentRow[];
+  insertTaskComment(comment: TaskCommentRow): MutationResult;
+  updateTaskComment(id: string, data: Partial<TaskCommentRow>): MutationResult;
+  deleteTaskComment(id: string): MutationResult;
+
+  // ── Task Activity ──
+  listTaskActivity(taskId: string): TaskActivityRow[];
+  insertTaskActivity(activity: TaskActivityRow): MutationResult;
+
+  // ── Daily Stats ──
+  getDailyStat(date: string): DailyStatRow | undefined;
+  upsertDailyStat(stat: DailyStatRow): MutationResult;
+  listDailyStats(startDate: string, endDate: string): DailyStatRow[];
 }

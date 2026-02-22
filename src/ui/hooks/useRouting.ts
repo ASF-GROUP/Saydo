@@ -12,6 +12,9 @@ export type View =
   | "plugin-view"
   | "filters-labels"
   | "completed"
+  | "cancelled"
+  | "someday"
+  | "stats"
   | "ai-chat";
 
 export type CalendarMode = "day" | "week" | "month";
@@ -101,6 +104,15 @@ function parseRouteStateFromHash(hash: string, defaultView: View = "inbox"): Rou
     case "completed":
       route.view = "completed";
       break;
+    case "cancelled":
+      route.view = "cancelled";
+      break;
+    case "someday":
+      route.view = "someday";
+      break;
+    case "stats":
+      route.view = "stats";
+      break;
     case "ai-chat":
       route.view = "ai-chat";
       break;
@@ -143,6 +155,15 @@ function buildHashFromRoute(route: RouteState): string {
       break;
     case "completed":
       path = "/completed";
+      break;
+    case "cancelled":
+      path = "/cancelled";
+      break;
+    case "someday":
+      path = "/someday";
+      break;
+    case "stats":
+      path = "/stats";
       break;
     case "calendar":
       path = "/calendar";

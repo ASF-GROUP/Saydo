@@ -16,7 +16,7 @@ import { PluginProvider, usePluginContext } from "./context/PluginContext.js";
 import { AIProvider, useAIContext } from "./context/AIContext.js";
 import { VoiceProvider, useVoiceContext } from "./context/VoiceContext.js";
 import { UndoProvider, useUndoContext } from "./context/UndoContext.js";
-import { SettingsProvider } from "./context/SettingsContext.js";
+import { SettingsProvider, useGeneralSettings } from "./context/SettingsContext.js";
 import { FocusMode } from "./components/FocusMode.js";
 import { TemplateSelector } from "./components/TemplateSelector.js";
 import { Toast } from "./components/Toast.js";
@@ -38,12 +38,16 @@ import { Project } from "./views/Project.js";
 import { Settings } from "./views/Settings.js";
 import { PluginView } from "./views/PluginView.js";
 import { Completed } from "./views/Completed.js";
+import { Cancelled } from "./views/Cancelled.js";
+import { Someday } from "./views/Someday.js";
+import { Stats } from "./views/Stats.js";
 import { Calendar } from "./views/Calendar.js";
 import { FiltersLabels } from "./views/FiltersLabels.js";
 import { TaskPage } from "./views/TaskPage.js";
+import { ChordIndicator } from "./components/ChordIndicator.js";
 import { Breadcrumb, type BreadcrumbItem } from "./components/Breadcrumb.js";
 import type { SettingsTab } from "./views/Settings.js";
-import type { Project as ProjectType } from "../core/types.js";
+import type { Project as ProjectType, Section, TaskComment, TaskActivity } from "../core/types.js";
 import { api } from "./api/index.js";
 import { toDateKey } from "../utils/format-date.js";
 import { SkeletonTaskList } from "./components/Skeleton.js";
@@ -67,6 +71,9 @@ function AppContent() {
     handleNavigate,
     openSettingsTab,
   } = useRouting();
+
+  // ── Feature toggles ──
+  const { settings: featureSettings } = useGeneralSettings();
 
   // ── Projects state (declared early for useTaskHandlers) ──
   const [projects, setProjects] = useState<ProjectType[]>([]);
@@ -106,6 +113,9 @@ function AppContent() {
   const [projectModalOpen, setProjectModalOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [sections, setSections] = useState<Section[]>([]);
+  const [taskComments, setTaskComments] = useState<TaskComment[]>([]);
+  const [taskActivity, setTaskActivity] = useState<TaskActivity[]>([]);
 
   // ── Context hooks ──
   const { state, refreshTasks } = useTaskContext();
@@ -267,6 +277,123 @@ function AppContent() {
     setAddTaskTrigger((n) => n + 1);
   }, [currentView, handleNavigate]);
 
+  // ── Restore / activate handlers for Cancelled & Someday views ──
+  const handleRestoreTask = useCallback(
+    async (id: string) => {
+      await handleUpdateTask(id, { status: "pending", completedAt: null } as any);
+    },
+    [handleUpdateTask],
+  );
+
+  const handleActivateTask = useCallback(
+    async (id: string) => {
+      await handleUpdateTask(id, { isSomeday: false } as any);
+    },
+    [handleUpdateTask],
+  );
+
+  // ── Sections ──
+  const fetchSections = useCallback(
+    async (projectId: string) => {
+      try {
+        const s = await api.listSections(projectId);
+        setSections(s);
+      } catch {
+        setSections([]);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (currentView === "project" && selectedProjectId) {
+      fetchSections(selectedProjectId);
+    } else {
+      setSections([]);
+    }
+  }, [currentView, selectedProjectId, fetchSections]);
+
+  const handleCreateSection = useCallback(
+    async (name: string) => {
+      if (!selectedProjectId) return;
+      await api.createSection(selectedProjectId, name);
+      fetchSections(selectedProjectId);
+    },
+    [selectedProjectId, fetchSections],
+  );
+
+  const handleUpdateSection = useCallback(
+    async (id: string, data: { name?: string; isCollapsed?: boolean }) => {
+      await api.updateSection(id, data);
+      if (selectedProjectId) fetchSections(selectedProjectId);
+    },
+    [selectedProjectId, fetchSections],
+  );
+
+  const handleDeleteSection = useCallback(
+    async (id: string) => {
+      await api.deleteSection(id);
+      if (selectedProjectId) fetchSections(selectedProjectId);
+      refreshTasks();
+    },
+    [selectedProjectId, fetchSections, refreshTasks],
+  );
+
+  const handleMoveTask = useCallback(
+    async (taskId: string, sectionId: string | null) => {
+      await handleUpdateTask(taskId, { sectionId } as any);
+    },
+    [handleUpdateTask],
+  );
+
+  // ── Comments & Activity ──
+  const fetchCommentsAndActivity = useCallback(async (taskId: string) => {
+    try {
+      const [comments, activity] = await Promise.all([
+        api.listTaskComments(taskId),
+        api.listTaskActivity(taskId),
+      ]);
+      setTaskComments(comments);
+      setTaskActivity(activity);
+    } catch {
+      setTaskComments([]);
+      setTaskActivity([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (selectedTask) {
+      fetchCommentsAndActivity(selectedTask.id);
+    } else {
+      setTaskComments([]);
+      setTaskActivity([]);
+    }
+  }, [selectedTask, fetchCommentsAndActivity]);
+
+  const handleAddComment = useCallback(
+    async (taskId: string, content: string) => {
+      await api.addTaskComment(taskId, content);
+      fetchCommentsAndActivity(taskId);
+    },
+    [fetchCommentsAndActivity],
+  );
+
+  const handleUpdateComment = useCallback(
+    async (commentId: string, content: string) => {
+      await api.updateTaskComment(commentId, content);
+      if (selectedTask) fetchCommentsAndActivity(selectedTask.id);
+    },
+    [selectedTask, fetchCommentsAndActivity],
+  );
+
+  const handleDeleteComment = useCallback(
+    async (commentId: string) => {
+      await api.deleteTaskComment(commentId);
+      if (selectedTask) fetchCommentsAndActivity(selectedTask.id);
+    },
+    [selectedTask, fetchCommentsAndActivity],
+  );
+
   // ── Multi-select ──
   const {
     selectedIds: multiSelectedIds,
@@ -318,6 +445,8 @@ function AppContent() {
     setSearchOpen,
     setFocusModeOpen,
     setQuickAddOpen,
+    handleNavigate,
+    featureSettings.feature_chords !== "false",
   );
 
   // ── Settings modal helpers ──
@@ -393,6 +522,12 @@ function AppContent() {
         return "Filters & Labels - Saydo";
       case "completed":
         return "Completed - Saydo";
+      case "cancelled":
+        return "Cancelled - Saydo";
+      case "someday":
+        return "Someday / Maybe - Saydo";
+      case "stats":
+        return "Stats - Saydo";
       case "ai-chat":
         return "AI Chat - Saydo";
       default:
@@ -488,6 +623,12 @@ function AppContent() {
             onAddSubtask={handleAddSubtask}
             onUpdateDueDate={handleUpdateDueDate}
             autoFocusTrigger={addTaskTrigger}
+            viewStyle={project.viewStyle}
+            sections={sections}
+            onCreateSection={handleCreateSection}
+            onUpdateSection={handleUpdateSection}
+            onDeleteSection={handleDeleteSection}
+            onMoveTask={handleMoveTask}
           />
         );
       }
@@ -542,6 +683,27 @@ function AppContent() {
         return (
           <Completed tasks={state.tasks} projects={projects} onSelectTask={handleSelectTask} />
         );
+      case "cancelled":
+        return featureSettings.feature_cancelled !== "false" ? (
+          <Cancelled
+            tasks={state.tasks}
+            projects={projects}
+            onSelectTask={handleSelectTask}
+            onRestoreTask={handleRestoreTask}
+          />
+        ) : null;
+      case "someday":
+        return featureSettings.feature_someday !== "false" ? (
+          <Someday
+            tasks={state.tasks}
+            onSelectTask={handleSelectTask}
+            onActivateTask={handleActivateTask}
+          />
+        ) : null;
+      case "stats":
+        return featureSettings.feature_stats !== "false" ? (
+          <Stats tasks={state.tasks} />
+        ) : null;
       case "plugin-view": {
         const viewInfo = pluginViews.find((v) => v.id === selectedPluginViewId);
         return selectedPluginViewId ? (
@@ -726,6 +888,11 @@ function AppContent() {
           hasNext={selectedTaskIdx >= 0 && selectedTaskIdx < visibleTasks.length - 1}
           projectName={selectedTaskProjectName}
           availableTags={availableTags}
+          comments={taskComments}
+          activity={taskActivity}
+          onAddComment={handleAddComment}
+          onUpdateComment={handleUpdateComment}
+          onDeleteComment={handleDeleteComment}
         />
       )}
       {settingsOpen && <Settings activeTab={settingsTab} onClose={() => setSettingsOpen(false)} />}
@@ -752,6 +919,7 @@ function AppContent() {
         isOpen={commandPaletteOpen}
         onClose={() => setCommandPaletteOpen(false)}
       />
+      {featureSettings.feature_chords !== "false" && <ChordIndicator />}
       <SearchModal
         isOpen={searchOpen}
         onClose={() => setSearchOpen(false)}

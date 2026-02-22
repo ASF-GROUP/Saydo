@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import {
   Calendar,
+  AlertTriangle,
   Tag,
   Bell,
   Repeat,
@@ -40,6 +41,7 @@ export function TaskMetadataSidebar({
   const { settings } = useGeneralSettings();
   const currentRemindAt = task.remindAt ?? null;
   const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showDeadlinePicker, setShowDeadlinePicker] = useState(false);
   const [showRemindAtPicker, setShowRemindAtPicker] = useState(false);
   const [showRecurrencePicker, setShowRecurrencePicker] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -56,6 +58,7 @@ export function TaskMetadataSidebar({
   if (task.id !== trackedTaskId) {
     setTrackedTaskId(task.id);
     setShowDatePicker(false);
+    setShowDeadlinePicker(false);
     setShowRemindAtPicker(false);
     setShowRecurrencePicker(false);
   }
@@ -73,6 +76,14 @@ export function TaskMetadataSidebar({
         onUpdate(task.id, { dueDate: new Date(date).toISOString(), dueTime: false });
       }
       setShowDatePicker(false);
+    },
+    [task.id, onUpdate],
+  );
+
+  const handleDeadlineChange = useCallback(
+    (date: string | null) => {
+      onUpdate(task.id, { deadline: date ? new Date(date).toISOString() : null });
+      setShowDeadlinePicker(false);
     },
     [task.id, onUpdate],
   );
@@ -180,6 +191,48 @@ export function TaskMetadataSidebar({
           />
         )}
       </div>
+
+      {/* Deadline */}
+      {settings.feature_deadlines !== "false" && (
+        <div className="relative">
+          <label className="text-xs font-medium text-on-surface-muted uppercase tracking-wider flex items-center gap-1.5">
+            <AlertTriangle size={12} /> Deadline
+          </label>
+          <button
+            onClick={() => setShowDeadlinePicker((prev) => !prev)}
+            className="mt-1.5 w-full px-2 py-1.5 text-sm text-left rounded-md text-on-surface hover:bg-surface-tertiary transition-colors"
+          >
+            {task.deadline ? (
+              <span className={
+                new Date(task.deadline) < new Date() ? "text-error" : ""
+              }>
+                {new Date(task.deadline).toLocaleDateString(undefined, {
+                  month: "short",
+                  day: "numeric",
+                })}
+              </span>
+            ) : (
+              <span className="text-on-surface-muted">No deadline</span>
+            )}
+          </button>
+          {task.deadline && (
+            <button
+              onClick={() => handleDeadlineChange(null)}
+              className="absolute top-0 right-0 text-on-surface-muted hover:text-on-surface transition-colors p-0.5"
+              title="Clear deadline"
+            >
+              <X size={12} />
+            </button>
+          )}
+          {showDeadlinePicker && (
+            <DatePicker
+              value={task.deadline}
+              onChange={handleDeadlineChange}
+              onClose={() => setShowDeadlinePicker(false)}
+            />
+          )}
+        </div>
+      )}
 
       <div className="border-t border-border" />
 

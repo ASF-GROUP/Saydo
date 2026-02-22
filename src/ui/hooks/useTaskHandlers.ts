@@ -19,6 +19,9 @@ export function useTaskHandlers(
     dueDate: Date | null;
     dueTime: boolean;
     recurrence?: string | null;
+    estimatedMinutes?: number | null;
+    deadline?: Date | null;
+    isSomeday?: boolean;
   }) => {
     if (!parsed.title.trim()) return;
     let projectId = selectedProjectId;
@@ -34,6 +37,9 @@ export function useTaskHandlers(
       tags: parsed.tags,
       projectId,
       ...(parsed.recurrence ? { recurrence: parsed.recurrence } : {}),
+      ...(parsed.estimatedMinutes != null ? { estimatedMinutes: parsed.estimatedMinutes } : {}),
+      ...(parsed.deadline ? { deadline: parsed.deadline.toISOString() } : {}),
+      ...(parsed.isSomeday ? { isSomeday: true } : {}),
     } as any);
     playSound("create");
   };

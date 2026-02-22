@@ -235,6 +235,7 @@ export async function sendChatMessage(
         taskService: svc.taskService,
         projectService: svc.projectService,
         tagService: svc.tagService,
+        statsService: svc.statsService,
       };
 
       const isLocalProvider =
@@ -318,6 +319,7 @@ export async function getChatMessages(): Promise<AIChatMessage[]> {
               taskService: svc.taskService,
               projectService: svc.projectService,
               tagService: svc.tagService,
+              statsService: svc.statsService,
             },
             svc.storage,
             {
@@ -414,6 +416,7 @@ export async function switchChatSession(sessionId: string): Promise<AIChatMessag
       taskService: svc.taskService,
       projectService: svc.projectService,
       tagService: svc.tagService,
+      statsService: svc.statsService,
     };
 
     // Build system message and create a session from stored messages

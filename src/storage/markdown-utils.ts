@@ -65,6 +65,10 @@ export function parseTaskFile(
     recurrence: string | null;
     parentId: string | null;
     remindAt: string | null;
+    estimatedMinutes: number | null;
+    deadline: string | null;
+    isSomeday: boolean;
+    sectionId: string | null;
     sortOrder: number;
     createdAt: string;
     updatedAt: string;
@@ -100,6 +104,11 @@ export function parseTaskFile(
       recurrence: frontmatter.recurrence != null ? String(frontmatter.recurrence) : null,
       parentId: frontmatter.parentId != null ? String(frontmatter.parentId) : null,
       remindAt: frontmatter.remindAt != null ? String(frontmatter.remindAt) : null,
+      estimatedMinutes:
+        frontmatter.estimatedMinutes != null ? Number(frontmatter.estimatedMinutes) : null,
+      deadline: frontmatter.deadline != null ? String(frontmatter.deadline) : null,
+      isSomeday: Boolean(frontmatter.isSomeday ?? false),
+      sectionId: frontmatter.sectionId != null ? String(frontmatter.sectionId) : null,
       sortOrder: Number(frontmatter.sortOrder ?? 0),
       createdAt: String(frontmatter.createdAt ?? new Date().toISOString()),
       updatedAt: String(frontmatter.updatedAt ?? new Date().toISOString()),
@@ -123,6 +132,10 @@ export function serializeTaskFile(
     recurrence: string | null;
     parentId?: string | null;
     remindAt?: string | null;
+    estimatedMinutes?: number | null;
+    deadline?: string | null;
+    isSomeday?: boolean;
+    sectionId?: string | null;
     sortOrder: number;
     createdAt: string;
     updatedAt: string;
@@ -141,6 +154,10 @@ export function serializeTaskFile(
     recurrence: task.recurrence,
     parentId: task.parentId ?? null,
     remindAt: task.remindAt ?? null,
+    estimatedMinutes: task.estimatedMinutes ?? null,
+    deadline: task.deadline ?? null,
+    isSomeday: task.isSomeday ?? false,
+    sectionId: task.sectionId ?? null,
     sortOrder: task.sortOrder,
     createdAt: task.createdAt,
     updatedAt: task.updatedAt,

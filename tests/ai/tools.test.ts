@@ -24,7 +24,7 @@ describe("ToolRegistry", () => {
     expect(names).toContain("set_reminder");
     expect(names).toContain("snooze_reminder");
     expect(names).toContain("dismiss_reminder");
-    expect(defs).toHaveLength(27);
+    expect(defs).toHaveLength(28);
   });
 
   it("each tool has name, description, and parameters", () => {

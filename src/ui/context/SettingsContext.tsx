@@ -20,6 +20,15 @@ export interface GeneralSettings {
   sound_reminder: "true" | "false";
   calendar_default_mode: "day" | "week" | "month";
   font_family: "outfit" | "inter" | "system";
+  feature_sections: "true" | "false";
+  feature_kanban: "true" | "false";
+  feature_deadlines: "true" | "false";
+  feature_duration: "true" | "false";
+  feature_someday: "true" | "false";
+  feature_comments: "true" | "false";
+  feature_stats: "true" | "false";
+  feature_chords: "true" | "false";
+  feature_cancelled: "true" | "false";
 }
 
 const DEFAULT_SETTINGS: GeneralSettings = {
@@ -41,6 +50,15 @@ const DEFAULT_SETTINGS: GeneralSettings = {
   sound_reminder: "true",
   calendar_default_mode: "week",
   font_family: "outfit",
+  feature_sections: "true",
+  feature_kanban: "true",
+  feature_deadlines: "true",
+  feature_duration: "true",
+  feature_someday: "true",
+  feature_comments: "true",
+  feature_stats: "true",
+  feature_chords: "true",
+  feature_cancelled: "true",
 };
 
 const SETTING_KEYS = Object.keys(DEFAULT_SETTINGS) as (keyof GeneralSettings)[];

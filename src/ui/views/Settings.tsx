@@ -12,9 +12,11 @@ import {
   FileText,
   ArrowLeft,
   ChevronRight,
+  ToggleRight,
 } from "lucide-react";
 import { GeneralTab } from "./settings/GeneralTab.js";
 import { AppearanceTab } from "./settings/AppearanceTab.js";
+import { FeaturesTab } from "./settings/FeaturesTab.js";
 import { AITab } from "./settings/AITab.js";
 import { VoiceTab } from "./settings/VoiceTab.js";
 import { PluginsTab } from "./settings/PluginsTab.js";
@@ -53,6 +55,13 @@ const TABS: TabMeta[] = [
     subtitle: "Theme & layout",
     icon: <Palette className="w-4 h-4" />,
     mobileIcon: <Palette className="w-5 h-5" />,
+  },
+  {
+    id: "features",
+    label: "Features",
+    subtitle: "Enable & disable",
+    icon: <ToggleRight className="w-4 h-4" />,
+    mobileIcon: <ToggleRight className="w-5 h-5" />,
   },
   {
     id: "ai",
@@ -104,7 +113,7 @@ const TABS: TabMeta[] = [
 
 // Sections for the mobile index page
 const MOBILE_SECTIONS: { label: string; tabs: SettingsTab[] }[] = [
-  { label: "General", tabs: ["general", "appearance", "keyboard", "data"] },
+  { label: "General", tabs: ["general", "appearance", "features", "keyboard", "data"] },
   { label: "AI & Voice", tabs: ["ai", "voice"] },
   { label: "Extensions", tabs: ["plugins", "templates"] },
   { label: "Info", tabs: ["about"] },
@@ -116,6 +125,8 @@ function renderTabContent(tab: SettingsTab) {
       return <GeneralTab />;
     case "appearance":
       return <AppearanceTab />;
+    case "features":
+      return <FeaturesTab />;
     case "ai":
       return <AITab />;
     case "voice":

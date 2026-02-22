@@ -4,6 +4,8 @@ import { TaskService } from "./core/tasks.js";
 import { ProjectService } from "./core/projects.js";
 import { TagService } from "./core/tags.js";
 import { TemplateService } from "./core/templates.js";
+import { SectionService } from "./core/sections.js";
+import { StatsService } from "./core/stats.js";
 import { EventBus } from "./core/event-bus.js";
 import { ChatManager } from "./ai/chat.js";
 import { createDefaultRegistry, createDefaultToolRegistry } from "./ai/provider.js";
@@ -27,6 +29,8 @@ export interface WebAppServices {
   projectService: ProjectService;
   tagService: TagService;
   templateService: TemplateService;
+  sectionService: SectionService;
+  statsService: StatsService;
   eventBus: EventBus;
   settingsManager: PluginSettingsManager;
   commandRegistry: CommandRegistry;
@@ -59,6 +63,8 @@ export async function bootstrapWeb(): Promise<WebAppServices> {
   const eventBus = new EventBus();
   const taskService = new TaskService(storage, tagService, eventBus);
   const templateService = new TemplateService(storage, taskService);
+  const sectionService = new SectionService(storage, eventBus);
+  const statsService = new StatsService(storage);
   const settingsManager = new PluginSettingsManager(storage);
   const commandRegistry = new CommandRegistry();
   const uiRegistry = new UIRegistry();
@@ -88,6 +94,8 @@ export async function bootstrapWeb(): Promise<WebAppServices> {
     projectService,
     tagService,
     templateService,
+    sectionService,
+    statsService,
     eventBus,
     settingsManager,
     commandRegistry,

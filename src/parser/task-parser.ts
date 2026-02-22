@@ -1,5 +1,13 @@
 import { parseDate, removeDateText } from "./nlp.js";
-import { extractPriority, extractTags, extractProject, extractRecurrence } from "./grammar.js";
+import {
+  extractPriority,
+  extractTags,
+  extractProject,
+  extractRecurrence,
+  extractDuration,
+  extractDeadline,
+  extractSomeday,
+} from "./grammar.js";
 
 export interface ParsedTask {
   title: string;
@@ -9,6 +17,9 @@ export interface ParsedTask {
   dueDate: Date | null;
   dueTime: boolean;
   recurrence: string | null;
+  estimatedMinutes: number | null;
+  deadline: Date | null;
+  isSomeday: boolean;
 }
 
 /**
@@ -40,6 +51,25 @@ export function parseTask(input: string): ParsedTask {
   const { recurrence, text: afterRecurrence } = extractRecurrence(remaining);
   remaining = afterRecurrence;
 
+  // Extract duration (~30m, ~1h, ~1.5h)
+  const { estimatedMinutes, text: afterDuration } = extractDuration(remaining);
+  remaining = afterDuration;
+
+  // Extract hard deadline (!!tomorrow, !!jan 15, !!next friday)
+  let deadline: Date | null = null;
+  const { deadlineText, text: afterDeadline } = extractDeadline(remaining);
+  remaining = afterDeadline;
+  if (deadlineText) {
+    const parsedDeadline = parseDate(deadlineText);
+    if (parsedDeadline) {
+      deadline = parsedDeadline.date;
+    }
+  }
+
+  // Extract someday marker (~someday, /someday)
+  const { isSomeday, text: afterSomeday } = extractSomeday(remaining);
+  remaining = afterSomeday;
+
   // Extract date/time
   let dueDate: Date | null = null;
   let dueTime = false;
@@ -53,5 +83,16 @@ export function parseTask(input: string): ParsedTask {
   // Whatever's left is the title
   const title = remaining.replace(/\s+/g, " ").trim();
 
-  return { title, priority, tags, project, dueDate, dueTime, recurrence };
+  return {
+    title,
+    priority,
+    tags,
+    project,
+    dueDate,
+    dueTime,
+    recurrence,
+    estimatedMinutes,
+    deadline,
+    isSomeday,
+  };
 }

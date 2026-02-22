@@ -72,3 +72,40 @@ export function extractProject(input: string): { project: string | null; text: s
   const text = input.replace(match[0], "").replace(/\s+/g, " ").trim();
   return { project, text };
 }
+
+/** Extract estimated duration (~30m, ~1h, ~1.5h, ~90m) from input. The ~ prefix is required. */
+export function extractDuration(input: string): {
+  estimatedMinutes: number | null;
+  text: string;
+} {
+  const match = input.match(/~(\d+(?:\.\d+)?)(m|h)\b/i);
+  if (!match) return { estimatedMinutes: null, text: input };
+
+  const value = parseFloat(match[1]);
+  const unit = match[2].toLowerCase();
+  const estimatedMinutes = unit === "h" ? Math.round(value * 60) : Math.round(value);
+  const text = input.replace(match[0], "").replace(/\s+/g, " ").trim();
+  return { estimatedMinutes, text };
+}
+
+/** Extract hard deadline (!!tomorrow, !!jan 15, !!next friday) from input. The !! prefix marks a hard deadline. */
+export function extractDeadline(input: string): {
+  deadlineText: string | null;
+  text: string;
+} {
+  const match = input.match(/!!([a-zA-Z0-9][a-zA-Z0-9 ]*?)(?=\s+[~#!+]|\s+p[1-4]\b|$)/i);
+  if (!match) return { deadlineText: null, text: input };
+
+  const deadlineText = match[1].trim();
+  const text = input.replace(match[0], "").replace(/\s+/g, " ").trim();
+  return { deadlineText, text };
+}
+
+/** Extract someday marker (~someday or /someday) from input. */
+export function extractSomeday(input: string): { isSomeday: boolean; text: string } {
+  const match = input.match(/(?:~|\/)(someday)\b/i);
+  if (!match) return { isSomeday: false, text: input };
+
+  const text = input.replace(match[0], "").replace(/\s+/g, " ").trim();
+  return { isSomeday: true, text };
+}
