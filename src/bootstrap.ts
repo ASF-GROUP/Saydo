@@ -8,6 +8,7 @@ import { ProjectService } from "./core/projects.js";
 import { TagService } from "./core/tags.js";
 import { TemplateService } from "./core/templates.js";
 import { SectionService } from "./core/sections.js";
+import { StatsService } from "./core/stats.js";
 import { EventBus } from "./core/event-bus.js";
 import { PluginLoader } from "./plugins/loader.js";
 import { PluginSettingsManager } from "./plugins/settings.js";
@@ -31,6 +32,7 @@ export interface AppServices {
   tagService: TagService;
   templateService: TemplateService;
   sectionService: SectionService;
+  statsService: StatsService;
   eventBus: EventBus;
   pluginLoader: PluginLoader;
   settingsManager: PluginSettingsManager;
@@ -77,6 +79,7 @@ export function bootstrap(dbPath?: string): AppServices {
   const taskService = new TaskService(storage, tagService, eventBus);
   const templateService = new TemplateService(storage, taskService);
   const sectionService = new SectionService(storage, eventBus);
+  const statsService = new StatsService(storage);
 
   const settingsManager = new PluginSettingsManager(storage);
   const commandRegistry = new CommandRegistry();
@@ -111,6 +114,7 @@ export function bootstrap(dbPath?: string): AppServices {
     tagService,
     templateService,
     sectionService,
+    statsService,
     eventBus,
     pluginLoader,
     settingsManager,
