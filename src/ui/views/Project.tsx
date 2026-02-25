@@ -28,6 +28,7 @@ interface ProjectProps {
   onReorder?: (orderedIds: string[]) => void;
   onAddSubtask?: (parentId: string, title: string) => void;
   onUpdateDueDate?: (taskId: string, dueDate: string | null) => void;
+  onContextMenu?: (taskId: string, position: { x: number; y: number }) => void;
   autoFocusTrigger?: number;
   sections?: Section[];
   onCreateSection?: (name: string) => void;
@@ -225,6 +226,7 @@ export function Project({
   onReorder,
   onAddSubtask,
   onUpdateDueDate,
+  onContextMenu,
   autoFocusTrigger,
   sections,
   onCreateSection,
@@ -332,6 +334,7 @@ export function Project({
           onReorder={onReorder}
           onAddSubtask={onAddSubtask}
           onUpdateDueDate={onUpdateDueDate}
+          onContextMenu={onContextMenu}
         />
       )}
 

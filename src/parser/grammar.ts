@@ -88,11 +88,22 @@ export function extractDuration(input: string): {
   return { estimatedMinutes, text };
 }
 
-/** Extract hard deadline (!!tomorrow, !!jan 15, !!next friday) from input. The !! prefix marks a hard deadline. */
+/** Extract hard deadline (!!tomorrow, !!jan 15, !!next friday, deadline friday) from input. The !! prefix or "deadline" keyword marks a hard deadline. */
 export function extractDeadline(input: string): {
   deadlineText: string | null;
   text: string;
 } {
+  // Try "deadline <date>" keyword syntax first
+  const keywordMatch = input.match(
+    /\bdeadline\s+([a-zA-Z0-9][a-zA-Z0-9 ]*?)(?=\s+[~#!+]|\s+p[1-4]\b|$)/i,
+  );
+  if (keywordMatch) {
+    const deadlineText = keywordMatch[1].trim();
+    const text = input.replace(keywordMatch[0], "").replace(/\s+/g, " ").trim();
+    return { deadlineText, text };
+  }
+
+  // Fall back to !! prefix syntax
   const match = input.match(/!!([a-zA-Z0-9][a-zA-Z0-9 ]*?)(?=\s+[~#!+]|\s+p[1-4]\b|$)/i);
   if (!match) return { deadlineText: null, text: input };
 

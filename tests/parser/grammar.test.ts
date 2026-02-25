@@ -4,6 +4,7 @@ import {
   extractTags,
   extractProject,
   extractRecurrence,
+  extractDeadline,
 } from "../../src/parser/grammar.js";
 
 describe("extractPriority", () => {
@@ -240,5 +241,55 @@ describe("extractRecurrence", () => {
     const result = extractRecurrence("team weekly sync");
     expect(result.recurrence).toBe("weekly");
     expect(result.text).toBe("team sync");
+  });
+});
+
+describe("extractDeadline", () => {
+  it("extracts deadline with keyword syntax", () => {
+    const result = extractDeadline("submit report deadline friday");
+    expect(result.deadlineText).toBe("friday");
+    expect(result.text).toBe("submit report");
+  });
+
+  it("extracts deadline with !! prefix syntax", () => {
+    const result = extractDeadline("submit report !!friday");
+    expect(result.deadlineText).toBe("friday");
+    expect(result.text).toBe("submit report");
+  });
+
+  it("extracts multi-word deadline date with keyword", () => {
+    const result = extractDeadline("finish project deadline next friday");
+    expect(result.deadlineText).toBe("next friday");
+    expect(result.text).toBe("finish project");
+  });
+
+  it("extracts multi-word deadline date with !! prefix", () => {
+    const result = extractDeadline("finish project !!next friday");
+    expect(result.deadlineText).toBe("next friday");
+    expect(result.text).toBe("finish project");
+  });
+
+  it("is case-insensitive for keyword", () => {
+    const result = extractDeadline("submit report Deadline Friday");
+    expect(result.deadlineText).toBe("Friday");
+    expect(result.text).toBe("submit report");
+  });
+
+  it("stops before priority token", () => {
+    const result = extractDeadline("submit report deadline friday p1");
+    expect(result.deadlineText).toBe("friday");
+    expect(result.text).toBe("submit report p1");
+  });
+
+  it("stops before tag token", () => {
+    const result = extractDeadline("submit report deadline friday #work");
+    expect(result.deadlineText).toBe("friday");
+    expect(result.text).toBe("submit report #work");
+  });
+
+  it("returns null when no deadline present", () => {
+    const result = extractDeadline("buy milk tomorrow");
+    expect(result.deadlineText).toBeNull();
+    expect(result.text).toBe("buy milk tomorrow");
   });
 });

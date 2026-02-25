@@ -47,6 +47,8 @@ import { TaskPage } from "./views/TaskPage.js";
 import { ChordIndicator } from "./components/ChordIndicator.js";
 import { Breadcrumb, type BreadcrumbItem } from "./components/Breadcrumb.js";
 import type { SettingsTab } from "./views/Settings.js";
+import { ContextMenu, type ContextMenuItem } from "./components/ContextMenu.js";
+import { Pencil, Check, Undo2, Trash2, Flag, FolderInput } from "lucide-react";
 import type { Project as ProjectType, Section, TaskComment, TaskActivity } from "../core/types.js";
 import { api } from "./api/index.js";
 import { toDateKey } from "../utils/format-date.js";
@@ -116,6 +118,10 @@ function AppContent() {
   const [sections, setSections] = useState<Section[]>([]);
   const [taskComments, setTaskComments] = useState<TaskComment[]>([]);
   const [taskActivity, setTaskActivity] = useState<TaskActivity[]>([]);
+  const [contextMenu, setContextMenu] = useState<{
+    taskId: string;
+    position: { x: number; y: number };
+  } | null>(null);
 
   // ── Context hooks ──
   const { state, refreshTasks } = useTaskContext();
@@ -291,6 +297,80 @@ function AppContent() {
     },
     [handleUpdateTask],
   );
+
+  // ── Context menu ──
+  const handleContextMenu = useCallback(
+    (taskId: string, position: { x: number; y: number }) => {
+      setContextMenu({ taskId, position });
+    },
+    [],
+  );
+
+  const contextMenuItems = useMemo((): ContextMenuItem[] => {
+    if (!contextMenu) return [];
+    const task = state.tasks.find((t) => t.id === contextMenu.taskId);
+    if (!task) return [];
+
+    const items: ContextMenuItem[] = [
+      {
+        id: "edit",
+        label: "Edit",
+        icon: <Pencil size={14} />,
+        onClick: () => handleSelectTask(task.id),
+      },
+      {
+        id: "toggle",
+        label: task.status === "completed" ? "Mark incomplete" : "Complete",
+        icon: task.status === "completed" ? <Undo2 size={14} /> : <Check size={14} />,
+        onClick: () => handleToggleTask(task.id),
+      },
+      {
+        id: "priority",
+        label: "Priority",
+        icon: <Flag size={14} />,
+        submenu: [1, 2, 3, 4].map((p) => ({
+          id: `priority-${p}`,
+          label: `Priority ${p}`,
+          onClick: () => handleUpdateTask(task.id, { priority: p }),
+        })),
+      },
+    ];
+
+    if (projects.length > 0) {
+      items.push({
+        id: "move",
+        label: "Move to project",
+        icon: <FolderInput size={14} />,
+        submenu: [
+          {
+            id: "move-inbox",
+            label: "Inbox",
+            onClick: () => handleUpdateTask(task.id, { projectId: null }),
+          },
+          ...projects.map((p) => ({
+            id: `move-${p.id}`,
+            label: p.name,
+            onClick: () => handleUpdateTask(task.id, { projectId: p.id }),
+          })),
+        ],
+      });
+    }
+
+    items.push({
+      id: "delete",
+      label: "Delete",
+      icon: <Trash2 size={14} />,
+      danger: true,
+      onClick: () => handleDeleteTask(task.id),
+    });
+
+    return items;
+  }, [contextMenu, state.tasks, projects, handleSelectTask, handleToggleTask, handleUpdateTask, handleDeleteTask]);
+
+  // Clear context menu on navigation
+  useEffect(() => {
+    setContextMenu(null);
+  }, [currentView, selectedProjectId, selectedPluginViewId]);
 
   // ── Sections ──
   const fetchSections = useCallback(async (projectId: string) => {
@@ -562,6 +642,7 @@ function AppContent() {
             onReorder={handleReorder}
             onAddSubtask={handleAddSubtask}
             onUpdateDueDate={handleUpdateDueDate}
+            onContextMenu={handleContextMenu}
             autoFocusTrigger={addTaskTrigger}
           />
         );
@@ -580,6 +661,7 @@ function AppContent() {
             onReorder={handleReorder}
             onAddSubtask={handleAddSubtask}
             onUpdateDueDate={handleUpdateDueDate}
+            onContextMenu={handleContextMenu}
             autoFocusTrigger={addTaskTrigger}
           />
         );
@@ -598,6 +680,7 @@ function AppContent() {
             onReorder={handleReorder}
             onAddSubtask={handleAddSubtask}
             onUpdateDueDate={handleUpdateDueDate}
+            onContextMenu={handleContextMenu}
             autoFocusTrigger={addTaskTrigger}
           />
         );
@@ -619,6 +702,7 @@ function AppContent() {
             onReorder={handleReorder}
             onAddSubtask={handleAddSubtask}
             onUpdateDueDate={handleUpdateDueDate}
+            onContextMenu={handleContextMenu}
             autoFocusTrigger={addTaskTrigger}
             viewStyle={project.viewStyle}
             sections={sections}
@@ -752,6 +836,7 @@ function AppContent() {
           tabIndex={-1}
           className="flex-1 overflow-auto p-3 md:p-6 flex flex-col"
         >
+         <div className="max-w-7xl w-full mx-auto flex-1 flex flex-col">
           <BulkActionBar
             selectedCount={multiSelectedIds.size}
             onCompleteAll={handleBulkComplete}
@@ -803,6 +888,7 @@ function AppContent() {
               </div>
             </ErrorBoundary>
           )}
+         </div>
         </main>
       </div>
 
@@ -946,6 +1032,13 @@ function AppContent() {
           actionLabel={toast.actionLabel}
           onAction={toast.onAction}
           onDismiss={dismissToast}
+        />
+      )}
+      {contextMenu && contextMenuItems.length > 0 && (
+        <ContextMenu
+          items={contextMenuItems}
+          position={contextMenu.position}
+          onClose={() => setContextMenu(null)}
         />
       )}
     </div>

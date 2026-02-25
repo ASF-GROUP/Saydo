@@ -25,6 +25,7 @@ interface InboxProps {
   onReorder?: (orderedIds: string[]) => void;
   onAddSubtask?: (parentId: string, title: string) => void;
   onUpdateDueDate?: (taskId: string, dueDate: string | null) => void;
+  onContextMenu?: (taskId: string, position: { x: number; y: number }) => void;
   autoFocusTrigger?: number;
 }
 
@@ -39,6 +40,7 @@ export function Inbox({
   onReorder,
   onAddSubtask,
   onUpdateDueDate,
+  onContextMenu,
   autoFocusTrigger,
 }: InboxProps) {
   const [inboxViewTimeMs] = useState<number>(() => Date.now());
@@ -89,6 +91,7 @@ export function Inbox({
         onReorder={onReorder}
         onAddSubtask={onAddSubtask}
         onUpdateDueDate={onUpdateDueDate}
+        onContextMenu={onContextMenu}
       />
     </div>
   );

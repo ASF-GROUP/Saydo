@@ -23,6 +23,7 @@ interface TodayProps {
   onReorder?: (orderedIds: string[]) => void;
   onAddSubtask?: (parentId: string, title: string) => void;
   onUpdateDueDate?: (taskId: string, dueDate: string | null) => void;
+  onContextMenu?: (taskId: string, position: { x: number; y: number }) => void;
   autoFocusTrigger?: number;
 }
 
@@ -47,6 +48,7 @@ export function Today({
   onReorder,
   onAddSubtask,
   onUpdateDueDate,
+  onContextMenu,
   autoFocusTrigger,
 }: TodayProps) {
   const today = toDateKey(new Date());
@@ -132,6 +134,7 @@ export function Today({
           onReorder={onReorder}
           onAddSubtask={onAddSubtask}
           onUpdateDueDate={onUpdateDueDate}
+          onContextMenu={onContextMenu}
         />
       </div>
     </div>

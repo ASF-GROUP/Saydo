@@ -113,4 +113,30 @@ describe("parseTask", () => {
     expect(result.title).toBe("water plants");
     expect(result.recurrence).toBe("every 3 days");
   });
+
+  it("parses 'deadline friday' keyword into deadline field", () => {
+    const result = parseTask("submit report deadline friday p1");
+    expect(result.title).toBe("submit report");
+    expect(result.deadline).not.toBeNull();
+    expect(result.deadline!.getDay()).toBe(5); // Friday
+    expect(result.priority).toBe(1);
+    expect(result.dueDate).toBeNull();
+  });
+
+  it("parses !!friday into deadline field", () => {
+    const result = parseTask("submit report !!friday");
+    expect(result.title).toBe("submit report");
+    expect(result.deadline).not.toBeNull();
+    expect(result.deadline!.getDay()).toBe(5); // Friday
+    expect(result.dueDate).toBeNull();
+  });
+
+  it("parses both dueDate and deadline independently", () => {
+    const result = parseTask("submit report tomorrow deadline friday");
+    expect(result.title).toBe("submit report");
+    expect(result.dueDate).not.toBeNull();
+    expect(result.deadline).not.toBeNull();
+    // deadline should be Friday, dueDate should be tomorrow
+    expect(result.deadline!.getDay()).toBe(5);
+  });
 });

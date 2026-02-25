@@ -43,6 +43,7 @@ interface TaskListProps {
   onReorder?: (orderedIds: string[]) => void;
   onAddSubtask?: (parentId: string, title: string) => void;
   onUpdateDueDate?: (taskId: string, dueDate: string | null) => void;
+  onContextMenu?: (taskId: string, position: { x: number; y: number }) => void;
 }
 
 const SortableTaskItem = React.memo(function SortableTaskItem({
@@ -59,6 +60,7 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
   expanded,
   onToggleExpand,
   onUpdateDueDate,
+  onContextMenu,
 }: {
   task: Task;
   onToggle: (id: string) => void;
@@ -76,6 +78,7 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
   expanded?: boolean;
   onToggleExpand?: (id: string) => void;
   onUpdateDueDate?: (taskId: string, dueDate: string | null) => void;
+  onContextMenu?: (taskId: string, position: { x: number; y: number }) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: task.id });
 
@@ -102,6 +105,7 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
       expanded={expanded}
       onToggleExpand={onToggleExpand}
       onUpdateDueDate={onUpdateDueDate}
+      onContextMenu={onContextMenu}
     />
   );
 });
@@ -132,6 +136,7 @@ export function TaskList({
   onReorder,
   onAddSubtask,
   onUpdateDueDate,
+  onContextMenu,
 }: TaskListProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
@@ -255,6 +260,7 @@ export function TaskList({
                 expanded={expandedIds.has(task.id)}
                 onToggleExpand={handleToggleExpand}
                 onUpdateDueDate={onUpdateDueDate}
+                onContextMenu={onContextMenu}
               />
             );
           })}

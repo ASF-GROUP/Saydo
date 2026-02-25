@@ -24,6 +24,7 @@ interface UpcomingProps {
   onReorder?: (orderedIds: string[]) => void;
   onAddSubtask?: (parentId: string, title: string) => void;
   onUpdateDueDate?: (taskId: string, dueDate: string | null) => void;
+  onContextMenu?: (taskId: string, position: { x: number; y: number }) => void;
   autoFocusTrigger?: number;
 }
 
@@ -56,6 +57,7 @@ export function Upcoming({
   onReorder,
   onAddSubtask,
   onUpdateDueDate,
+  onContextMenu,
   autoFocusTrigger,
 }: UpcomingProps) {
   const today = toDateKey(new Date());
@@ -168,6 +170,7 @@ export function Upcoming({
                 onReorder={onReorder}
                 onAddSubtask={onAddSubtask}
                 onUpdateDueDate={onUpdateDueDate}
+                onContextMenu={onContextMenu}
               />
             </div>
           ))}
