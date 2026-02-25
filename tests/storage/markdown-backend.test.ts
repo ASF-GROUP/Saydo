@@ -284,6 +284,21 @@ describe("MarkdownBackend", () => {
       expect(backend.getProject("proj-1")[0].archived).toBe(true);
     });
 
+    it("persists renamed project name after reload", () => {
+      backend.insertProject(makeProject());
+      backend.updateProject("proj-1", { name: "Personal" });
+
+      // Verify in-memory
+      const updated = backend.getProject("proj-1")[0];
+      expect(updated.name).toBe("Personal");
+
+      // Verify on disk: reload from the same directory
+      const reloaded = new MarkdownBackend(tmpDir);
+      reloaded.initialize();
+      const project = reloaded.getProject("proj-1")[0];
+      expect(project.name).toBe("Personal");
+    });
+
     it("deletes a project → moves tasks to inbox", () => {
       backend.insertProject(makeProject());
       backend.insertTask(makeTask({ projectId: "proj-1" }));

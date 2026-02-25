@@ -50,6 +50,8 @@ export class ChatSession {
   private providerName: string;
   readonly sessionId: string;
   private queries?: IStorage;
+  private running = false;
+  private runQueue: Array<() => void> = [];
 
   constructor(
     executor: LLMExecutor,
@@ -92,6 +94,21 @@ export class ChatSession {
   }
 
   async *run(): AsyncIterable<StreamEvent> {
+    // Serialize concurrent runs — second caller waits until first completes
+    if (this.running) {
+      await new Promise<void>((resolve) => this.runQueue.push(resolve));
+    }
+    this.running = true;
+    try {
+      yield* this.executeRun();
+    } finally {
+      this.running = false;
+      const next = this.runQueue.shift();
+      if (next) next();
+    }
+  }
+
+  private async *executeRun(): AsyncIterable<StreamEvent> {
     const isLocal = this.providerName === "ollama" || this.providerName === "lmstudio";
     const allTools = this.toolRegistry.getDefinitions();
     const tools = isLocal ? allTools.filter((t) => LOCAL_PROVIDER_TOOLS.has(t.name)) : allTools;

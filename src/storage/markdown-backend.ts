@@ -343,6 +343,7 @@ export class MarkdownBackend implements IStorage {
     const newRow = { ...entry.row, ...data };
     const meta: Record<string, unknown> = {
       id: newRow.id,
+      name: newRow.name,
       color: newRow.color,
       icon: newRow.icon,
       parentId: newRow.parentId,

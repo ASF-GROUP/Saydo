@@ -15,11 +15,8 @@ const logger = createLogger("sections");
 export class SectionService {
   constructor(
     private queries: IStorage,
-    // Accepted for future section events (EventMap currently only has task:* events)
     private eventBus?: EventBus,
-  ) {
-    void this.eventBus;
-  }
+  ) {}
 
   /** Create a new section within a project. */
   async create(input: CreateSectionInput): Promise<Section> {
@@ -41,6 +38,7 @@ export class SectionService {
 
     this.queries.insertSection(section);
     logger.debug("Section created", { id, name: input.name, projectId: input.projectId });
+    this.eventBus?.emit("section:create", section);
 
     return section;
   }
@@ -65,8 +63,9 @@ export class SectionService {
     this.queries.updateSection(id, data);
     logger.debug("Section updated", { id, fields: Object.keys(data) });
 
-    const updated = this.queries.getSection(id);
-    return updated!;
+    const updated = this.queries.getSection(id)!;
+    this.eventBus?.emit("section:update", updated);
+    return updated;
   }
 
   /** Delete a section. Tasks in this section will have their sectionId cleared. */
@@ -87,6 +86,7 @@ export class SectionService {
 
     if (deleted) {
       logger.debug("Section deleted", { id, projectId: existing.projectId });
+      this.eventBus?.emit("section:delete", existing);
     }
 
     return deleted;
@@ -101,5 +101,6 @@ export class SectionService {
       this.queries.updateSection(orderedIds[i], { sortOrder: i });
     }
     logger.debug("Sections reordered", { count: orderedIds.length });
+    this.eventBus?.emit("section:reorder", orderedIds);
   }
 }

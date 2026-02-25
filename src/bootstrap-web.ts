@@ -83,6 +83,11 @@ export async function bootstrapWeb(): Promise<WebAppServices> {
   eventBus.on("task:complete", save);
   eventBus.on("task:update", save);
   eventBus.on("task:delete", save);
+  eventBus.on("task:reorder", save);
+  eventBus.on("section:create", save);
+  eventBus.on("section:update", save);
+  eventBus.on("section:delete", save);
+  eventBus.on("section:reorder", save);
 
   // Flush DB to disk on window close
   window.addEventListener("beforeunload", () => {

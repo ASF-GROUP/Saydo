@@ -1108,6 +1108,45 @@ function apiPlugin() {
         }
       });
 
+      // ── Stats Endpoints ──────────────────────────────────
+
+      // GET /api/stats/daily?startDate=X&endDate=Y — daily stats for a date range
+      server.middlewares.use(async (req, res, next) => {
+        const url = new URL(req.url!, `http://${req.headers.host}`);
+        if (url.pathname !== "/api/stats/daily" || req.method !== "GET") return next();
+
+        try {
+          const svc = await getServices();
+          const startDate = url.searchParams.get("startDate") ?? "";
+          const endDate = url.searchParams.get("endDate") ?? "";
+          const stats = await svc.statsService.getStats(startDate, endDate);
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify(stats));
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : "Internal server error";
+          res.statusCode = 500;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ error: message }));
+        }
+      });
+
+      // GET /api/stats/today — today's stats
+      server.middlewares.use(async (req, res, next) => {
+        if (req.url !== "/api/stats/today" || req.method !== "GET") return next();
+
+        try {
+          const svc = await getServices();
+          const stat = await svc.statsService.getToday();
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify(stat));
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : "Internal server error";
+          res.statusCode = 500;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ error: message }));
+        }
+      });
+
       // ── AI Endpoints ──────────────────────────────────
 
       // GET /api/ai/providers — list all registered AI providers
@@ -1256,7 +1295,8 @@ function apiPlugin() {
 
         const svc = await getServices();
         const body = await parseBody(req);
-        const message = (body as { message: string }).message;
+        const message = (body as { message: string; voiceCall?: boolean }).message;
+        const voiceCall = (body as { voiceCall?: boolean }).voiceCall;
 
         if (!message) {
           res.statusCode = 400;
@@ -1296,10 +1336,17 @@ function apiPlugin() {
           const toolServices = {
             taskService: svc.taskService,
             projectService: svc.projectService,
+            tagService: svc.tagService,
+            statsService: svc.statsService,
           };
 
           // Gather context for new sessions
-          const contextBlock = await gatherContext(toolServices);
+          const isLocalProvider =
+            providerSetting.value === "ollama" || providerSetting.value === "lmstudio";
+          const contextBlock = await gatherContext(toolServices, {
+            compact: isLocalProvider,
+            voiceCall,
+          });
 
           const session = svc.chatManager.getOrCreateSession(executor, toolServices, {
             queries: svc.storage,
@@ -1357,7 +1404,12 @@ function apiPlugin() {
 
               session = svc.chatManager.restoreSession(
                 executor,
-                { taskService: svc.taskService, projectService: svc.projectService },
+                {
+                  taskService: svc.taskService,
+                  projectService: svc.projectService,
+                  tagService: svc.tagService,
+                  statsService: svc.statsService,
+                },
                 svc.storage,
                 {
                   toolRegistry: svc.toolRegistry,
@@ -1384,6 +1436,182 @@ function apiPlugin() {
         svc.chatManager.clearSession(svc.storage);
         res.setHeader("Content-Type", "application/json");
         res.end(JSON.stringify({ ok: true }));
+      });
+
+      // ── AI Session Endpoints ──────────────────────────
+
+      // GET /api/ai/sessions — list all chat sessions
+      server.middlewares.use(async (req, res, next) => {
+        if (req.url !== "/api/ai/sessions" || req.method !== "GET") return next();
+
+        const svc = await getServices();
+        const sessions = svc.storage.listChatSessions();
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify(sessions));
+      });
+
+      // POST /api/ai/sessions/new — start a new chat session
+      server.middlewares.use(async (req, res, next) => {
+        if (req.url !== "/api/ai/sessions/new" || req.method !== "POST") return next();
+
+        const svc = await getServices();
+        (svc.chatManager as any).session = null;
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({ sessionId: "" }));
+      });
+
+      // AI session operations: rename, delete, switch, unload
+      server.middlewares.use(async (req, res, next) => {
+        // PUT /api/ai/sessions/:id/title — rename a session
+        const titleMatch = req.url?.match(/^\/api\/ai\/sessions\/([^/]+)\/title$/);
+        if (titleMatch && req.method === "PUT") {
+          try {
+            const svc = await getServices();
+            const sessionId = decodeURIComponent(titleMatch[1]);
+            const body = await parseBody(req);
+            const title = (body as { title: string }).title;
+            svc.storage.renameChatSession(sessionId, title);
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ ok: true }));
+          } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Internal server error";
+            res.statusCode = 500;
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ error: message }));
+          }
+          return;
+        }
+
+        // POST /api/ai/sessions/:id/switch — switch to a session
+        const switchMatch = req.url?.match(/^\/api\/ai\/sessions\/([^/]+)\/switch$/);
+        if (switchMatch && req.method === "POST") {
+          try {
+            const svc = await getServices();
+            const sessionId = decodeURIComponent(switchMatch[1]);
+            const providerSetting = svc.storage.getAppSetting("ai_provider");
+            if (!providerSetting?.value) {
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify([]));
+              return;
+            }
+
+            const apiKeySetting = svc.storage.getAppSetting("ai_api_key");
+            const modelSetting = svc.storage.getAppSetting("ai_model");
+            const baseUrlSetting = svc.storage.getAppSetting("ai_base_url");
+
+            const executor = svc.aiProviderRegistry.createExecutor({
+              provider: providerSetting.value as string,
+              apiKey: apiKeySetting?.value,
+              model: modelSetting?.value,
+              baseUrl: baseUrlSetting?.value,
+            });
+
+            const rows = svc.storage.listChatMessages(sessionId);
+            if (rows.length === 0) {
+              res.setHeader("Content-Type", "application/json");
+              res.end(JSON.stringify([]));
+              return;
+            }
+
+            const toolServices = {
+              taskService: svc.taskService,
+              projectService: svc.projectService,
+              tagService: svc.tagService,
+              statsService: svc.statsService,
+            };
+
+            const systemMessage = svc.chatManager.buildSystemMessage(
+              toolServices,
+              "",
+              providerSetting.value as string,
+            );
+            const { ChatSession } = await import("./src/ai/chat.js");
+            const session = new ChatSession(executor, toolServices, systemMessage, {
+              sessionId,
+              queries: svc.storage,
+              toolRegistry: svc.toolRegistry,
+              model: modelSetting?.value ?? undefined,
+              providerName: providerSetting.value as string,
+            });
+
+            for (const row of rows) {
+              if (row.role === "system") continue;
+              const msg = {
+                role: row.role as "user" | "assistant" | "tool",
+                content: row.content,
+                ...(row.toolCallId ? { toolCallId: row.toolCallId } : {}),
+                ...(row.toolCalls ? { toolCalls: JSON.parse(row.toolCalls) } : {}),
+              };
+              (session as any).messages.push(msg);
+            }
+
+            (svc.chatManager as any).session = session;
+            const messages = session.getMessages();
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify(messages));
+          } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Internal server error";
+            res.statusCode = 500;
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ error: message }));
+          }
+          return;
+        }
+
+        // DELETE /api/ai/sessions/:id — delete a session
+        const deleteMatch = req.url?.match(/^\/api\/ai\/sessions\/([^/]+)$/);
+        if (deleteMatch && req.method === "DELETE") {
+          try {
+            const svc = await getServices();
+            const sessionId = decodeURIComponent(deleteMatch[1]);
+            svc.storage.deleteChatSession(sessionId);
+            svc.storage.deleteAppSetting(`chat_session_title:${sessionId}`);
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ ok: true }));
+          } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Internal server error";
+            res.statusCode = 500;
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ error: message }));
+          }
+          return;
+        }
+
+        // POST /api/ai/providers/:name/models/unload — unload a model
+        const unloadMatch = req.url?.match(/^\/api\/ai\/providers\/([^/]+)\/models\/unload$/);
+        if (unloadMatch && req.method === "POST") {
+          try {
+            const providerName = decodeURIComponent(unloadMatch[1]);
+            const svc = await getServices();
+            const body = await parseBody(req);
+            const { model: modelKey, baseUrl: baseUrlOverride } = body as {
+              model: string;
+              baseUrl?: string;
+            };
+            const baseUrlSetting = svc.storage.getAppSetting("ai_base_url");
+            const apiKeySetting = svc.storage.getAppSetting("ai_api_key");
+
+            if (providerName === "lmstudio") {
+              const { unloadLMStudioModel } = await import("./src/ai/model-discovery.js");
+              await unloadLMStudioModel(
+                modelKey,
+                (baseUrlOverride as string) || baseUrlSetting?.value || "http://localhost:1234/v1",
+                apiKeySetting?.value,
+              );
+            }
+
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ ok: true }));
+          } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Failed to unload model";
+            res.statusCode = 500;
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ error: message }));
+          }
+          return;
+        }
+
+        next();
       });
 
       // ── Voice Proxy Endpoints ──────────────────────────

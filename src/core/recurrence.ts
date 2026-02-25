@@ -5,6 +5,7 @@
  * - "daily" — every day
  * - "weekly" — every week (same day)
  * - "monthly" — every month (same date)
+ * - "yearly" — every year (same month/day)
  * - "weekdays" — every Mon-Fri
  * - "every N days" — every N days
  * - "every N weeks" — every N weeks
@@ -22,6 +23,9 @@ export function getNextOccurrence(recurrence: string, fromDate: Date): Date | nu
       return next;
     case "monthly":
       next.setMonth(next.getMonth() + 1);
+      return next;
+    case "yearly":
+      next.setFullYear(next.getFullYear() + 1);
       return next;
     case "weekdays": {
       do {

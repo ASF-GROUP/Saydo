@@ -31,14 +31,19 @@ export async function handleVoidResponse(res: Response): Promise<void> {
   }
 }
 
-// Lazy-loaded services for Tauri mode
+// Lazy-loaded services for Tauri mode — Promise lock prevents double bootstrap
 export type WebServices = Awaited<ReturnType<typeof import("../../bootstrap-web.js").bootstrapWeb>>;
 let _services: WebServices | null = null;
+let _pending: Promise<WebServices> | null = null;
 
 export async function getServices(): Promise<WebServices> {
-  if (!_services) {
+  if (_services) return _services;
+  if (_pending) return _pending;
+  _pending = (async () => {
     const { bootstrapWeb } = await import("../../bootstrap-web.js");
     _services = await bootstrapWeb();
-  }
-  return _services;
+    _pending = null;
+    return _services;
+  })();
+  return _pending;
 }

@@ -266,6 +266,31 @@ describe("TaskService (integration)", () => {
       const nextDue = new Date(tasks[0].dueDate!);
       expect(nextDue.toISOString()).toBe("2025-06-22T10:00:00.000Z");
     });
+
+    it("propagates estimatedMinutes, deadline, and isSomeday to next occurrence", async () => {
+      const dueDate = "2025-06-15T10:00:00.000Z";
+      // Deadline is 2 days after due date
+      const deadline = "2025-06-17T10:00:00.000Z";
+      const task = await taskService.create({
+        title: "Recurring full",
+        recurrence: "weekly",
+        dueDate,
+        estimatedMinutes: 45,
+        deadline,
+        isSomeday: true,
+      });
+
+      await taskService.complete(task.id);
+
+      const tasks = await taskService.list({ status: "pending" });
+      expect(tasks).toHaveLength(1);
+      const next = tasks[0];
+      expect(next.estimatedMinutes).toBe(45);
+      expect(next.isSomeday).toBe(true);
+      // Deadline should maintain the 2-day offset from dueDate
+      expect(next.dueDate).toBe("2025-06-22T10:00:00.000Z");
+      expect(next.deadline).toBe("2025-06-24T10:00:00.000Z");
+    });
   });
 
   describe("delete", () => {

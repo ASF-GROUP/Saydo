@@ -213,6 +213,14 @@ export class TaskService {
           nextRemindAt = existing.remindAt;
         }
 
+        // Propagate deadline with preserved offset from dueDate
+        let nextDeadline: string | null = null;
+        if (existing.deadline && existing.dueDate) {
+          const deadlineOffsetMs =
+            new Date(existing.deadline).getTime() - new Date(existing.dueDate).getTime();
+          nextDeadline = new Date(nextDate.getTime() + deadlineOffsetMs).toISOString();
+        }
+
         await this.create({
           title: existing.title,
           description: existing.description,
@@ -222,6 +230,10 @@ export class TaskService {
           projectId: existing.projectId,
           recurrence: existing.recurrence,
           remindAt: nextRemindAt,
+          sectionId: existing.sectionId,
+          estimatedMinutes: existing.estimatedMinutes,
+          deadline: nextDeadline,
+          isSomeday: existing.isSomeday,
           tags: existing.tags.map((t) => t.name),
         });
       }

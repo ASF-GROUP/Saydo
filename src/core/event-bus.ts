@@ -1,4 +1,4 @@
-import type { Task } from "./types.js";
+import type { Task, Section } from "./types.js";
 import { createLogger } from "../utils/logger.js";
 
 const logger = createLogger("event-bus");
@@ -10,6 +10,10 @@ export interface EventMap {
   "task:update": { task: Task; changes: Partial<Task> };
   "task:delete": Task;
   "task:reorder": string[];
+  "section:create": Section;
+  "section:update": Section;
+  "section:delete": Section;
+  "section:reorder": string[];
 }
 
 export type EventName = keyof EventMap;

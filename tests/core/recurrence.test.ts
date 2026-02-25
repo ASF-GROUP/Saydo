@@ -23,6 +23,25 @@ describe("getNextOccurrence", () => {
     expect(next!.getDate()).toBe(15);
   });
 
+  it("yearly: returns same date next year", () => {
+    const next = getNextOccurrence("yearly", BASE);
+    expect(next).not.toBeNull();
+    expect(next!.getFullYear()).toBe(2026);
+    expect(next!.getMonth()).toBe(0); // January
+    expect(next!.getDate()).toBe(15);
+  });
+
+  it("yearly: handles leap year (Feb 29 → Mar 1)", () => {
+    // 2024 is a leap year, Feb 29 exists
+    const leapDay = new Date("2024-02-29T10:00:00Z");
+    const next = getNextOccurrence("yearly", leapDay);
+    expect(next).not.toBeNull();
+    // 2025 is not a leap year — JS Date rolls Feb 29 → Mar 1
+    expect(next!.getFullYear()).toBe(2025);
+    expect(next!.getMonth()).toBe(2); // March
+    expect(next!.getDate()).toBe(1);
+  });
+
   it("weekdays: skips Saturday and Sunday", () => {
     // Friday Jan 17
     const friday = new Date("2025-01-17T10:00:00Z");
