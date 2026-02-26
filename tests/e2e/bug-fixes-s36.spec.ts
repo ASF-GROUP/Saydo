@@ -1,11 +1,11 @@
 import { test, expect } from "@playwright/test";
 import {
   setupPage,
-  createTask,
   createTaskViaApi,
   createProjectViaApi,
   openTaskDetail,
   navigateTo,
+  localDateKey,
 } from "./helpers.js";
 
 const dialog = (page: import("@playwright/test").Page) =>
@@ -256,7 +256,7 @@ test.describe("Right-click context menu on tasks", () => {
   });
 
   test("context menu works in Today view", async ({ page }) => {
-    const today = new Date().toISOString().split("T")[0];
+    const today = localDateKey();
     await createTaskViaApi(page, "Today context task", { dueDate: today });
 
     await page.reload();

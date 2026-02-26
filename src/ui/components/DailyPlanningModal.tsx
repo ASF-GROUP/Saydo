@@ -40,7 +40,6 @@ export function DailyPlanningModal({
   const [estimates, setEstimates] = useState<Map<string, number>>(new Map());
 
   const today = toDateKey(new Date());
-  const todayISO = new Date().toISOString();
 
   const overdueTasks = useMemo(
     () => tasks.filter((t) => t.status === "pending" && t.dueDate && t.dueDate.split("T")[0] < today),
@@ -74,9 +73,9 @@ export function DailyPlanningModal({
 
   const handleReschedule = useCallback(
     (id: string) => {
-      onUpdateTask(id, { dueDate: todayISO });
+      onUpdateTask(id, { dueDate: today });
     },
-    [onUpdateTask, todayISO],
+    [onUpdateTask, today],
   );
 
   const handleToggleExclude = useCallback((id: string) => {

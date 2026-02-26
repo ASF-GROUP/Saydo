@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { setupPage, createTaskViaApi, navigateTo } from "./helpers.js";
+import { setupPage, createTaskViaApi, navigateTo, localDateKey } from "./helpers.js";
 
 test.describe("Eisenhower Matrix view", () => {
   test.beforeEach(async ({ page }) => {
@@ -21,7 +21,7 @@ test.describe("Eisenhower Matrix view", () => {
 
     await createTaskViaApi(page, "Urgent important task", {
       priority: 1,
-      dueDate: yesterday.toISOString(),
+      dueDate: localDateKey(yesterday),
     });
 
     await page.reload();
@@ -29,8 +29,8 @@ test.describe("Eisenhower Matrix view", () => {
 
     await navigateTo(page, "Matrix");
 
-    // The task should be in Q1 (Do First quadrant)
-    const q1 = page.locator("[class*='bg-error']").first();
+    // The task should be in Q1 (Do First quadrant) — find it near the "Do First" heading
+    const q1 = page.getByText("Do First").locator("../..");
     await expect(q1.getByText("Urgent important task")).toBeVisible({ timeout: 5000 });
   });
 
@@ -40,7 +40,7 @@ test.describe("Eisenhower Matrix view", () => {
 
     await createTaskViaApi(page, "Important not urgent", {
       priority: 2,
-      dueDate: nextWeek.toISOString(),
+      dueDate: localDateKey(nextWeek),
     });
 
     await page.reload();
@@ -48,8 +48,8 @@ test.describe("Eisenhower Matrix view", () => {
 
     await navigateTo(page, "Matrix");
 
-    // The task should be in Q2 (Schedule quadrant)
-    const q2 = page.locator("[class*='bg-accent']").first();
+    // The task should be in Q2 (Schedule quadrant) — find it near the "Schedule" heading
+    const q2 = page.getByText("Schedule").locator("../..");
     await expect(q2.getByText("Important not urgent")).toBeVisible({ timeout: 5000 });
   });
 
@@ -59,7 +59,7 @@ test.describe("Eisenhower Matrix view", () => {
 
     await createTaskViaApi(page, "Urgent not important", {
       priority: 4,
-      dueDate: yesterday.toISOString(),
+      dueDate: localDateKey(yesterday),
     });
 
     await page.reload();
@@ -67,8 +67,8 @@ test.describe("Eisenhower Matrix view", () => {
 
     await navigateTo(page, "Matrix");
 
-    // The task should be in Q3 (Delegate quadrant)
-    const q3 = page.locator("[class*='bg-warning']").first();
+    // The task should be in Q3 (Delegate quadrant) — find it near the "Delegate" heading
+    const q3 = page.getByText("Delegate").locator("../..");
     await expect(q3.getByText("Urgent not important")).toBeVisible({ timeout: 5000 });
   });
 

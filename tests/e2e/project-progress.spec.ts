@@ -28,7 +28,7 @@ test.describe("Project progress tracking", () => {
     await page.getByRole("button", { name: "Progress Project" }).click();
 
     // The CompletionRing should show 1 of 3 completed
-    await expect(page.getByLabelText("1 of 3 tasks completed")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByLabel("1 of 3 tasks completed")).toBeVisible({ timeout: 5000 });
   });
 
   test("sidebar shows mini progress bar", async ({ page }) => {

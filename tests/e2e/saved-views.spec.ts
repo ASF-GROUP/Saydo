@@ -16,8 +16,8 @@ test.describe("Saved views / filters", () => {
     await page.getByPlaceholder(/name/i).fill("Urgent");
     await page.getByPlaceholder(/query/i).fill("p1");
 
-    // Save the filter
-    await page.getByRole("button", { name: /Save/i }).click();
+    // Save the filter (button text is "Add")
+    await page.getByRole("button", { name: "Add", exact: true }).click();
 
     // Assert it appears in the list
     await expect(page.getByText("Urgent")).toBeVisible();
@@ -36,8 +36,8 @@ test.describe("Saved views / filters", () => {
     await page.reload();
     await expect(page.getByText("Inbox").first()).toBeVisible({ timeout: 10000 });
 
-    // Check sidebar has "My Views" section and the filter name
-    const sidebar = page.locator("aside[aria-label='Main navigation']");
+    // Check sidebar has "My Views" section and the filter name (use first() for desktop sidebar)
+    const sidebar = page.locator("aside[aria-label='Main navigation']").first();
     await expect(sidebar.getByText("My Views")).toBeVisible({ timeout: 5000 });
     await expect(sidebar.getByText("My P1 Tasks")).toBeVisible();
   });
@@ -59,8 +59,8 @@ test.describe("Saved views / filters", () => {
     await page.reload();
     await expect(page.getByText("Inbox").first()).toBeVisible({ timeout: 10000 });
 
-    // Click the filter in the sidebar
-    const sidebar = page.locator("aside[aria-label='Main navigation']");
+    // Click the filter in the sidebar (use first() for desktop sidebar)
+    const sidebar = page.locator("aside[aria-label='Main navigation']").first();
     await sidebar.getByText("P1 Filter").click();
 
     // URL should contain /filter/
@@ -79,9 +79,10 @@ test.describe("Saved views / filters", () => {
     // Fill in and save
     await page.getByPlaceholder(/name/i).fill("Persisted Filter");
     await page.getByPlaceholder(/query/i).fill("due today");
-    await page.getByRole("button", { name: /Save/i }).click();
+    await page.getByRole("button", { name: "Add", exact: true }).click();
 
-    await expect(page.getByText("Persisted Filter")).toBeVisible();
+    // Verify in the main content area (avoid sidebar duplicates)
+    await expect(page.getByText("Persisted Filter").first()).toBeVisible();
 
     // Reload
     await page.reload();
@@ -90,6 +91,6 @@ test.describe("Saved views / filters", () => {
     await navigateTo(page, "Filters & Labels");
 
     // Still there
-    await expect(page.getByText("Persisted Filter")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Persisted Filter").first()).toBeVisible({ timeout: 5000 });
   });
 });

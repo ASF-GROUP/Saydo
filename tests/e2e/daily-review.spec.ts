@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { setupPage, createTaskViaApi, completeTaskViaApi, navigateTo } from "./helpers.js";
+import { setupPage, createTaskViaApi, completeTaskViaApi, navigateTo, localDateKey } from "./helpers.js";
 
 test.describe("Daily Review Modal", () => {
   test.beforeEach(async ({ page }) => {
@@ -12,7 +12,7 @@ test.describe("Daily Review Modal", () => {
   });
 
   test("shows completed tasks", async ({ page }) => {
-    const today = new Date().toISOString();
+    const today = localDateKey();
 
     const task = await createTaskViaApi(page, "Finished review task", { dueDate: today });
     await completeTaskViaApi(page, task.id);
@@ -25,7 +25,7 @@ test.describe("Daily Review Modal", () => {
 
     // Step 0: Today's Wins should show the completed task
     await expect(page.getByText("Today's Wins")).toBeVisible();
-    await expect(page.getByText("Finished review task")).toBeVisible();
+    await expect(page.getByText("Finished review task")).toBeVisible({ timeout: 5000 });
   });
 
   test("navigate through all steps", async ({ page }) => {
@@ -53,7 +53,7 @@ test.describe("Daily Review Modal", () => {
   });
 
   test("carry over to tomorrow", async ({ page }) => {
-    const today = new Date().toISOString();
+    const today = localDateKey();
 
     await createTaskViaApi(page, "Carry me over", { dueDate: today });
 
@@ -68,7 +68,7 @@ test.describe("Daily Review Modal", () => {
     await expect(page.getByText("Carried Over")).toBeVisible();
 
     // Click Move to Tomorrow
-    await page.getByRole("button", { name: "Move to Tomorrow" }).click();
+    await page.getByRole("button", { name: /Move to Tomorrow/i }).click();
 
     // Finish the flow
     await page.getByRole("button", { name: "Next" }).click();

@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { setupPage, createTaskViaApi, navigateTo } from "./helpers.js";
+import { setupPage, createTaskViaApi, navigateTo, localDateKey } from "./helpers.js";
 
 test.describe("Workload capacity bar", () => {
   test.beforeEach(async ({ page }) => {
@@ -7,7 +7,7 @@ test.describe("Workload capacity bar", () => {
   });
 
   test("capacity bar shows planned vs capacity", async ({ page }) => {
-    const today = new Date().toISOString();
+    const today = localDateKey();
 
     await createTaskViaApi(page, "Task A", { dueDate: today, estimatedMinutes: 60 });
     await createTaskViaApi(page, "Task B", { dueDate: today, estimatedMinutes: 60 });
@@ -17,12 +17,15 @@ test.describe("Workload capacity bar", () => {
 
     await navigateTo(page, "Today");
 
+    // Wait for tasks to appear
+    await expect(page.getByText("Task A")).toBeVisible({ timeout: 5000 });
+
     // Should show "2h / 8h planned" (default capacity is 8h = 480min)
     await expect(page.getByText(/2h.*\/.*8h.*planned/)).toBeVisible({ timeout: 5000 });
   });
 
   test("over-capacity shows warning", async ({ page }) => {
-    const today = new Date().toISOString();
+    const today = localDateKey();
 
     // Create tasks summing to 600 minutes (10 hours, over 8h default capacity)
     await createTaskViaApi(page, "Big task 1", { dueDate: today, estimatedMinutes: 300 });
@@ -33,12 +36,15 @@ test.describe("Workload capacity bar", () => {
 
     await navigateTo(page, "Today");
 
+    // Wait for tasks to appear
+    await expect(page.getByText("Big task 1")).toBeVisible({ timeout: 5000 });
+
     // Should show the "over" indicator
     await expect(page.getByText(/over/)).toBeVisible({ timeout: 5000 });
   });
 
   test("hidden when no estimates", async ({ page }) => {
-    const today = new Date().toISOString();
+    const today = localDateKey();
 
     await createTaskViaApi(page, "No estimate task", { dueDate: today });
 

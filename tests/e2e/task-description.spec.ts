@@ -10,23 +10,21 @@ test.describe("Task descriptions", () => {
   });
 
   test("can type a description in the task detail panel", async ({ page }) => {
-    // Create a task via API
     await createTaskViaApi(page, "Write docs");
 
-    // Reload so the task appears in the Inbox
     await page.reload();
     await expect(page.getByText("Inbox").first()).toBeVisible({ timeout: 10000 });
 
-    // Open the task detail panel
     await openTaskDetail(page, "Write docs");
 
-    // Find the description textarea by its placeholder
-    const descriptionField = dialog(page).getByPlaceholder("Description");
-    await expect(descriptionField).toBeVisible();
+    // Empty description shows a "Description" button — click to enter edit mode
+    await dialog(page).getByRole("button", { name: "Description" }).click();
 
-    // Type a markdown description
-    await descriptionField.click();
-    await descriptionField.fill(
+    // Now the textarea should be visible
+    const textarea = dialog(page).getByPlaceholder(/Description/);
+    await expect(textarea).toBeVisible();
+
+    await textarea.fill(
       "## Overview\n\n**Bold text** and regular text.\n\n- Item one\n- Item two\n- Item three",
     );
 
@@ -37,14 +35,12 @@ test.describe("Task descriptions", () => {
     await closeTaskDetail(page);
     await openTaskDetail(page, "Write docs");
 
-    // Verify the description text is preserved
-    const descriptionAfterReopen = dialog(page).getByPlaceholder("Description");
-    await expect(descriptionAfterReopen).toHaveValue(/Bold text/);
-    await expect(descriptionAfterReopen).toHaveValue(/Item one/);
-    await expect(descriptionAfterReopen).toHaveValue(/Item two/);
+    // After reopen, the description is shown as markdown preview — check for rendered content
+    await expect(dialog(page).getByText("Bold text")).toBeVisible();
+    await expect(dialog(page).getByText("Item one")).toBeVisible();
   });
 
-  test("empty description shows placeholder text", async ({ page }) => {
+  test("empty description shows Description button", async ({ page }) => {
     await createTaskViaApi(page, "Empty description task");
 
     await page.reload();
@@ -52,11 +48,8 @@ test.describe("Task descriptions", () => {
 
     await openTaskDetail(page, "Empty description task");
 
-    const descriptionField = dialog(page).getByPlaceholder("Description");
-    await expect(descriptionField).toBeVisible();
-
-    // The textarea should be empty and show the placeholder
-    await expect(descriptionField).toHaveValue("");
+    // Empty description shows a clickable "Description" button
+    await expect(dialog(page).getByRole("button", { name: "Description" })).toBeVisible();
   });
 
   test("description persists across page reloads", async ({ page }) => {
@@ -67,9 +60,11 @@ test.describe("Task descriptions", () => {
 
     await openTaskDetail(page, "Persistent description");
 
-    const descriptionField = dialog(page).getByPlaceholder("Description");
-    await descriptionField.click();
-    await descriptionField.fill("This should persist after reload.");
+    // Click the Description button to enter edit mode
+    await dialog(page).getByRole("button", { name: "Description" }).click();
+
+    const textarea = dialog(page).getByPlaceholder(/Description/);
+    await textarea.fill("This should persist after reload.");
 
     // Blur to save
     await dialog(page).locator("input[type='text']").first().click();
@@ -84,8 +79,8 @@ test.describe("Task descriptions", () => {
     // Reopen the task detail
     await openTaskDetail(page, "Persistent description");
 
-    const descAfterReload = dialog(page).getByPlaceholder("Description");
-    await expect(descAfterReload).toHaveValue("This should persist after reload.");
+    // Description is now shown as markdown preview
+    await expect(dialog(page).getByText("This should persist after reload.")).toBeVisible();
   });
 
   test("description can be cleared", async ({ page }) => {
@@ -96,18 +91,21 @@ test.describe("Task descriptions", () => {
 
     await openTaskDetail(page, "Clear me");
 
-    const descriptionField = dialog(page).getByPlaceholder("Description");
+    // Click to enter edit mode
+    await dialog(page).getByRole("button", { name: "Description" }).click();
 
-    // Set initial description
-    await descriptionField.click();
-    await descriptionField.fill("Some initial text");
+    const textarea = dialog(page).getByPlaceholder(/Description/);
+    await textarea.fill("Some initial text");
 
-    // Blur to save — click on the title input inside the dialog
+    // Blur to save
     await dialog(page).locator("input[type='text']").first().click();
 
-    // Now clear the description
-    await descriptionField.click();
-    await descriptionField.fill("");
+    // Click the markdown preview to re-enter edit mode
+    await dialog(page).getByText("Some initial text").click();
+
+    // Clear the description
+    const editTextarea = dialog(page).getByPlaceholder(/Description/);
+    await editTextarea.fill("");
 
     // Blur to save
     await dialog(page).locator("input[type='text']").first().click();
@@ -116,7 +114,8 @@ test.describe("Task descriptions", () => {
     await closeTaskDetail(page);
     await openTaskDetail(page, "Clear me");
 
-    await expect(dialog(page).getByPlaceholder("Description")).toHaveValue("");
+    // Should show the "Description" button again (empty state)
+    await expect(dialog(page).getByRole("button", { name: "Description" })).toBeVisible();
   });
 
   test("description supports multi-line text with newlines", async ({ page }) => {
@@ -127,11 +126,12 @@ test.describe("Task descriptions", () => {
 
     await openTaskDetail(page, "Multi-line task");
 
-    const descriptionField = dialog(page).getByPlaceholder("Description");
-    await descriptionField.click();
+    // Click to enter edit mode
+    await dialog(page).getByRole("button", { name: "Description" }).click();
 
+    const textarea = dialog(page).getByPlaceholder(/Description/);
     const multiLineText = "Line 1\nLine 2\nLine 3\n\nParagraph 2";
-    await descriptionField.fill(multiLineText);
+    await textarea.fill(multiLineText);
 
     // Blur to save
     await dialog(page).locator("input[type='text']").first().click();
@@ -140,11 +140,12 @@ test.describe("Task descriptions", () => {
     await closeTaskDetail(page);
     await openTaskDetail(page, "Multi-line task");
 
-    await expect(dialog(page).getByPlaceholder("Description")).toHaveValue(multiLineText);
+    // Verify the text is rendered (markdown preview)
+    await expect(dialog(page).getByText("Line 1")).toBeVisible();
+    await expect(dialog(page).getByText("Paragraph 2")).toBeVisible();
   });
 
   test("description set via API is shown in the detail panel", async ({ page }) => {
-    // Create a task with a description via the API
     const task = await createTaskViaApi(page, "API description task");
 
     // Update the task with a description
@@ -157,7 +158,7 @@ test.describe("Task descriptions", () => {
 
     await openTaskDetail(page, "API description task");
 
-    const descriptionField = dialog(page).getByPlaceholder("Description");
-    await expect(descriptionField).toHaveValue("Set via API call");
+    // Description should be rendered as markdown preview
+    await expect(dialog(page).getByText("Set via API call")).toBeVisible();
   });
 });

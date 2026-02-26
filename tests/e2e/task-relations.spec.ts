@@ -25,8 +25,8 @@ test.describe("Task Relations (V2-15)", () => {
     const searchInput = page.getByPlaceholder("Search tasks to link...");
     await searchInput.fill("Beta");
 
-    // Select Task Beta from results
-    await page.getByRole("button", { name: "Task Beta" }).click();
+    // Select Task Beta from search results (use exact: true to avoid matching the task row)
+    await page.getByRole("button", { name: "Task Beta", exact: true }).click();
 
     // Assert "Blocks" section shows Task Beta
     await expect(page.getByText("Blocks").first()).toBeVisible();

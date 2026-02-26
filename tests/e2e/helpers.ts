@@ -147,6 +147,11 @@ export async function updateTaskViaApi(
 }
 
 /** Add a "blocks" relation between two tasks via API. */
+/** Get local date key (YYYY-MM-DD) matching the app's toDateKey format. */
+export function localDateKey(d: Date = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 export async function addRelationViaApi(
   page: Page,
   taskId: string,

@@ -41,14 +41,14 @@ export function DailyReviewModal({
     return toDateKey(d);
   }, []);
 
-  const tomorrowISO = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    return d.toISOString();
-  }, []);
-
   const completedToday = useMemo(
-    () => tasks.filter((t) => t.status === "completed" && t.completedAt?.startsWith(today)),
+    () =>
+      tasks.filter(
+        (t) =>
+          t.status === "completed" &&
+          t.completedAt != null &&
+          toDateKey(new Date(t.completedAt)) === today,
+      ),
     [tasks, today],
   );
 
@@ -72,9 +72,9 @@ export function DailyReviewModal({
 
   const handleMoveToTomorrow = useCallback(
     (id: string) => {
-      onUpdateTask(id, { dueDate: tomorrowISO });
+      onUpdateTask(id, { dueDate: tomorrow });
     },
-    [onUpdateTask, tomorrowISO],
+    [onUpdateTask, tomorrow],
   );
 
   const handleMoveToSomeday = useCallback(
