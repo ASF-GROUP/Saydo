@@ -112,5 +112,13 @@ Complete index of every non-UI source file in `src/`. Sorted by directory, then 
 | `main.ts` | `src/main.ts` | 27 | Entry point -- loads env, bootstraps services, loads plugins |
 | `vite-env.d.ts` | `src/vite-env.d.ts` | 7 | Vite type declarations for SQL raw imports |
 
-**Total non-UI source files:** 89
-**Total non-UI lines of code:** 11,694
+| `context.ts` | `src/mcp/context.ts` | 16 | ToolContext factory -- extracts services from AppServices |
+| `errors.ts` | `src/mcp/errors.ts` | 37 | Maps NotFoundError/ValidationError/StorageError to MCP error content |
+| `prompts.ts` | `src/mcp/prompts.ts` | 91 | MCP prompt registration: plan-my-day, daily-review, quick-capture |
+| `resources.ts` | `src/mcp/resources.ts` | 152 | MCP resource registration: 6 static + 2 dynamic resource templates |
+| `schema-converter.ts` | `src/mcp/schema-converter.ts` | 85 | JSON Schema to Zod shape converter for tool parameters |
+| `server.ts` | `src/mcp/server.ts` | 53 | MCP server entry point -- bootstrap, register, stdio transport |
+| `tools.ts` | `src/mcp/tools.ts` | 38 | MCP tool registration -- bridges ToolRegistry to MCP SDK |
+
+**Total non-UI source files:** 96
+**Total non-UI lines of code:** ~12,166

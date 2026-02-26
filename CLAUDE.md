@@ -38,6 +38,7 @@ This is the second ASF project, alongside [ASF Sentinel](https://github.com/asf-
 | ORM | Drizzle | Type-safe, lightweight, SQL-close |
 | AI | Pluggable providers | OpenAI, Anthropic, OpenRouter, Ollama, LM Studio — or build your own |
 | Plugin Runtime | Custom loader with sandboxing | Obsidian-style, controlled execution |
+| MCP | @modelcontextprotocol/sdk | External AI agent bridge (Claude Desktop, custom agents) |
 | CLI | Commander.js | Companion CLI tool |
 | NLP | chrono-node | Natural language date/time parsing |
 | Testing | Vitest | Fast, ESM native |
@@ -72,6 +73,14 @@ src/
 │   ├── nlp.ts               # Date/time extraction from natural input
 │   ├── task-parser.ts       # Full task string parser ("buy milk tomorrow p1 #groceries")
 │   └── grammar.ts           # Grammar rules for task input
+├── mcp/                     # MCP server (external AI agent bridge)
+│   ├── server.ts            # Entry point — bootstrap + stdio transport
+│   ├── tools.ts             # Bridges ToolRegistry → MCP tools
+│   ├── resources.ts         # Read-only resources (tasks, projects, tags, stats)
+│   ├── prompts.ts           # Pre-built prompts (plan-my-day, daily-review, quick-capture)
+│   ├── schema-converter.ts  # JSON Schema → Zod converter
+│   ├── context.ts           # ToolContext factory
+│   └── errors.ts            # Error mapping to MCP responses
 ├── plugins/                 # Plugin system
 │   ├── loader.ts            # Plugin discovery and loading
 │   ├── lifecycle.ts         # Plugin lifecycle management (load/unload)
@@ -169,6 +178,7 @@ pnpm build         # Build for production
 pnpm start         # Preview production build
 pnpm check         # Lint + typecheck + test
 pnpm cli           # Run CLI companion
+pnpm mcp           # Start MCP server (for external AI agents)
 ```
 
 ## Architecture Decisions
@@ -235,6 +245,7 @@ Plugin Discovery → Manifest Validation → Sandbox Creation → Lifecycle Hook
 | `src/plugins/sandbox.ts` | Plugin execution sandbox |
 | `src/ui/App.tsx` | Root React component |
 | `src/ui/components/TaskInput.tsx` | The main task input field |
+| `src/mcp/server.ts` | MCP server entry point (external agent bridge) |
 | `src/cli/index.ts` | CLI entry point |
 | `sources.json` | Community plugin registry seed |
 
@@ -294,12 +305,13 @@ docs/
 │   ├── SHORTCUTS.md                 # ShortcutManager, all keybindings
 │   └── API_LAYER.md                 # 8 API modules, REST endpoints
 ├── backend/                         # File-by-file backend reference
-│   ├── FILES.md                     # Master index of all 85 non-UI files
+│   ├── FILES.md                     # Master index of all 96 non-UI files
 │   ├── CORE.md                      # Task/project/tag services, events, undo
 │   ├── DATABASE.md                  # 8 tables, storage abstraction, migrations
 │   ├── PARSER.md                    # NLP pipeline, grammar rules, examples
-│   ├── AI.md                        # 29 files: providers, pipeline, 25 tools
+│   ├── AI.md                        # 29 files: providers, pipeline, 28 tools
 │   ├── VOICE.md                     # 14 files: STT/TTS adapters, audio utils
+│   ├── MCP.md                       # 7 files: MCP server, tools, resources, prompts
 │   ├── CLI.md                       # 5 CLI commands with usage examples
 │   ├── PLUGINS.md                   # 10 files: loader, sandbox, API, registry
 │   └── UTILS.md                     # Utilities + config modules

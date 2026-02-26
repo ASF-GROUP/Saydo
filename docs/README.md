@@ -25,7 +25,7 @@ Data lives on your machine. Zero network calls by default. No accounts, no telem
 
 ### AI-native, not bolted on
 
-The AI assistant is a core part of the design — conversational sidebar, voice input, task context awareness. But it's completely optional. The app works fine without it.
+The AI assistant is a core part of the design — conversational sidebar, voice input, task context awareness. External AI agents can also connect via the MCP server to manage tasks programmatically. But AI is completely optional. The app works fine without it.
 
 ### Vibe-code extensible
 

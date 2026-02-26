@@ -192,6 +192,15 @@ src/
 │       ├── light.css        # Tailwind 4 @theme tokens
 │       └── dark.css         # Tailwind 4 @theme tokens
 │
+├── mcp/                     # MCP server (external AI agent bridge)
+│   ├── server.ts            # Entry point (bootstrap + stdio transport)
+│   ├── tools.ts             # Registers ToolRegistry tools as MCP tools
+│   ├── resources.ts         # Read-only resources (tasks, projects, tags, stats)
+│   ├── prompts.ts           # Pre-built prompts (plan-my-day, daily-review, quick-capture)
+│   ├── schema-converter.ts  # JSON Schema → Zod shape bridge
+│   ├── context.ts           # ToolContext factory
+│   └── errors.ts            # Error mapping to MCP responses
+│
 ├── cli/                     # CLI companion
 │   ├── index.ts             # Commander.js entry (saydo add/list/done/edit/delete)
 │   ├── commands/            # Command handlers
@@ -231,6 +240,24 @@ UI re-renders task list
 ```
 
 Same flow from CLI: `saydo add "buy milk tomorrow p1 #groceries"` → Parser → TaskService → Storage.
+
+Same flow from MCP: external agent calls `create_task` tool → ToolRegistry.execute() → TaskService → Storage.
+
+### MCP (external agents)
+
+```
+External MCP Client (Claude Desktop, custom agent, ASF app)
+  │
+  │ JSON-RPC over stdio
+  ▼
+src/mcp/server.ts → bootstrap() → AppServices
+  │
+  ├── Tools:     ToolRegistry.execute() → core services → storage
+  ├── Resources: TaskService.list() / ProjectService.list() → JSON
+  └── Prompts:   Pre-built conversation starters (plan-my-day, etc.)
+```
+
+The MCP server calls the same `bootstrap()` and uses the same `ToolRegistry` as the CLI and web app — no logic duplication.
 
 ### AI chat
 
@@ -377,7 +404,7 @@ The AI has access to 25 structured tools:
 | smart-organize | Intelligence |
 | energy-recommendations | Intelligence |
 
-Tools are registered in `ToolRegistry` (`createDefaultToolRegistry()`). Plugins can register additional tools.
+Tools are registered in `ToolRegistry` (`createDefaultToolRegistry()`). Plugins can register additional tools. All tools are also exposed via the MCP server for external agents (see [MCP.md](../backend/MCP.md)).
 
 ### Voice
 

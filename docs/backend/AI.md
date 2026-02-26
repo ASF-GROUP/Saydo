@@ -605,3 +605,9 @@ Returns: `{ range, currentStreak, bestStreak, today: { completed, created, minut
 | `check_duplicates` | Smart Organize | Title similarity check |
 | `get_energy_recommendations` | Analytics | Energy-aware task suggestions |
 | `get_productivity_stats` | Analytics | Streak, completion counts, daily trends |
+| `plan_my_day` | Planning | Morning planning with prioritized task order |
+| `daily_review` | Planning | End-of-day review of accomplishments |
+
+**Total:** 28 tools
+
+All tools are also exposed via the [MCP server](MCP.md) for external AI agents (Claude Desktop, custom assistants, other apps).

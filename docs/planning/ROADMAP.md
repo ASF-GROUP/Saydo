@@ -103,6 +103,7 @@ Production-quality task manager with a stable plugin API.
 - [x] Comprehensive test suite (unit, component, integration)
 - [x] CI/CD pipeline (lint, typecheck, test, build, release)
 - [x] First batch of community plugins published
+- [x] MCP server for external AI agent integration (Claude Desktop, custom agents)
 
 ## v1.5 — Saydo Sync
 

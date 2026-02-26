@@ -116,9 +116,57 @@ pnpm check           # Run lint + typecheck + test (all at once)
 pnpm db:generate     # Generate a new migration after schema change
 pnpm db:migrate      # Apply pending migrations
 pnpm cli             # Run CLI companion
+pnpm mcp             # Start MCP server (for external AI agents)
 pnpm tauri:dev       # Run desktop app in dev mode (requires Rust)
 pnpm tauri:build     # Build desktop app binary (requires Rust)
 ```
+
+## Using the MCP Server
+
+The MCP server lets external AI agents (Claude Desktop, personal assistants, other apps) manage your tasks over the Model Context Protocol.
+
+```bash
+pnpm mcp
+```
+
+### Claude Desktop Integration
+
+Add to your `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "saydo": {
+      "command": "pnpm",
+      "args": ["--dir", "/path/to/Docket", "mcp"]
+    }
+  }
+}
+```
+
+Restart Claude Desktop. You can now ask Claude to manage your tasks:
+- "Create a task to review the PR by Friday"
+- "What's on my plate today?"
+- "Mark the groceries task as done"
+
+### Custom Agent Integration
+
+```typescript
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+
+const transport = new StdioClientTransport({
+  command: "pnpm",
+  args: ["--dir", "/path/to/Docket", "mcp"],
+});
+const client = new Client({ name: "my-agent", version: "1.0.0" });
+await client.connect(transport);
+
+// Call tools, read resources, use prompts
+await client.callTool({ name: "create_task", arguments: { title: "Hello from MCP" } });
+```
+
+See [MCP documentation](../backend/MCP.md) for the full reference (28 tools, 8 resources, 3 prompts).
 
 ## Building the Desktop App (Optional)
 

@@ -13,6 +13,7 @@ This file helps AI agents (Claude, ChatGPT, Copilot, etc.) navigate the Saydo co
 | Add a new view | [docs/frontend/VIEWS.md](docs/frontend/VIEWS.md) + CLAUDE.md "Add a UI view" section |
 | Modify state/context | [docs/frontend/CONTEXT.md](docs/frontend/CONTEXT.md) for provider nesting and exposed functions |
 | Work on AI features | [docs/backend/AI.md](docs/backend/AI.md) for pipeline, providers, and tools |
+| Work on MCP server | [docs/backend/MCP.md](docs/backend/MCP.md) for tools, resources, prompts, and external agent integration |
 | Work on voice | [docs/backend/VOICE.md](docs/backend/VOICE.md) for STT/TTS adapters |
 | Work on plugins | [docs/backend/PLUGINS.md](docs/backend/PLUGINS.md) (internals) or [docs/plugins/API.md](docs/plugins/API.md) (author-facing) |
 | Change the database | [docs/backend/DATABASE.md](docs/backend/DATABASE.md) for schema and storage abstraction |
@@ -26,7 +27,7 @@ This file helps AI agents (Claude, ChatGPT, Copilot, etc.) navigate the Saydo co
 These two files are your primary lookup tables. Every source file is listed with its path, line count, and one-line purpose:
 
 - **[docs/frontend/FILES.md](docs/frontend/FILES.md)** — 82 UI files (components, views, hooks, contexts, themes, API layer)
-- **[docs/backend/FILES.md](docs/backend/FILES.md)** — 85 non-UI files (core, db, ai, voice, plugins, cli, utils)
+- **[docs/backend/FILES.md](docs/backend/FILES.md)** — 96 non-UI files (core, db, ai, voice, plugins, mcp, cli, utils)
 
 Use these to find "which file handles X?" without grepping.
 
@@ -49,8 +50,9 @@ docs/
 │   ├── CORE.md          TaskService, ProjectService, TagService, events, undo
 │   ├── DATABASE.md      8 tables, Drizzle schema, SQLite + Markdown backends
 │   ├── PARSER.md        chrono-node NLP, grammar rules, parseTask() pipeline
-│   ├── AI.md            Provider registry, middleware pipeline, 25 tools
+│   ├── AI.md            Provider registry, middleware pipeline, 28 tools
 │   ├── VOICE.md         3 STT + 5 TTS adapters, audio utils, Web Workers
+│   ├── MCP.md           MCP server: 28 tools, 8 resources, 3 prompts (external agent bridge)
 │   ├── CLI.md           5 CLI commands (add, list, done, edit, delete)
 │   ├── PLUGINS.md       Loader, sandbox, API factory, command/UI registries
 │   └── UTILS.md         Logger, IDs, dates, sounds, env config
@@ -90,6 +92,13 @@ User Input → src/ui/components/ → src/ui/api/ → src/core/ → src/db/ → 
 User Chat → AIChatPanel → AIContext → api/ai.ts → ChatSession → Pipeline → Provider
                                                        ↓
                                                   ToolRegistry → core services
+```
+
+### Understanding MCP flow
+```
+External Agent → stdio → src/mcp/server.ts → ToolRegistry.execute() → core services
+                                            → resources (read-only queries)
+                                            → prompts (conversation starters)
 ```
 
 ### Understanding plugin flow
