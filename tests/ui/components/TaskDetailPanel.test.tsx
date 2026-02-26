@@ -19,6 +19,7 @@ vi.mock("lucide-react", () => {
     CheckCircle2: icon("check-circle"),
     Pencil: icon("pencil"),
     Send: icon("send"),
+    Link: icon("link"),
   };
 });
 
@@ -40,6 +41,12 @@ vi.mock("../../../src/ui/components/SubtaskSection.js", () => ({
 
 vi.mock("../../../src/ui/components/TaskMetadataSidebar.js", () => ({
   TaskMetadataSidebar: () => <div data-testid="metadata-sidebar" />,
+}));
+
+vi.mock("../../../src/ui/api/tasks.js", () => ({
+  getTaskRelations: vi.fn().mockResolvedValue({ blocks: [], blockedBy: [] }),
+  addTaskRelation: vi.fn().mockResolvedValue(undefined),
+  removeTaskRelation: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("../../../src/ui/components/ConfirmDialog.js", () => ({
@@ -68,6 +75,11 @@ function makeTask(overrides: Partial<Task> = {}): Task {
     recurrence: null,
     parentId: null,
     remindAt: null,
+    estimatedMinutes: null,
+    actualMinutes: null,
+    deadline: null,
+    isSomeday: false,
+    sectionId: null,
     tags: [{ id: "tag-1", name: "work", color: "#ff0000" }],
     sortOrder: 0,
     createdAt: "2026-02-20T10:00:00.000Z",

@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useContext, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -22,6 +22,7 @@ import type { Task } from "../../core/types.js";
 import { TaskItem } from "./TaskItem.js";
 import { InlineAddSubtask } from "./InlineAddSubtask.js";
 import { EmptyState } from "./EmptyState.js";
+import { BlockedTaskIdsContext } from "../context/BlockedTaskIdsContext.js";
 
 interface ChildStats {
   children: Task[];
@@ -44,6 +45,7 @@ interface TaskListProps {
   onAddSubtask?: (parentId: string, title: string) => void;
   onUpdateDueDate?: (taskId: string, dueDate: string | null) => void;
   onContextMenu?: (taskId: string, position: { x: number; y: number }) => void;
+  blockedTaskIds?: Set<string>;
 }
 
 const SortableTaskItem = React.memo(function SortableTaskItem({
@@ -61,6 +63,7 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
   onToggleExpand,
   onUpdateDueDate,
   onContextMenu,
+  isBlocked,
 }: {
   task: Task;
   onToggle: (id: string) => void;
@@ -79,6 +82,7 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
   onToggleExpand?: (id: string) => void;
   onUpdateDueDate?: (taskId: string, dueDate: string | null) => void;
   onContextMenu?: (taskId: string, position: { x: number; y: number }) => void;
+  isBlocked?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: task.id });
 
@@ -106,6 +110,7 @@ const SortableTaskItem = React.memo(function SortableTaskItem({
       onToggleExpand={onToggleExpand}
       onUpdateDueDate={onUpdateDueDate}
       onContextMenu={onContextMenu}
+      isBlocked={isBlocked}
     />
   );
 });
@@ -137,7 +142,10 @@ export function TaskList({
   onAddSubtask,
   onUpdateDueDate,
   onContextMenu,
+  blockedTaskIds: blockedTaskIdsProp,
 }: TaskListProps) {
+  const blockedFromContext = useContext(BlockedTaskIdsContext);
+  const blockedTaskIds = blockedTaskIdsProp ?? blockedFromContext;
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
@@ -261,6 +269,7 @@ export function TaskList({
                 onToggleExpand={handleToggleExpand}
                 onUpdateDueDate={onUpdateDueDate}
                 onContextMenu={onContextMenu}
+                isBlocked={blockedTaskIds?.has(task.id)}
               />
             );
           })}

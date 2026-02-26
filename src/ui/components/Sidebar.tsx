@@ -17,6 +17,8 @@ import {
   BarChart3,
   Lightbulb,
   XCircle,
+  Grid2x2,
+  Filter,
 } from "lucide-react";
 import type { Project } from "../../core/types.js";
 import type { PanelInfo, ViewInfo } from "../api/index.js";
@@ -54,6 +56,8 @@ interface SidebarProps {
   todayCount?: number;
   onOpenProjectModal?: () => void;
   builtinPluginIds?: Set<string>;
+  savedFilters?: Array<{ id: string; name: string; query: string; color?: string }>;
+  selectedFilterId?: string | null;
 }
 
 const NAV_ITEMS: Array<{
@@ -69,6 +73,7 @@ const NAV_ITEMS: Array<{
   { id: "filters-labels", label: "Filters & Labels", icon: SlidersHorizontal },
   { id: "completed", label: "Completed", icon: CheckCircle2 },
   { id: "cancelled", label: "Cancelled", icon: XCircle },
+  { id: "matrix", label: "Matrix", icon: Grid2x2 },
   { id: "stats", label: "Stats", icon: BarChart3 },
   { id: "someday", label: "Someday", icon: Lightbulb },
 ];
@@ -117,11 +122,14 @@ export function Sidebar({
   todayCount,
   onOpenProjectModal,
   builtinPluginIds = new Set(),
+  savedFilters = [],
+  selectedFilterId,
 }: SidebarProps) {
   const { settings } = useGeneralSettings();
   const [projectsExpanded, setProjectsExpanded] = useState(true);
   const [favoritesExpanded, setFavoritesExpanded] = useState(true);
   const [toolsExpanded, setToolsExpanded] = useState(true);
+  const [filtersExpanded, setFiltersExpanded] = useState(true);
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
 
   const visibleNavItems = useMemo(() => {
@@ -129,8 +137,9 @@ export function Sidebar({
     if (settings.feature_cancelled === "false") hidden.add("cancelled");
     if (settings.feature_stats === "false") hidden.add("stats");
     if (settings.feature_someday === "false") hidden.add("someday");
+    if (settings.feature_matrix === "false") hidden.add("matrix");
     return NAV_ITEMS.filter((item) => !hidden.has(item.id));
-  }, [settings.feature_cancelled, settings.feature_stats, settings.feature_someday]);
+  }, [settings.feature_cancelled, settings.feature_stats, settings.feature_someday, settings.feature_matrix]);
 
   const favoriteProjects = useMemo(
     () => projects.filter((p) => p.isFavorite && !p.archived),
@@ -512,6 +521,31 @@ export function Sidebar({
                           </ul>
                         )}
                       </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </>
+          )}
+
+          {/* ── My Views (saved filters) ── */}
+          {!collapsed && savedFilters.length > 0 && (
+            <>
+              <SectionHeader
+                label="My Views"
+                expanded={filtersExpanded}
+                onToggle={() => setFiltersExpanded(!filtersExpanded)}
+              />
+              {filtersExpanded && (
+                <ul className="space-y-0.5">
+                  {savedFilters.map((filter) => {
+                    const isActive = currentView === "filter" && selectedFilterId === filter.id;
+                    return renderNavButton(
+                      `filter-${filter.id}`,
+                      filter.name,
+                      Filter,
+                      isActive,
+                      () => onNavigate("filter", filter.id),
                     );
                   })}
                 </ul>

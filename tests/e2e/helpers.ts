@@ -72,6 +72,7 @@ export async function resetFeatureFlags(page: Page) {
     "feature_someday",
     "feature_cancelled",
     "feature_stats",
+    "feature_matrix",
   ];
   await Promise.all(
     flags.map((flag) => page.request.put(`/api/settings/${flag}`, { data: { value: "true" } })),
@@ -143,4 +144,15 @@ export async function updateTaskViaApi(
   changes: Record<string, unknown>,
 ) {
   await page.request.patch(`/api/tasks/${taskId}`, { data: changes });
+}
+
+/** Add a "blocks" relation between two tasks via API. */
+export async function addRelationViaApi(
+  page: Page,
+  taskId: string,
+  relatedTaskId: string,
+) {
+  await page.request.post(`/api/tasks/${taskId}/relations`, {
+    data: { relatedTaskId, type: "blocks" },
+  });
 }

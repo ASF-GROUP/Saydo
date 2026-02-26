@@ -114,6 +114,21 @@ function apiPlugin() {
         }
       });
 
+      // GET /api/tasks/relations — list all task relations
+      server.middlewares.use(async (req, res, next) => {
+        if (req.url !== "/api/tasks/relations" || req.method !== "GET") return next();
+        try {
+          const svc = await getServices();
+          const relations = await svc.taskService.listAllRelations();
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify(relations));
+        } catch (err: any) {
+          res.statusCode = 500;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ error: err.message }));
+        }
+      });
+
       // POST /api/tasks/bulk/complete
       server.middlewares.use(async (req, res, next) => {
         if (req.url !== "/api/tasks/bulk/complete" || req.method !== "POST") return next();
@@ -1897,6 +1912,86 @@ function apiPlugin() {
             res.end(JSON.stringify(children));
           } catch (err: any) {
             res.statusCode = err.name === "NotFoundError" ? 404 : 500;
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ error: err.message }));
+          }
+          return;
+        }
+
+        next();
+      });
+
+      // /api/tasks/:id/relations
+      server.middlewares.use(async (req, res, next) => {
+        // DELETE /api/tasks/:id/relations/:relatedId
+        const delRelMatch = req.url?.match(
+          /^\/api\/tasks\/([^/]+)\/relations\/([^/]+)$/,
+        );
+        if (delRelMatch && req.method === "DELETE") {
+          try {
+            const svc = await getServices();
+            await svc.taskService.removeRelation(
+              decodeURIComponent(delRelMatch[1]),
+              decodeURIComponent(delRelMatch[2]),
+            );
+            res.statusCode = 204;
+            res.end();
+          } catch (err: any) {
+            res.statusCode = err.name === "NotFoundError" ? 404 : 500;
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ error: err.message }));
+          }
+          return;
+        }
+
+        // GET /api/tasks/:id/relations
+        const relMatch = req.url?.match(/^\/api\/tasks\/([^/]+)\/relations$/);
+        if (relMatch && req.method === "GET") {
+          try {
+            const svc = await getServices();
+            const taskId = decodeURIComponent(relMatch[1]);
+            const { blocks, blockedBy } =
+              await svc.taskService.getRelations(taskId);
+            // Hydrate task objects
+            const blocksTasks = [];
+            for (const id of blocks) {
+              const t = await svc.taskService.get(id);
+              if (t) blocksTasks.push(t);
+            }
+            const blockedByTasks = [];
+            for (const id of blockedBy) {
+              const t = await svc.taskService.get(id);
+              if (t) blockedByTasks.push(t);
+            }
+            res.setHeader("Content-Type", "application/json");
+            res.end(
+              JSON.stringify({ blocks: blocksTasks, blockedBy: blockedByTasks }),
+            );
+          } catch (err: any) {
+            res.statusCode = err.name === "NotFoundError" ? 404 : 500;
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ error: err.message }));
+          }
+          return;
+        }
+
+        // POST /api/tasks/:id/relations
+        if (relMatch && req.method === "POST") {
+          try {
+            const svc = await getServices();
+            const taskId = decodeURIComponent(relMatch[1]);
+            const body = await parseBody(req);
+            await svc.taskService.addRelation(
+              taskId,
+              (body as any).relatedTaskId,
+              (body as any).type ?? "blocks",
+            );
+            res.statusCode = 201;
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ ok: true }));
+          } catch (err: any) {
+            res.statusCode = err.message?.includes("cycle") ? 400 : 500;
+            if (err.name === "NotFoundError") res.statusCode = 404;
             res.setHeader("Content-Type", "application/json");
             res.end(JSON.stringify({ error: err.message }));
           }

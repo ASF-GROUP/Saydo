@@ -66,6 +66,7 @@ export function parseTaskFile(
     parentId: string | null;
     remindAt: string | null;
     estimatedMinutes: number | null;
+    actualMinutes: number | null;
     deadline: string | null;
     isSomeday: boolean;
     sectionId: string | null;
@@ -106,6 +107,8 @@ export function parseTaskFile(
       remindAt: frontmatter.remindAt != null ? String(frontmatter.remindAt) : null,
       estimatedMinutes:
         frontmatter.estimatedMinutes != null ? Number(frontmatter.estimatedMinutes) : null,
+      actualMinutes:
+        frontmatter.actualMinutes != null ? Number(frontmatter.actualMinutes) : null,
       deadline: frontmatter.deadline != null ? String(frontmatter.deadline) : null,
       isSomeday: Boolean(frontmatter.isSomeday ?? false),
       sectionId: frontmatter.sectionId != null ? String(frontmatter.sectionId) : null,
@@ -133,6 +136,7 @@ export function serializeTaskFile(
     parentId?: string | null;
     remindAt?: string | null;
     estimatedMinutes?: number | null;
+    actualMinutes?: number | null;
     deadline?: string | null;
     isSomeday?: boolean;
     sectionId?: string | null;
@@ -155,6 +159,7 @@ export function serializeTaskFile(
     parentId: task.parentId ?? null,
     remindAt: task.remindAt ?? null,
     estimatedMinutes: task.estimatedMinutes ?? null,
+    actualMinutes: task.actualMinutes ?? null,
     deadline: task.deadline ?? null,
     isSomeday: task.isSomeday ?? false,
     sectionId: task.sectionId ?? null,

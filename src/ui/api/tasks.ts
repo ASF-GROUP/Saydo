@@ -234,3 +234,74 @@ export async function importTasks(tasks: ImportedTask[]): Promise<ImportResult> 
   });
   return handleResponse<ImportResult>(res);
 }
+
+export async function listTaskRelations(): Promise<
+  Array<{ taskId: string; relatedTaskId: string; type: "blocks" }>
+> {
+  if (isTauri()) {
+    const svc = await getServices();
+    return svc.taskService.listAllRelations() as any;
+  }
+  const res = await fetch(`${BASE}/tasks/relations`);
+  return handleResponse<Array<{ taskId: string; relatedTaskId: string; type: "blocks" }>>(res);
+}
+
+export async function getTaskRelations(
+  taskId: string,
+): Promise<{ blocks: Task[]; blockedBy: Task[] }> {
+  if (isTauri()) {
+    const svc = await getServices();
+    const { blocks, blockedBy } = await svc.taskService.getRelations(taskId);
+    const blocksTasks: Task[] = [];
+    for (const id of blocks) {
+      const t = await svc.taskService.get(id);
+      if (t) blocksTasks.push(t);
+    }
+    const blockedByTasks: Task[] = [];
+    for (const id of blockedBy) {
+      const t = await svc.taskService.get(id);
+      if (t) blockedByTasks.push(t);
+    }
+    return { blocks: blocksTasks, blockedBy: blockedByTasks };
+  }
+  const res = await fetch(`${BASE}/tasks/${encodeURIComponent(taskId)}/relations`);
+  return handleResponse<{ blocks: Task[]; blockedBy: Task[] }>(res);
+}
+
+export async function addTaskRelation(
+  taskId: string,
+  relatedTaskId: string,
+  type: "blocks" = "blocks",
+): Promise<void> {
+  if (isTauri()) {
+    const svc = await getServices();
+    await svc.taskService.addRelation(taskId, relatedTaskId, type);
+    svc.save();
+    return;
+  }
+  await handleVoidResponse(
+    await fetch(`${BASE}/tasks/${encodeURIComponent(taskId)}/relations`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ relatedTaskId, type }),
+    }),
+  );
+}
+
+export async function removeTaskRelation(
+  taskId: string,
+  relatedTaskId: string,
+): Promise<void> {
+  if (isTauri()) {
+    const svc = await getServices();
+    await svc.taskService.removeRelation(taskId, relatedTaskId);
+    svc.save();
+    return;
+  }
+  await handleVoidResponse(
+    await fetch(
+      `${BASE}/tasks/${encodeURIComponent(taskId)}/relations/${encodeURIComponent(relatedTaskId)}`,
+      { method: "DELETE" },
+    ),
+  );
+}

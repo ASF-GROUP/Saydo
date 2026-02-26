@@ -17,6 +17,7 @@ export const tasks = sqliteTable("tasks", {
   remindAt: text("remind_at"),
   sortOrder: integer("sort_order").notNull().default(0),
   estimatedMinutes: integer("estimated_minutes"),
+  actualMinutes: integer("actual_minutes"),
   deadline: text("deadline"),
   isSomeday: integer("is_someday", { mode: "boolean" }).notNull().default(false),
   sectionId: text("section_id").references(() => sections.id, { onDelete: "set null" }),
@@ -56,6 +57,20 @@ export const taskTags = sqliteTable(
       .references(() => tags.id, { onDelete: "cascade" }),
   },
   (table) => [primaryKey({ columns: [table.taskId, table.tagId] })],
+);
+
+export const taskRelations = sqliteTable(
+  "task_relations",
+  {
+    taskId: text("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    relatedTaskId: text("related_task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    type: text("type", { enum: ["blocks"] }).notNull().default("blocks"),
+  },
+  (table) => [primaryKey({ columns: [table.taskId, table.relatedTaskId] })],
 );
 
 export const pluginSettings = sqliteTable("plugin_settings", {

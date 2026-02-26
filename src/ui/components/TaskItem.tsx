@@ -46,6 +46,7 @@ interface TaskItemProps {
   onToggleExpand?: (id: string) => void;
   onUpdateDueDate?: (taskId: string, dueDate: string | null) => void;
   onContextMenu?: (taskId: string, position: { x: number; y: number }) => void;
+  isBlocked?: boolean;
 }
 
 export const TaskItem = React.memo(function TaskItem({
@@ -66,6 +67,7 @@ export const TaskItem = React.memo(function TaskItem({
   onToggleExpand,
   onUpdateDueDate,
   onContextMenu,
+  isBlocked,
 }: TaskItemProps) {
   const { settings } = useGeneralSettings();
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -239,6 +241,13 @@ export const TaskItem = React.memo(function TaskItem({
             <span className="text-xs px-1.5 py-0 rounded-md bg-surface-tertiary text-on-surface-secondary font-mono flex items-center gap-0.5 flex-shrink-0">
               <Clock size={10} />
               {formattedDuration}
+            </span>
+          )}
+
+          {/* Blocked badge */}
+          {isBlocked && task.status === "pending" && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-error/10 text-error flex-shrink-0">
+              Blocked
             </span>
           )}
 

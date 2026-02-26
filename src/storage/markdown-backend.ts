@@ -21,6 +21,7 @@ import type {
   TaskCommentRow,
   TaskActivityRow,
   DailyStatRow,
+  TaskRelationRow,
   MutationResult,
 } from "./interface.js";
 
@@ -51,6 +52,7 @@ export class MarkdownBackend implements IStorage {
   private taskCommentIndex = new Map<string, TaskCommentRow[]>(); // taskId → comments
   private taskActivityIndex = new Map<string, TaskActivityRow[]>(); // taskId → activities
   private dailyStatIndex = new Map<string, DailyStatRow>(); // date → stat
+  private taskRelationList: TaskRelationRow[] = [];
 
   constructor(basePath: string) {
     this.basePath = basePath;
@@ -103,6 +105,9 @@ export class MarkdownBackend implements IStorage {
 
     // 10. Read _task_meta/*.yaml
     this.loadTaskMeta();
+
+    // 11. Read _task_relations.yaml
+    this.loadTaskRelations();
 
     logger.info("Markdown backend ready", {
       tasks: this.taskIndex.size,
@@ -692,6 +697,44 @@ export class MarkdownBackend implements IStorage {
     return results.sort((a, b) => a.date.localeCompare(b.date));
   }
 
+  // ── Task Relations ──
+
+  listTaskRelations(): TaskRelationRow[] {
+    return [...this.taskRelationList];
+  }
+
+  getTaskRelations(taskId: string): TaskRelationRow[] {
+    return this.taskRelationList.filter(
+      (r) => r.taskId === taskId || r.relatedTaskId === taskId,
+    );
+  }
+
+  insertTaskRelation(relation: TaskRelationRow): MutationResult {
+    this.taskRelationList.push({ ...relation });
+    this.persistTaskRelations();
+    return OK;
+  }
+
+  deleteTaskRelation(taskId: string, relatedTaskId: string): MutationResult {
+    const idx = this.taskRelationList.findIndex(
+      (r) => r.taskId === taskId && r.relatedTaskId === relatedTaskId,
+    );
+    if (idx < 0) return NOOP;
+    this.taskRelationList.splice(idx, 1);
+    this.persistTaskRelations();
+    return OK;
+  }
+
+  deleteAllTaskRelations(taskId: string): MutationResult {
+    const before = this.taskRelationList.length;
+    this.taskRelationList = this.taskRelationList.filter(
+      (r) => r.taskId !== taskId && r.relatedTaskId !== taskId,
+    );
+    const removed = before - this.taskRelationList.length;
+    if (removed > 0) this.persistTaskRelations();
+    return { changes: removed };
+  }
+
   // ── Private helpers ──
 
   private persistSections(): void {
@@ -729,6 +772,15 @@ export class MarkdownBackend implements IStorage {
     const filePath = path.join(this.basePath, "_daily_stats.yaml");
     try {
       fs.writeFileSync(filePath, YAML.stringify(stats), "utf-8");
+    } catch (err) {
+      throw new StorageError(`write ${filePath}`, err instanceof Error ? err : undefined);
+    }
+  }
+
+  private persistTaskRelations(): void {
+    const filePath = path.join(this.basePath, "_task_relations.yaml");
+    try {
+      fs.writeFileSync(filePath, YAML.stringify(this.taskRelationList), "utf-8");
     } catch (err) {
       throw new StorageError(`write ${filePath}`, err instanceof Error ? err : undefined);
     }
@@ -1043,6 +1095,17 @@ export class MarkdownBackend implements IStorage {
           this.taskActivityIndex.set(taskId, data.activities as TaskActivityRow[]);
         }
       }
+    }
+  }
+
+  private loadTaskRelations(): void {
+    const filePath = path.join(this.basePath, "_task_relations.yaml");
+    if (!fs.existsSync(filePath)) return;
+
+    const content = fs.readFileSync(filePath, "utf-8");
+    const relations = YAML.parse(content);
+    if (Array.isArray(relations)) {
+      this.taskRelationList = relations as TaskRelationRow[];
     }
   }
 }

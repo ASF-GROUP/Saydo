@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { BarChart3, Flame, Calendar, Clock } from "lucide-react";
+import { BarChart3, Flame, Calendar, Clock, Target } from "lucide-react";
 import { toDateKey } from "../../utils/format-date.js";
 import type { Task } from "../../core/types.js";
 
@@ -106,6 +106,25 @@ export function Stats({ tasks }: StatsProps) {
 
   const maxCount = Math.max(...dailyCounts.map((d) => d.count), 1);
 
+  // Estimation accuracy stats
+  const accuracyStats = useMemo(() => {
+    const tracked = completedTasks.filter(
+      (t) => t.estimatedMinutes != null && t.estimatedMinutes > 0 && t.actualMinutes != null && t.actualMinutes > 0,
+    );
+    if (tracked.length === 0) return null;
+
+    let totalVariance = 0;
+    for (const t of tracked) {
+      totalVariance += Math.abs(t.actualMinutes! - t.estimatedMinutes!) / t.estimatedMinutes!;
+    }
+    const avgVariance = totalVariance / tracked.length;
+    const accuracy = Math.max(0, Math.round((1 - avgVariance) * 100));
+    const avgEstimated = tracked.reduce((s, t) => s + t.estimatedMinutes!, 0) / tracked.length;
+    const avgActual = tracked.reduce((s, t) => s + t.actualMinutes!, 0) / tracked.length;
+
+    return { accuracy, avgVariance: Math.round(avgVariance * 100), count: tracked.length, avgEstimated: Math.round(avgEstimated), avgActual: Math.round(avgActual) };
+  }, [completedTasks]);
+
   return (
     <div>
       {/* Header */}
@@ -207,6 +226,36 @@ export function Stats({ tasks }: StatsProps) {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Estimation Accuracy */}
+      <div className="mt-8">
+        <h2 className="text-sm font-semibold text-on-surface mb-3 flex items-center gap-2">
+          <Target size={14} />
+          Estimation Accuracy
+        </h2>
+        {accuracyStats ? (
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-xl border border-border bg-surface-secondary p-3 text-center">
+              <p className="text-xl font-bold text-on-surface">{accuracyStats.accuracy}%</p>
+              <p className="text-xs text-on-surface-muted">Accuracy</p>
+            </div>
+            <div className="rounded-xl border border-border bg-surface-secondary p-3 text-center">
+              <p className="text-xl font-bold text-on-surface">
+                {formatMinutes(accuracyStats.avgEstimated)} → {formatMinutes(accuracyStats.avgActual)}
+              </p>
+              <p className="text-xs text-on-surface-muted">Avg est. → actual</p>
+            </div>
+            <div className="rounded-xl border border-border bg-surface-secondary p-3 text-center">
+              <p className="text-xl font-bold text-on-surface">{accuracyStats.count}</p>
+              <p className="text-xs text-on-surface-muted">Tasks tracked</p>
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-on-surface-muted italic">
+            Complete tasks with both estimated and actual times to see accuracy stats.
+          </p>
+        )}
       </div>
     </div>
   );

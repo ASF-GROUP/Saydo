@@ -1,10 +1,12 @@
-import { useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { parseTask } from "../../parser/task-parser.js";
 import { toDateKey } from "../../utils/format-date.js";
 import { TaskInput } from "../components/TaskInput.js";
 import { TaskList } from "../components/TaskList.js";
 import { OverdueSection } from "../components/OverdueSection.js";
 import { CompletionRing } from "../components/CompletionRing.js";
+import { DailyPlanningModal } from "../components/DailyPlanningModal.js";
+import { DailyReviewModal } from "../components/DailyReviewModal.js";
 import { useGeneralSettings } from "../context/SettingsContext.js";
 import type { Task, Project } from "../../core/types.js";
 
@@ -87,6 +89,8 @@ export function Today({
   autoFocusTrigger,
 }: TodayProps) {
   const { settings } = useGeneralSettings();
+  const [planningOpen, setPlanningOpen] = useState(false);
+  const [reviewOpen, setReviewOpen] = useState(false);
   const today = toDateKey(new Date());
 
   const projectMap = useMemo(() => {
@@ -136,7 +140,21 @@ export function Today({
     <div>
       {/* Header row: "Today" title + task count + CompletionRing */}
       <div className="flex items-center justify-between mb-4 md:mb-6">
-        <h1 className="text-2xl md:text-3xl font-bold text-on-surface">Today</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl md:text-3xl font-bold text-on-surface">Today</h1>
+          <button
+            onClick={() => setPlanningOpen(true)}
+            className="px-3 py-1 text-xs font-medium rounded-full bg-accent/10 text-accent hover:bg-accent/20 transition-colors"
+          >
+            Plan My Day
+          </button>
+          <button
+            onClick={() => setReviewOpen(true)}
+            className="px-3 py-1 text-xs font-medium rounded-full bg-surface-tertiary text-on-surface-muted hover:bg-surface-tertiary/80 transition-colors"
+          >
+            End of Day
+          </button>
+        </div>
         <div className="flex items-center gap-3">
           <span className="text-sm text-on-surface-muted">
             {totalCount} {totalCount === 1 ? "task" : "tasks"}
@@ -189,6 +207,20 @@ export function Today({
           onContextMenu={onContextMenu}
         />
       </div>
+
+      <DailyPlanningModal
+        open={planningOpen}
+        onComplete={() => setPlanningOpen(false)}
+        tasks={tasks}
+        projects={projects}
+        onUpdateTask={onUpdateTask}
+      />
+      <DailyReviewModal
+        open={reviewOpen}
+        onComplete={() => setReviewOpen(false)}
+        tasks={tasks}
+        onUpdateTask={onUpdateTask}
+      />
     </div>
   );
 }

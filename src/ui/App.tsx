@@ -41,8 +41,10 @@ import { Completed } from "./views/Completed.js";
 import { Cancelled } from "./views/Cancelled.js";
 import { Someday } from "./views/Someday.js";
 import { Stats } from "./views/Stats.js";
+import { Matrix } from "./views/Matrix.js";
 import { Calendar } from "./views/Calendar.js";
 import { FiltersLabels } from "./views/FiltersLabels.js";
+import { FilterView } from "./views/FilterView.js";
 import { TaskPage } from "./views/TaskPage.js";
 import { ChordIndicator } from "./components/ChordIndicator.js";
 import { Breadcrumb, type BreadcrumbItem } from "./components/Breadcrumb.js";
@@ -56,6 +58,8 @@ import { SkeletonTaskList } from "./components/Skeleton.js";
 import { QuickAddModal } from "./components/QuickAddModal.js";
 import { OnboardingModal } from "./components/OnboardingModal.js";
 
+import { BlockedTaskIdsContext } from "./context/BlockedTaskIdsContext.js";
+
 const SIDEBAR_COLLAPSED_STORAGE_KEY = "saydo.ui.sidebar.collapsed";
 
 function AppContent() {
@@ -65,6 +69,7 @@ function AppContent() {
     selectedProjectId,
     selectedRouteTaskId,
     selectedPluginViewId,
+    selectedFilterId,
     settingsTab,
     focusModeOpen,
     setFocusModeOpen,
@@ -115,9 +120,11 @@ function AppContent() {
   const [projectModalOpen, setProjectModalOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [savedFilters, setSavedFilters] = useState<Array<{ id: string; name: string; query: string; color?: string }>>([]);
   const [sections, setSections] = useState<Section[]>([]);
   const [taskComments, setTaskComments] = useState<TaskComment[]>([]);
   const [taskActivity, setTaskActivity] = useState<TaskActivity[]>([]);
+  const [blockedTaskIds, setBlockedTaskIds] = useState<Set<string>>(new Set());
   const [contextMenu, setContextMenu] = useState<{
     taskId: string;
     position: { x: number; y: number };
@@ -160,11 +167,25 @@ function AppContent() {
     }
   }, []);
 
+  const fetchBlockedTaskIds = useCallback(async () => {
+    try {
+      const relations = await api.listTaskRelations();
+      const blocked = new Set<string>();
+      for (const r of relations) {
+        blocked.add(r.relatedTaskId);
+      }
+      setBlockedTaskIds(blocked);
+    } catch {
+      // Non-critical
+    }
+  }, []);
+
   const taskCount = state.tasks.length;
   useEffect(() => {
     fetchProjects();
     fetchTags();
-  }, [taskCount, fetchProjects, fetchTags]);
+    fetchBlockedTaskIds();
+  }, [taskCount, fetchProjects, fetchTags, fetchBlockedTaskIds]);
 
   // Refresh projects/tags when AI tools mutate them
   useEffect(() => {
@@ -186,15 +207,27 @@ function AppContent() {
     });
   }, []);
 
+  // ── Load saved filters ──
+  const fetchSavedFilters = useCallback(async () => {
+    try {
+      const val = await api.getAppSetting("saved_filters");
+      if (val) setSavedFilters(JSON.parse(val));
+    } catch { /* non-critical */ }
+  }, []);
+
+  useEffect(() => {
+    fetchSavedFilters();
+  }, [fetchSavedFilters]);
+
   // ── Close drawer on navigation ──
   useEffect(() => {
     setDrawerOpen(false);
-  }, [currentView, selectedProjectId, selectedPluginViewId]);
+  }, [currentView, selectedProjectId, selectedPluginViewId, selectedFilterId]);
 
   // ── Clear selected task on navigation ──
   useEffect(() => {
     setSelectedTaskId(null);
-  }, [currentView, selectedProjectId, selectedPluginViewId, setSelectedTaskId]);
+  }, [currentView, selectedProjectId, selectedPluginViewId, selectedFilterId, setSelectedTaskId]);
 
   // ── Visible tasks for keyboard navigation ──
   const visibleTasks = useMemo(() => {
@@ -380,7 +413,7 @@ function AppContent() {
   // Clear context menu on navigation
   useEffect(() => {
     setContextMenu(null);
-  }, [currentView, selectedProjectId, selectedPluginViewId]);
+  }, [currentView, selectedProjectId, selectedPluginViewId, selectedFilterId]);
 
   // ── Sections ──
   const fetchSections = useCallback(async (projectId: string) => {
@@ -491,7 +524,7 @@ function AppContent() {
   // ── Clear multi-selection on navigation ──
   useEffect(() => {
     clearSelection();
-  }, [currentView, selectedProjectId, selectedPluginViewId, clearSelection]);
+  }, [currentView, selectedProjectId, selectedPluginViewId, selectedFilterId, clearSelection]);
 
   // ── Bulk actions ──
   const { handleBulkComplete, handleBulkDelete, handleBulkMoveToProject, handleBulkAddTag } =
@@ -615,6 +648,12 @@ function AppContent() {
         return "Someday / Maybe - Saydo";
       case "stats":
         return "Stats - Saydo";
+      case "matrix":
+        return "Matrix - Saydo";
+      case "filter": {
+        const filter = savedFilters.find((f) => f.id === selectedFilterId);
+        return filter ? `${filter.name} - Saydo` : "Filter - Saydo";
+      }
       case "ai-chat":
         return "AI Chat - Saydo";
       default:
@@ -629,6 +668,8 @@ function AppContent() {
     state.tasks,
     pluginViews,
     selectedPluginViewId,
+    selectedFilterId,
+    savedFilters,
     calendarMode,
   ]);
 
@@ -793,6 +834,32 @@ function AppContent() {
         ) : null;
       case "stats":
         return featureSettings.feature_stats !== "false" ? <Stats tasks={state.tasks} /> : null;
+      case "matrix":
+        return featureSettings.feature_matrix !== "false" ? (
+          <Matrix
+            tasks={state.tasks}
+            onToggleTask={handleToggleTask}
+            onSelectTask={handleSelectTask}
+            onUpdateTask={handleUpdateTask}
+            selectedTaskId={selectedTaskId}
+          />
+        ) : null;
+      case "filter":
+        return selectedFilterId ? (
+          <FilterView
+            filterId={selectedFilterId}
+            tasks={state.tasks}
+            onToggleTask={handleToggleTask}
+            onSelectTask={handleSelectTask}
+            selectedTaskId={selectedTaskId}
+            selectedTaskIds={multiSelectedIds}
+            onMultiSelect={handleMultiSelect}
+            onReorder={handleReorder}
+            onAddSubtask={handleAddSubtask}
+            onUpdateDueDate={handleUpdateDueDate}
+            onContextMenu={handleContextMenu}
+          />
+        ) : null;
       case "plugin-view": {
         const viewInfo = pluginViews.find((v) => v.id === selectedPluginViewId);
         return selectedPluginViewId ? (
@@ -811,6 +878,7 @@ function AppContent() {
   };
 
   return (
+    <BlockedTaskIdsContext.Provider value={blockedTaskIds}>
     <div className="flex flex-col h-screen bg-surface text-on-surface pb-[--height-bottom-nav] md:pb-0">
       <a
         href="#main-content"
@@ -840,6 +908,8 @@ function AppContent() {
             todayCount={todayTaskCount}
             onOpenProjectModal={() => setProjectModalOpen(true)}
             builtinPluginIds={builtinPluginIds}
+            savedFilters={savedFilters}
+            selectedFilterId={selectedFilterId}
           />
         </div>
         <main
@@ -935,6 +1005,8 @@ function AppContent() {
             setProjectModalOpen(true);
           }}
           builtinPluginIds={builtinPluginIds}
+          savedFilters={savedFilters}
+          selectedFilterId={selectedFilterId}
         />
       </MobileDrawer>
 
@@ -1054,6 +1126,7 @@ function AppContent() {
         />
       )}
     </div>
+    </BlockedTaskIdsContext.Provider>
   );
 }
 

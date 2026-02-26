@@ -50,6 +50,13 @@
       "when": 1771720678530,
       "tag": "0006_solid_mephisto",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1772066055071,
+      "tag": "0007_cold_living_mummy",
+      "breakpoints": true
     }
   ]
 }

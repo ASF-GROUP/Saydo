@@ -18,6 +18,7 @@ export const CreateTaskInput = z.object({
   remindAt: z.string().datetime().nullable().optional(),
   tags: z.array(z.string()).optional().default([]),
   estimatedMinutes: z.number().int().min(1).nullable().optional(),
+  actualMinutes: z.number().int().min(0).nullable().optional(),
   deadline: z.string().datetime().nullable().optional(),
   isSomeday: z.boolean().optional(),
   sectionId: z.string().nullable().optional(),
@@ -41,6 +42,7 @@ export interface Task {
   parentId: string | null;
   remindAt: string | null;
   estimatedMinutes: number | null;
+  actualMinutes: number | null;
   deadline: string | null;
   isSomeday: boolean;
   sectionId: string | null;
@@ -129,6 +131,12 @@ export interface TaskActivity {
   oldValue: string | null;
   newValue: string | null;
   createdAt: string;
+}
+
+export interface TaskRelation {
+  taskId: string;
+  relatedTaskId: string;
+  type: "blocks";
 }
 
 export interface DailyStat {

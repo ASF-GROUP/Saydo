@@ -10,6 +10,7 @@ import {
   Circle,
   CheckCircle2,
   XCircle,
+  Clock,
 } from "lucide-react";
 import type { Task, UpdateTaskInput } from "../../core/types.js";
 import { DatePicker } from "./DatePicker.js";
@@ -356,6 +357,27 @@ export function TaskMetadataSidebar({
           />
         )}
       </div>
+
+      {/* Actual time — only for completed tasks */}
+      {task.status === "completed" && (
+        <div>
+          <label className="text-xs text-on-surface-muted font-medium flex items-center gap-1.5 mb-1">
+            <Clock size={12} />
+            Actual time (minutes)
+          </label>
+          <input
+            type="number"
+            min={0}
+            value={task.actualMinutes ?? ""}
+            placeholder="—"
+            onChange={(e) => {
+              const val = e.target.value ? parseInt(e.target.value, 10) : null;
+              onUpdate(task.id, { actualMinutes: val });
+            }}
+            className="w-full text-sm bg-transparent border border-border rounded-md px-3 py-1.5 text-on-surface placeholder-on-surface-muted/50 focus:outline-none focus:ring-1 focus:ring-accent"
+          />
+        </div>
+      )}
 
       <div className="border-t border-border" />
 

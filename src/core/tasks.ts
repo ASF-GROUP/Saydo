@@ -50,6 +50,7 @@ export class TaskService {
       parentId: input.parentId ?? null,
       remindAt: input.remindAt ?? null,
       estimatedMinutes: input.estimatedMinutes ?? null,
+      actualMinutes: input.actualMinutes ?? null,
       deadline: input.deadline ?? null,
       isSomeday: input.isSomeday ?? false,
       sectionId: input.sectionId ?? null,
@@ -77,6 +78,7 @@ export class TaskService {
       parentId: input.parentId ?? null,
       remindAt: input.remindAt ?? null,
       estimatedMinutes: input.estimatedMinutes ?? null,
+      actualMinutes: input.actualMinutes ?? null,
       deadline: input.deadline ?? null,
       isSomeday: input.isSomeday ?? false,
       sectionId: input.sectionId ?? null,
@@ -110,6 +112,7 @@ export class TaskService {
       parentId: row.parentId ?? null,
       remindAt: row.remindAt ?? null,
       estimatedMinutes: row.estimatedMinutes ?? null,
+      actualMinutes: (row as any).actualMinutes ?? null,
       deadline: row.deadline ?? null,
       isSomeday: row.isSomeday ?? false,
       sectionId: row.sectionId ?? null,
@@ -139,6 +142,7 @@ export class TaskService {
       parentId: row.parentId ?? null,
       remindAt: row.remindAt ?? null,
       estimatedMinutes: row.estimatedMinutes ?? null,
+      actualMinutes: (row as any).actualMinutes ?? null,
       deadline: row.deadline ?? null,
       isSomeday: row.isSomeday ?? false,
       sectionId: row.sectionId ?? null,
@@ -333,6 +337,7 @@ export class TaskService {
       parentId: task.parentId,
       remindAt: task.remindAt,
       estimatedMinutes: task.estimatedMinutes,
+      actualMinutes: task.actualMinutes,
       deadline: task.deadline,
       isSomeday: task.isSomeday,
       sectionId: task.sectionId,
@@ -377,6 +382,7 @@ export class TaskService {
       parentId: row.parentId ?? null,
       remindAt: row.remindAt ?? null,
       estimatedMinutes: row.estimatedMinutes ?? null,
+      actualMinutes: (row as any).actualMinutes ?? null,
       deadline: row.deadline ?? null,
       isSomeday: row.isSomeday ?? false,
       sectionId: row.sectionId ?? null,
@@ -446,6 +452,73 @@ export class TaskService {
 
     // Make this task a child of prevSibling
     return this.update(id, { parentId: prevSibling.id } as any);
+  }
+
+  // ── Task Relations ──
+
+  async addRelation(
+    taskId: string,
+    relatedTaskId: string,
+    type: "blocks" = "blocks",
+  ): Promise<void> {
+    const task = await this.get(taskId);
+    if (!task) throw new NotFoundError("Task", taskId);
+    const related = await this.get(relatedTaskId);
+    if (!related) throw new NotFoundError("Task", relatedTaskId);
+
+    // Cycle detection: would relatedTaskId transitively block taskId?
+    if (this.wouldCreateCycle(taskId, relatedTaskId)) {
+      throw new Error("Cannot create relation: would create a cycle");
+    }
+
+    this.queries.insertTaskRelation({ taskId, relatedTaskId, type });
+    this.eventBus?.emit("task:update", { task, changes: {} });
+  }
+
+  async removeRelation(taskId: string, relatedTaskId: string): Promise<void> {
+    this.queries.deleteTaskRelation(taskId, relatedTaskId);
+  }
+
+  async getRelations(taskId: string): Promise<{ blocks: string[]; blockedBy: string[] }> {
+    const rows = this.queries.getTaskRelations(taskId);
+    const blocks: string[] = [];
+    const blockedBy: string[] = [];
+
+    for (const row of rows) {
+      if (row.taskId === taskId) {
+        blocks.push(row.relatedTaskId);
+      } else {
+        blockedBy.push(row.taskId);
+      }
+    }
+
+    return { blocks, blockedBy };
+  }
+
+  async listAllRelations(): Promise<Array<{ taskId: string; relatedTaskId: string; type: string }>> {
+    return this.queries.listTaskRelations();
+  }
+
+  private wouldCreateCycle(blockerId: string, blockedId: string): boolean {
+    // BFS from blockedId through "blocks" edges to see if we reach blockerId
+    const allRelations = this.queries.listTaskRelations();
+    const adjacency = new Map<string, string[]>();
+    for (const rel of allRelations) {
+      if (!adjacency.has(rel.taskId)) adjacency.set(rel.taskId, []);
+      adjacency.get(rel.taskId)!.push(rel.relatedTaskId);
+    }
+
+    const visited = new Set<string>();
+    const queue = [blockedId];
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      if (current === blockerId) return true;
+      if (visited.has(current)) continue;
+      visited.add(current);
+      const neighbors = adjacency.get(current) ?? [];
+      queue.push(...neighbors);
+    }
+    return false;
   }
 
   /**

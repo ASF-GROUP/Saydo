@@ -14,6 +14,7 @@ export interface TaskRow {
   parentId: string | null;
   remindAt: string | null;
   estimatedMinutes: number | null;
+  actualMinutes: number | null;
   deadline: string | null;
   isSomeday: boolean;
   sectionId: string | null;
@@ -126,6 +127,12 @@ export interface TemplateRow {
   updatedAt: string;
 }
 
+export interface TaskRelationRow {
+  taskId: string;
+  relatedTaskId: string;
+  type: "blocks";
+}
+
 /** Result type for mutations that report affected row count. */
 export interface MutationResult {
   changes: number;
@@ -213,6 +220,13 @@ export interface IStorage {
   // ── Task Activity ──
   listTaskActivity(taskId: string): TaskActivityRow[];
   insertTaskActivity(activity: TaskActivityRow): MutationResult;
+
+  // ── Task Relations ──
+  listTaskRelations(): TaskRelationRow[];
+  getTaskRelations(taskId: string): TaskRelationRow[];
+  insertTaskRelation(relation: TaskRelationRow): MutationResult;
+  deleteTaskRelation(taskId: string, relatedTaskId: string): MutationResult;
+  deleteAllTaskRelations(taskId: string): MutationResult;
 
   // ── Daily Stats ──
   getDailyStat(date: string): DailyStatRow | undefined;

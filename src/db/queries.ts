@@ -1,4 +1,4 @@
-import { eq, desc, inArray, and, lte, gte, isNotNull, min, count } from "drizzle-orm";
+import { eq, desc, inArray, and, or, lte, gte, isNotNull, min, count } from "drizzle-orm";
 import type { BaseSQLiteDatabase } from "drizzle-orm/sqlite-core";
 import * as schema from "./schema.js";
 
@@ -282,6 +282,47 @@ export function createQueries(db: BaseSQLiteDatabase<"sync", any, typeof schema>
         .from(schema.dailyStats)
         .where(and(gte(schema.dailyStats.date, startDate), lte(schema.dailyStats.date, endDate)))
         .all(),
+
+    // ── Task Relations ────────────────────────────────
+    listTaskRelations: () =>
+      db.select().from(schema.taskRelations).all(),
+
+    getTaskRelations: (taskId: string) =>
+      db
+        .select()
+        .from(schema.taskRelations)
+        .where(
+          or(
+            eq(schema.taskRelations.taskId, taskId),
+            eq(schema.taskRelations.relatedTaskId, taskId),
+          ),
+        )
+        .all(),
+
+    insertTaskRelation: (relation: typeof schema.taskRelations.$inferInsert) =>
+      db.insert(schema.taskRelations).values(relation).run(),
+
+    deleteTaskRelation: (taskId: string, relatedTaskId: string) =>
+      db
+        .delete(schema.taskRelations)
+        .where(
+          and(
+            eq(schema.taskRelations.taskId, taskId),
+            eq(schema.taskRelations.relatedTaskId, relatedTaskId),
+          ),
+        )
+        .run(),
+
+    deleteAllTaskRelations: (taskId: string) =>
+      db
+        .delete(schema.taskRelations)
+        .where(
+          or(
+            eq(schema.taskRelations.taskId, taskId),
+            eq(schema.taskRelations.relatedTaskId, taskId),
+          ),
+        )
+        .run(),
   };
 }
 

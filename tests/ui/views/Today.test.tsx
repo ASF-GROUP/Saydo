@@ -42,6 +42,14 @@ vi.mock("../../../src/ui/components/CompletionRing.js", () => ({
   ),
 }));
 
+vi.mock("../../../src/ui/components/DailyPlanningModal.js", () => ({
+  DailyPlanningModal: () => null,
+}));
+
+vi.mock("../../../src/ui/components/DailyReviewModal.js", () => ({
+  DailyReviewModal: () => null,
+}));
+
 vi.mock("../../../src/utils/format-date.js", () => ({
   toDateKey: (d: Date) => d.toISOString().split("T")[0],
 }));

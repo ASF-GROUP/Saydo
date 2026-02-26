@@ -21,6 +21,8 @@ vi.mock("lucide-react", () => {
     XCircle: icon("x-circle"),
     BarChart3: icon("bar-chart"),
     Lightbulb: icon("lightbulb"),
+    Grid2x2: icon("grid2x2"),
+    Filter: icon("filter"),
   };
 });
 

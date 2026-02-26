@@ -16,6 +16,7 @@ import type {
   TaskCommentRow,
   TaskActivityRow,
   DailyStatRow,
+  TaskRelationRow,
   MutationResult,
 } from "./interface.js";
 
@@ -297,5 +298,27 @@ export class SQLiteBackend implements IStorage {
 
   listDailyStats(startDate: string, endDate: string): DailyStatRow[] {
     return this.q.listDailyStats(startDate, endDate) as unknown as DailyStatRow[];
+  }
+
+  // ── Task Relations ──
+
+  listTaskRelations(): TaskRelationRow[] {
+    return this.q.listTaskRelations() as unknown as TaskRelationRow[];
+  }
+
+  getTaskRelations(taskId: string): TaskRelationRow[] {
+    return this.q.getTaskRelations(taskId) as unknown as TaskRelationRow[];
+  }
+
+  insertTaskRelation(relation: TaskRelationRow): MutationResult {
+    return this.q.insertTaskRelation(relation as any);
+  }
+
+  deleteTaskRelation(taskId: string, relatedTaskId: string): MutationResult {
+    return this.q.deleteTaskRelation(taskId, relatedTaskId);
+  }
+
+  deleteAllTaskRelations(taskId: string): MutationResult {
+    return this.q.deleteAllTaskRelations(taskId);
   }
 }

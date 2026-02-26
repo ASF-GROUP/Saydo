@@ -29,6 +29,7 @@ export interface GeneralSettings {
   feature_stats: "true" | "false";
   feature_chords: "true" | "false";
   feature_cancelled: "true" | "false";
+  feature_matrix: "true" | "false";
   daily_capacity_minutes: string;
 }
 
@@ -60,6 +61,7 @@ const DEFAULT_SETTINGS: GeneralSettings = {
   feature_stats: "true",
   feature_chords: "true",
   feature_cancelled: "true",
+  feature_matrix: "true",
   daily_capacity_minutes: "480",
 };
 

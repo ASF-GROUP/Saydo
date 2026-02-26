@@ -15,6 +15,8 @@ export type View =
   | "cancelled"
   | "someday"
   | "stats"
+  | "matrix"
+  | "filter"
   | "ai-chat";
 
 export type CalendarMode = "day" | "week" | "month";
@@ -24,6 +26,7 @@ interface RouteState {
   projectId: string | null;
   taskId: string | null;
   pluginViewId: string | null;
+  filterId: string | null;
   focusModeOpen: boolean;
   calendarMode: CalendarMode | null;
 }
@@ -33,6 +36,7 @@ const DEFAULT_ROUTE_STATE: RouteState = {
   projectId: null,
   taskId: null,
   pluginViewId: null,
+  filterId: null,
   focusModeOpen: false,
   calendarMode: null,
 };
@@ -113,6 +117,14 @@ function parseRouteStateFromHash(hash: string, defaultView: View = "inbox"): Rou
     case "stats":
       route.view = "stats";
       break;
+    case "matrix":
+      route.view = "matrix";
+      break;
+    case "filter":
+      route.view = "filter";
+      route.filterId = decodePathSegment(pathSegments[1]);
+      if (!route.filterId) route.view = "inbox";
+      break;
     case "ai-chat":
       route.view = "ai-chat";
       break;
@@ -165,6 +177,12 @@ function buildHashFromRoute(route: RouteState): string {
     case "stats":
       path = "/stats";
       break;
+    case "matrix":
+      path = "/matrix";
+      break;
+    case "filter":
+      path = route.filterId ? `/filter/${encodeURIComponent(route.filterId)}` : "/inbox";
+      break;
     case "calendar":
       path = "/calendar";
       if (route.calendarMode) {
@@ -191,6 +209,7 @@ export function useRouting() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [selectedRouteTaskId, setSelectedRouteTaskId] = useState<string | null>(null);
   const [selectedPluginViewId, setSelectedPluginViewId] = useState<string | null>(null);
+  const [selectedFilterId, setSelectedFilterId] = useState<string | null>(null);
   const settingsTabRef = useRef<SettingsTab>("general");
   const [, setSettingsTabTrigger] = useState(0);
 
@@ -204,6 +223,7 @@ export function useRouting() {
     setSelectedProjectId(route.view === "project" ? route.projectId : null);
     setSelectedRouteTaskId(route.view === "task" ? route.taskId : null);
     setSelectedPluginViewId(route.view === "plugin-view" ? route.pluginViewId : null);
+    setSelectedFilterId(route.view === "filter" ? route.filterId : null);
     setCalendarMode(route.view === "calendar" ? route.calendarMode : null);
     setFocusModeOpen(route.focusModeOpen);
   }, []);
@@ -213,7 +233,7 @@ export function useRouting() {
     const syncRouteFromLocation = () => {
       const route = parseRouteStateFromHash(window.location.hash, startView);
       applyRouteState(route);
-      navigationKeyRef.current = `${route.view}:${route.projectId ?? ""}:${route.taskId ?? ""}:${route.pluginViewId ?? ""}`;
+      navigationKeyRef.current = `${route.view}:${route.projectId ?? ""}:${route.taskId ?? ""}:${route.pluginViewId ?? ""}:${route.filterId ?? ""}`;
     };
 
     syncRouteFromLocation();
@@ -236,12 +256,13 @@ export function useRouting() {
       projectId: selectedProjectId,
       taskId: selectedRouteTaskId,
       pluginViewId: selectedPluginViewId,
+      filterId: selectedFilterId,
       focusModeOpen,
       calendarMode,
     };
 
     const nextHash = buildHashFromRoute(route);
-    const navigationKey = `${currentView}:${selectedProjectId ?? ""}:${selectedRouteTaskId ?? ""}:${selectedPluginViewId ?? ""}`;
+    const navigationKey = `${currentView}:${selectedProjectId ?? ""}:${selectedRouteTaskId ?? ""}:${selectedPluginViewId ?? ""}:${selectedFilterId ?? ""}`;
 
     if (window.location.hash === nextHash) {
       navigationKeyRef.current = navigationKey;
@@ -260,6 +281,7 @@ export function useRouting() {
     selectedProjectId,
     selectedRouteTaskId,
     selectedPluginViewId,
+    selectedFilterId,
     focusModeOpen,
     calendarMode,
   ]);
@@ -271,6 +293,7 @@ export function useRouting() {
         projectId: view === "project" ? (id ?? null) : null,
         taskId: view === "task" ? (id ?? null) : null,
         pluginViewId: view === "plugin-view" ? (id ?? null) : null,
+        filterId: view === "filter" ? (id ?? null) : null,
         focusModeOpen,
         calendarMode: view === "calendar" ? calendarMode : null,
       };
@@ -291,6 +314,7 @@ export function useRouting() {
     selectedProjectId,
     selectedRouteTaskId,
     selectedPluginViewId,
+    selectedFilterId,
     settingsTab: settingsTabRef.current,
     focusModeOpen,
     setFocusModeOpen,
