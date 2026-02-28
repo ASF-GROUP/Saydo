@@ -1,5 +1,26 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+
+const mockUpdateSetting = vi.fn();
+let mockSettings: Record<string, string> = {};
+
+vi.mock("../../../src/ui/context/SettingsContext.js", () => ({
+  useGeneralSettings: () => ({
+    settings: {
+      feature_cancelled: "true",
+      feature_stats: "true",
+      feature_someday: "true",
+      feature_matrix: "true",
+      feature_calendar: "true",
+      feature_filters_labels: "true",
+      feature_completed: "true",
+      sidebar_nav_order: "",
+      ...mockSettings,
+    },
+    loaded: true,
+    updateSetting: mockUpdateSetting,
+  }),
+}));
 
 vi.mock("lucide-react", () => {
   const icon = (name: string) => (props: any) => <svg data-testid={`${name}-icon`} {...props} />;
@@ -23,8 +44,38 @@ vi.mock("lucide-react", () => {
     Lightbulb: icon("lightbulb"),
     Grid2x2: icon("grid2x2"),
     Filter: icon("filter"),
+    EyeOff: icon("eye-off"),
+    RotateCcw: icon("rotate-ccw"),
   };
 });
+
+// Mock dnd-kit to avoid DOM measurement issues in tests
+vi.mock("@dnd-kit/core", () => ({
+  DndContext: ({ children }: any) => <div data-testid="dnd-context">{children}</div>,
+  closestCenter: vi.fn(),
+  KeyboardSensor: vi.fn(),
+  PointerSensor: vi.fn(),
+  useSensor: vi.fn(),
+  useSensors: () => [],
+}));
+
+vi.mock("@dnd-kit/sortable", () => ({
+  SortableContext: ({ children }: any) => <div data-testid="sortable-context">{children}</div>,
+  sortableKeyboardCoordinates: vi.fn(),
+  useSortable: () => ({
+    attributes: {},
+    listeners: {},
+    setNodeRef: vi.fn(),
+    transform: null,
+    transition: null,
+    isDragging: false,
+  }),
+  verticalListSortingStrategy: vi.fn(),
+}));
+
+vi.mock("@dnd-kit/utilities", () => ({
+  CSS: { Transform: { toString: () => undefined } },
+}));
 
 import { Sidebar } from "../../../src/ui/components/Sidebar.js";
 import type { Project } from "../../../src/core/types.js";
@@ -46,6 +97,11 @@ function makeProject(overrides: Partial<Project> = {}): Project {
 }
 
 describe("Sidebar", () => {
+  beforeEach(() => {
+    mockSettings = {};
+    mockUpdateSetting.mockClear();
+  });
+
   const defaultProps = {
     currentView: "inbox",
     onNavigate: vi.fn(),
@@ -162,5 +218,118 @@ describe("Sidebar", () => {
     // In collapsed mode, the project name is not displayed as text
     // but the My Projects section header is hidden
     expect(screen.queryByText("My Projects")).toBeNull();
+  });
+
+  // ── Context menu tests ──
+
+  it("shows context menu on right-click of nav item", () => {
+    render(<Sidebar {...defaultProps} onOpenSettings={vi.fn()} />);
+    const calendarBtn = screen.getByText("Calendar").closest("button")!;
+    fireEvent.contextMenu(calendarBtn);
+    expect(screen.getByRole("menu")).toBeTruthy();
+    expect(screen.getByText("Hide from sidebar")).toBeTruthy();
+  });
+
+  it("shows 'Hide from sidebar' for optional views", () => {
+    render(<Sidebar {...defaultProps} onOpenSettings={vi.fn()} />);
+    // Test with Stats (optional view)
+    const statsBtn = screen.getByText("Stats").closest("button")!;
+    fireEvent.contextMenu(statsBtn);
+    expect(screen.getByText("Hide from sidebar")).toBeTruthy();
+  });
+
+  it("does NOT show 'Hide from sidebar' for core views", () => {
+    render(<Sidebar {...defaultProps} onOpenSettings={vi.fn()} />);
+    const inboxBtn = screen.getByText("Inbox").closest("button")!;
+    fireEvent.contextMenu(inboxBtn);
+    expect(screen.queryByText("Hide from sidebar")).toBeNull();
+    expect(screen.getByText("Manage in Settings")).toBeTruthy();
+  });
+
+  it("clicking 'Hide from sidebar' calls updateSetting with correct feature key", () => {
+    render(<Sidebar {...defaultProps} onOpenSettings={vi.fn()} />);
+    const calendarBtn = screen.getByText("Calendar").closest("button")!;
+    fireEvent.contextMenu(calendarBtn);
+    fireEvent.click(screen.getByText("Hide from sidebar"));
+    expect(mockUpdateSetting).toHaveBeenCalledWith("feature_calendar", "false");
+  });
+
+  it("core view context menu shows 'Manage in Settings'", () => {
+    const onOpenSettings = vi.fn();
+    render(<Sidebar {...defaultProps} onOpenSettings={onOpenSettings} />);
+    const todayBtn = screen.getByText("Today").closest("button")!;
+    fireEvent.contextMenu(todayBtn);
+    fireEvent.click(screen.getByText("Manage in Settings"));
+    expect(onOpenSettings).toHaveBeenCalled();
+  });
+
+  it("hides calendar when feature_calendar is false", () => {
+    mockSettings = { feature_calendar: "false" };
+    render(<Sidebar {...defaultProps} />);
+    expect(screen.queryByText("Calendar")).toBeNull();
+  });
+
+  it("hides Filters & Labels when feature_filters_labels is false", () => {
+    mockSettings = { feature_filters_labels: "false" };
+    render(<Sidebar {...defaultProps} />);
+    expect(screen.queryByText("Filters & Labels")).toBeNull();
+  });
+
+  it("hides Completed when feature_completed is false", () => {
+    mockSettings = { feature_completed: "false" };
+    render(<Sidebar {...defaultProps} />);
+    expect(screen.queryByText("Completed")).toBeNull();
+  });
+
+  // ── Nav ordering tests ──
+
+  it("renders nav items in stored order from sidebar_nav_order", () => {
+    mockSettings = { sidebar_nav_order: "stats,inbox,today,upcoming,calendar,filters-labels,completed,cancelled,matrix,someday" };
+    render(<Sidebar {...defaultProps} />);
+    const buttons = screen.getAllByRole("button").filter((b) => b.closest("ul"));
+    // Stats should appear before Inbox in the nav
+    const statsIdx = buttons.findIndex((b) => b.textContent?.includes("Stats"));
+    const inboxIdx = buttons.findIndex((b) => b.textContent?.includes("Inbox"));
+    expect(statsIdx).toBeLessThan(inboxIdx);
+  });
+
+  it("items not in stored order appear at end", () => {
+    // Only specify a few items — the rest should appear at end
+    mockSettings = { sidebar_nav_order: "today,inbox" };
+    render(<Sidebar {...defaultProps} />);
+    const buttons = screen.getAllByRole("button").filter((b) => b.closest("ul"));
+    const todayIdx = buttons.findIndex((b) => b.textContent?.includes("Today"));
+    const inboxIdx = buttons.findIndex((b) => b.textContent?.includes("Inbox"));
+    const upcomingIdx = buttons.findIndex((b) => b.textContent?.includes("Upcoming"));
+    expect(todayIdx).toBeLessThan(inboxIdx);
+    expect(inboxIdx).toBeLessThan(upcomingIdx);
+  });
+
+  it("empty sidebar_nav_order uses default order", () => {
+    mockSettings = { sidebar_nav_order: "" };
+    render(<Sidebar {...defaultProps} />);
+    const buttons = screen.getAllByRole("button").filter((b) => b.closest("ul"));
+    const inboxIdx = buttons.findIndex((b) => b.textContent?.includes("Inbox"));
+    const todayIdx = buttons.findIndex((b) => b.textContent?.includes("Today"));
+    const upcomingIdx = buttons.findIndex((b) => b.textContent?.includes("Upcoming"));
+    expect(inboxIdx).toBeLessThan(todayIdx);
+    expect(todayIdx).toBeLessThan(upcomingIdx);
+  });
+
+  it("'Reset order' shown in context menu when sidebar_nav_order is set", () => {
+    mockSettings = { sidebar_nav_order: "today,inbox" };
+    render(<Sidebar {...defaultProps} onOpenSettings={vi.fn()} />);
+    const todayBtn = screen.getByText("Today").closest("button")!;
+    fireEvent.contextMenu(todayBtn);
+    expect(screen.getByText("Reset order")).toBeTruthy();
+  });
+
+  it("'Reset order' clears sidebar_nav_order", () => {
+    mockSettings = { sidebar_nav_order: "today,inbox" };
+    render(<Sidebar {...defaultProps} onOpenSettings={vi.fn()} />);
+    const todayBtn = screen.getByText("Today").closest("button")!;
+    fireEvent.contextMenu(todayBtn);
+    fireEvent.click(screen.getByText("Reset order"));
+    expect(mockUpdateSetting).toHaveBeenCalledWith("sidebar_nav_order", "");
   });
 });

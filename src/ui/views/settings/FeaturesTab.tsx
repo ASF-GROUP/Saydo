@@ -34,6 +34,21 @@ const FEATURES: {
     description: "Add comments and view activity history on tasks",
   },
   {
+    key: "feature_calendar",
+    label: "Calendar view",
+    description: "View tasks on a calendar",
+  },
+  {
+    key: "feature_filters_labels",
+    label: "Filters & Labels",
+    description: "Saved filters and label management",
+  },
+  {
+    key: "feature_completed",
+    label: "Completed tasks view",
+    description: "View completed tasks",
+  },
+  {
     key: "feature_stats",
     label: "Productivity stats",
     description: "Track completion streaks and daily statistics",

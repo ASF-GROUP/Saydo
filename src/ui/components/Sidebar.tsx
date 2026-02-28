@@ -1,4 +1,20 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import {
   Inbox,
   CalendarDays,
@@ -19,10 +35,13 @@ import {
   XCircle,
   Grid2x2,
   Filter,
+  EyeOff,
+  RotateCcw,
 } from "lucide-react";
 import type { Project } from "../../core/types.js";
 import type { PanelInfo, ViewInfo } from "../api/index.js";
-import { useGeneralSettings } from "../context/SettingsContext.js";
+import { useGeneralSettings, type GeneralSettings } from "../context/SettingsContext.js";
+import { ContextMenu } from "./ContextMenu.js";
 
 function CollapsedTooltip({ visible, label }: { visible: boolean; label: string }) {
   if (!visible) return null;
@@ -78,6 +97,34 @@ const NAV_ITEMS: Array<{
   { id: "someday", label: "Someday", icon: Lightbulb },
 ];
 
+const CORE_VIEWS = new Set(["inbox", "today", "upcoming"]);
+
+const NAV_FEATURE_MAP: Record<string, keyof GeneralSettings> = {
+  calendar: "feature_calendar",
+  "filters-labels": "feature_filters_labels",
+  completed: "feature_completed",
+  cancelled: "feature_cancelled",
+  matrix: "feature_matrix",
+  stats: "feature_stats",
+  someday: "feature_someday",
+};
+
+function SortableNavItem({ id, children }: { id: string; children: React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id,
+  });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+  return (
+    <li ref={setNodeRef} style={style} {...attributes} {...listeners}>
+      {children}
+    </li>
+  );
+}
+
 function SectionHeader({
   label,
   expanded,
@@ -125,12 +172,19 @@ export function Sidebar({
   savedFilters = [],
   selectedFilterId,
 }: SidebarProps) {
-  const { settings } = useGeneralSettings();
+  const { settings, updateSetting } = useGeneralSettings();
   const [projectsExpanded, setProjectsExpanded] = useState(true);
   const [favoritesExpanded, setFavoritesExpanded] = useState(true);
   const [toolsExpanded, setToolsExpanded] = useState(true);
   const [filtersExpanded, setFiltersExpanded] = useState(true);
   const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set());
+  const [ctxMenu, setCtxMenu] = useState<{ itemId: string; x: number; y: number } | null>(null);
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   const visibleNavItems = useMemo(() => {
     const hidden = new Set<string>();
@@ -138,8 +192,105 @@ export function Sidebar({
     if (settings.feature_stats === "false") hidden.add("stats");
     if (settings.feature_someday === "false") hidden.add("someday");
     if (settings.feature_matrix === "false") hidden.add("matrix");
+    if (settings.feature_calendar === "false") hidden.add("calendar");
+    if (settings.feature_filters_labels === "false") hidden.add("filters-labels");
+    if (settings.feature_completed === "false") hidden.add("completed");
     return NAV_ITEMS.filter((item) => !hidden.has(item.id));
-  }, [settings.feature_cancelled, settings.feature_stats, settings.feature_someday, settings.feature_matrix]);
+  }, [
+    settings.feature_cancelled,
+    settings.feature_stats,
+    settings.feature_someday,
+    settings.feature_matrix,
+    settings.feature_calendar,
+    settings.feature_filters_labels,
+    settings.feature_completed,
+  ]);
+
+  // Apply stored nav order
+  const orderedNavItems = useMemo(() => {
+    const orderStr = settings.sidebar_nav_order;
+    if (!orderStr) return visibleNavItems;
+    const order = orderStr.split(",");
+    const itemMap = new Map(visibleNavItems.map((item) => [item.id, item]));
+    const ordered: typeof visibleNavItems = [];
+    for (const id of order) {
+      const item = itemMap.get(id);
+      if (item) {
+        ordered.push(item);
+        itemMap.delete(id);
+      }
+    }
+    // Append items not in stored order at the end
+    for (const item of visibleNavItems) {
+      if (itemMap.has(item.id)) ordered.push(item);
+    }
+    return ordered;
+  }, [visibleNavItems, settings.sidebar_nav_order]);
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+      const ids = orderedNavItems.map((i) => i.id);
+      const oldIndex = ids.indexOf(active.id as string);
+      const newIndex = ids.indexOf(over.id as string);
+      if (oldIndex === -1 || newIndex === -1) return;
+      const reordered = [...ids];
+      reordered.splice(oldIndex, 1);
+      reordered.splice(newIndex, 0, active.id as string);
+      updateSetting("sidebar_nav_order", reordered.join(","));
+    },
+    [orderedNavItems, updateSetting],
+  );
+
+  const handleNavContextMenu = useCallback(
+    (e: React.MouseEvent, itemId: string) => {
+      e.preventDefault();
+      setCtxMenu({ itemId, x: e.clientX, y: e.clientY });
+    },
+    [],
+  );
+
+  const contextMenuItems = useMemo(() => {
+    if (!ctxMenu) return [];
+    const { itemId } = ctxMenu;
+    const items: Array<{
+      id: string;
+      label: string;
+      icon?: React.ReactNode;
+      onClick?: () => void;
+    }> = [];
+
+    const featureKey = NAV_FEATURE_MAP[itemId];
+    if (featureKey && !CORE_VIEWS.has(itemId)) {
+      items.push({
+        id: "hide",
+        label: "Hide from sidebar",
+        icon: <EyeOff size={14} />,
+        onClick: () => updateSetting(featureKey, "false"),
+      });
+    }
+
+    if (CORE_VIEWS.has(itemId) && onOpenSettings) {
+      items.push({
+        id: "manage",
+        label: "Manage in Settings",
+        icon: <Settings size={14} />,
+        onClick: () => onOpenSettings(),
+      });
+    }
+
+    if (settings.sidebar_nav_order) {
+      items.push({
+        id: "reset-order",
+        label: "Reset order",
+        icon: <RotateCcw size={14} />,
+        onClick: () => updateSetting("sidebar_nav_order", ""),
+      });
+    }
+
+    return items;
+  }, [ctxMenu, onOpenSettings, settings.sidebar_nav_order, updateSetting]);
 
   const favoriteProjects = useMemo(
     () => projects.filter((p) => p.isFavorite && !p.archived),
@@ -208,34 +359,34 @@ export function Sidebar({
     isActive: boolean,
     onClick: () => void,
     count?: number,
+    onCtxMenu?: (e: React.MouseEvent) => void,
   ) => (
-    <li key={id}>
-      <button
-        onClick={onClick}
-        aria-current={isActive ? "page" : undefined}
-        className={`group relative w-full text-left px-3 py-1.5 rounded-md text-sm flex items-center transition-colors ${
-          collapsed ? "justify-center" : "gap-3"
-        } ${
-          isActive
-            ? "bg-accent/10 text-accent font-medium"
-            : "text-on-surface-secondary hover:bg-surface-tertiary hover:text-on-surface"
-        }`}
-      >
-        {typeof icon === "string" ? (
-          <span className="text-lg leading-none w-[18px] text-center flex-shrink-0">{icon}</span>
-        ) : (
-          (() => {
-            const Icon = icon;
-            return <Icon size={18} strokeWidth={isActive ? 2.25 : 1.75} />;
-          })()
-        )}
-        {!collapsed && <span className="flex-1">{label}</span>}
-        {!collapsed && count !== undefined && count > 0 && (
-          <span className="text-xs tabular-nums text-on-surface-muted">{count}</span>
-        )}
-        <CollapsedTooltip visible={collapsed} label={label} />
-      </button>
-    </li>
+    <button
+      onClick={onClick}
+      onContextMenu={onCtxMenu}
+      aria-current={isActive ? "page" : undefined}
+      className={`group relative w-full text-left px-3 py-1.5 rounded-md text-sm flex items-center transition-colors ${
+        collapsed ? "justify-center" : "gap-3"
+      } ${
+        isActive
+          ? "bg-accent/10 text-accent font-medium"
+          : "text-on-surface-secondary hover:bg-surface-tertiary hover:text-on-surface"
+      }`}
+    >
+      {typeof icon === "string" ? (
+        <span className="text-lg leading-none w-[18px] text-center flex-shrink-0">{icon}</span>
+      ) : (
+        (() => {
+          const Icon = icon;
+          return <Icon size={18} strokeWidth={isActive ? 2.25 : 1.75} />;
+        })()
+      )}
+      {!collapsed && <span className="flex-1">{label}</span>}
+      {!collapsed && count !== undefined && count > 0 && (
+        <span className="text-xs tabular-nums text-on-surface-muted">{count}</span>
+      )}
+      <CollapsedTooltip visible={collapsed} label={label} />
+    </button>
   );
 
   const renderPluginViewButton = (view: ViewInfo) => {
@@ -375,19 +526,51 @@ export function Sidebar({
       >
         <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide">
           {/* Nav items + navigation-slot plugin views */}
-          <ul className="space-y-0.5">
-            {visibleNavItems.map((item) =>
-              renderNavButton(
-                item.id,
-                item.label,
-                item.icon,
-                currentView === item.id,
-                () => onNavigate(item.id),
-                item.countKey ? countMap[item.countKey] : undefined,
-              ),
-            )}
-            {viewsBySlot.navigation.map((view) => renderPluginViewButton(view))}
-          </ul>
+          {!collapsed ? (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext
+                items={orderedNavItems.map((i) => i.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <ul className="space-y-0.5" role="list">
+                  {orderedNavItems.map((item) => (
+                    <SortableNavItem key={item.id} id={item.id}>
+                      {renderNavButton(
+                        item.id,
+                        item.label,
+                        item.icon,
+                        currentView === item.id,
+                        () => onNavigate(item.id),
+                        item.countKey ? countMap[item.countKey] : undefined,
+                        (e) => handleNavContextMenu(e, item.id),
+                      )}
+                    </SortableNavItem>
+                  ))}
+                  {viewsBySlot.navigation.map((view) => (
+                    <li key={`plugin-view-${view.id}`}>{renderPluginViewButton(view)}</li>
+                  ))}
+                </ul>
+              </SortableContext>
+            </DndContext>
+          ) : (
+            <ul className="space-y-0.5">
+              {orderedNavItems.map((item) => (
+                <li key={item.id}>
+                  {renderNavButton(
+                    item.id,
+                    item.label,
+                    item.icon,
+                    currentView === item.id,
+                    () => onNavigate(item.id),
+                    item.countKey ? countMap[item.countKey] : undefined,
+                  )}
+                </li>
+              ))}
+              {viewsBySlot.navigation.map((view) => (
+                <li key={`plugin-view-${view.id}`}>{renderPluginViewButton(view)}</li>
+              ))}
+            </ul>
+          )}
 
           {/* ── Collapsed Projects ── */}
           {collapsed && projects.filter((p) => !p.archived).length > 0 && (
@@ -540,12 +723,16 @@ export function Sidebar({
                 <ul className="space-y-0.5">
                   {savedFilters.map((filter) => {
                     const isActive = currentView === "filter" && selectedFilterId === filter.id;
-                    return renderNavButton(
-                      `filter-${filter.id}`,
-                      filter.name,
-                      Filter,
-                      isActive,
-                      () => onNavigate("filter", filter.id),
+                    return (
+                      <li key={`filter-${filter.id}`}>
+                        {renderNavButton(
+                          `filter-${filter.id}`,
+                          filter.name,
+                          Filter,
+                          isActive,
+                          () => onNavigate("filter", filter.id),
+                        )}
+                      </li>
                     );
                   })}
                 </ul>
@@ -565,7 +752,9 @@ export function Sidebar({
                 <>
                   {viewsBySlot.tools.length > 0 && (
                     <ul className="space-y-0.5">
-                      {viewsBySlot.tools.map((view) => renderPluginViewButton(view))}
+                      {viewsBySlot.tools.map((view) => (
+                        <li key={`plugin-view-${view.id}`}>{renderPluginViewButton(view)}</li>
+                      ))}
                     </ul>
                   )}
                   {panels.length > 0 && (
@@ -604,10 +793,14 @@ export function Sidebar({
             </h3>
           )}
           <ul className="space-y-0.5">
-            {viewsBySlot.workspace.map((view) => renderPluginViewButton(view))}
-            {renderNavButton("ai-chat", "AI Chat", MessageSquare, currentView === "ai-chat", () =>
-              onNavigate("ai-chat"),
-            )}
+            {viewsBySlot.workspace.map((view) => (
+              <li key={`plugin-view-${view.id}`}>{renderPluginViewButton(view)}</li>
+            ))}
+            <li>
+              {renderNavButton("ai-chat", "AI Chat", MessageSquare, currentView === "ai-chat", () =>
+                onNavigate("ai-chat"),
+              )}
+            </li>
             {onOpenSettings && (
               <li>
                 <button
@@ -625,6 +818,15 @@ export function Sidebar({
           </ul>
         </div>
       </nav>
+
+      {/* ── Nav item context menu ── */}
+      {ctxMenu && contextMenuItems.length > 0 && (
+        <ContextMenu
+          items={contextMenuItems}
+          position={{ x: ctxMenu.x, y: ctxMenu.y }}
+          onClose={() => setCtxMenu(null)}
+        />
+      )}
     </aside>
   );
 }

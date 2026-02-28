@@ -30,6 +30,10 @@ export interface GeneralSettings {
   feature_chords: "true" | "false";
   feature_cancelled: "true" | "false";
   feature_matrix: "true" | "false";
+  feature_calendar: "true" | "false";
+  feature_filters_labels: "true" | "false";
+  feature_completed: "true" | "false";
+  sidebar_nav_order: string;
   daily_capacity_minutes: string;
   nudge_enabled: "true" | "false";
   nudge_overdue_alert: "true" | "false";
@@ -68,6 +72,10 @@ const DEFAULT_SETTINGS: GeneralSettings = {
   feature_chords: "true",
   feature_cancelled: "true",
   feature_matrix: "true",
+  feature_calendar: "true",
+  feature_filters_labels: "true",
+  feature_completed: "true",
+  sidebar_nav_order: "",
   daily_capacity_minutes: "480",
   nudge_enabled: "true",
   nudge_overdue_alert: "true",
