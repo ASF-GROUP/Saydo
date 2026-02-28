@@ -78,6 +78,8 @@ const DATA_MUTATING_TOOLS = new Set([
   "delete_project",
   "add_tags_to_task",
   "remove_tags_from_task",
+  "save_memory",
+  "forget_memory",
 ]);
 
 export function AIProvider({ children }: { children: ReactNode }) {

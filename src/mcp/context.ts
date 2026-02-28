@@ -13,5 +13,6 @@ export function createToolContext(services: AppServices): ToolContext {
     projectService: services.projectService,
     tagService: services.tagService,
     statsService: services.statsService,
+    storage: services.storage,
   };
 }

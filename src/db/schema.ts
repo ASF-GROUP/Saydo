@@ -142,6 +142,18 @@ export const taskActivity = sqliteTable("task_activity", {
   createdAt: text("created_at").notNull(),
 });
 
+export const aiMemories = sqliteTable("ai_memories", {
+  id: text("id").primaryKey(),
+  content: text("content").notNull(),
+  category: text("category", {
+    enum: ["preference", "habit", "context", "instruction", "pattern"],
+  })
+    .notNull()
+    .default("context"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
 export const dailyStats = sqliteTable("daily_stats", {
   id: text("id").primaryKey(),
   date: text("date").notNull().unique(),

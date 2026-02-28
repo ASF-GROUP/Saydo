@@ -323,6 +323,26 @@ export function createQueries(db: BaseSQLiteDatabase<"sync", any, typeof schema>
           ),
         )
         .run(),
+
+    // ── AI Memories ────────────────────────────────
+    listAiMemories: () => db.select().from(schema.aiMemories).all(),
+
+    insertAiMemory: (memory: typeof schema.aiMemories.$inferInsert) =>
+      db.insert(schema.aiMemories).values(memory).run(),
+
+    updateAiMemory: (
+      id: string,
+      content: string,
+      category: "preference" | "habit" | "context" | "instruction" | "pattern",
+    ) =>
+      db
+        .update(schema.aiMemories)
+        .set({ content, category, updatedAt: new Date().toISOString() })
+        .where(eq(schema.aiMemories.id, id))
+        .run(),
+
+    deleteAiMemory: (id: string) =>
+      db.delete(schema.aiMemories).where(eq(schema.aiMemories.id, id)).run(),
   };
 }
 

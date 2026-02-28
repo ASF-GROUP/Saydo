@@ -41,7 +41,7 @@ describe("Default tool registry includes smart tools", () => {
     expect(names).toContain("plan_my_day");
     expect(names).toContain("daily_review");
     expect(names).toContain("get_productivity_stats");
-    expect(registry.size).toBe(28);
+    expect(registry.size).toBe(31);
   });
 });
 

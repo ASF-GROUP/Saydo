@@ -17,6 +17,7 @@ import type {
   TaskActivityRow,
   DailyStatRow,
   TaskRelationRow,
+  AiMemoryRow,
   MutationResult,
 } from "./interface.js";
 
@@ -320,5 +321,23 @@ export class SQLiteBackend implements IStorage {
 
   deleteAllTaskRelations(taskId: string): MutationResult {
     return this.q.deleteAllTaskRelations(taskId);
+  }
+
+  // ── AI Memories ──
+
+  listAiMemories(): AiMemoryRow[] {
+    return this.q.listAiMemories() as unknown as AiMemoryRow[];
+  }
+
+  insertAiMemory(row: AiMemoryRow): void {
+    this.q.insertAiMemory(row as any);
+  }
+
+  updateAiMemory(id: string, content: string, category: AiMemoryRow["category"]): void {
+    this.q.updateAiMemory(id, content, category);
+  }
+
+  deleteAiMemory(id: string): MutationResult {
+    return this.q.deleteAiMemory(id);
   }
 }

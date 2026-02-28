@@ -133,6 +133,14 @@ export interface TaskRelationRow {
   type: "blocks";
 }
 
+export interface AiMemoryRow {
+  id: string;
+  content: string;
+  category: "preference" | "habit" | "context" | "instruction" | "pattern";
+  createdAt: string;
+  updatedAt: string;
+}
+
 /** Result type for mutations that report affected row count. */
 export interface MutationResult {
   changes: number;
@@ -232,4 +240,10 @@ export interface IStorage {
   getDailyStat(date: string): DailyStatRow | undefined;
   upsertDailyStat(stat: DailyStatRow): MutationResult;
   listDailyStats(startDate: string, endDate: string): DailyStatRow[];
+
+  // ── AI Memories ──
+  listAiMemories(): AiMemoryRow[];
+  insertAiMemory(row: AiMemoryRow): void;
+  updateAiMemory(id: string, content: string, category: AiMemoryRow["category"]): void;
+  deleteAiMemory(id: string): MutationResult;
 }

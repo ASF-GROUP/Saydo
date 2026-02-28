@@ -22,6 +22,7 @@ import type {
   TaskActivityRow,
   DailyStatRow,
   TaskRelationRow,
+  AiMemoryRow,
   MutationResult,
 } from "./interface.js";
 
@@ -53,6 +54,7 @@ export class MarkdownBackend implements IStorage {
   private taskActivityIndex = new Map<string, TaskActivityRow[]>(); // taskId → activities
   private dailyStatIndex = new Map<string, DailyStatRow>(); // date → stat
   private taskRelationList: TaskRelationRow[] = [];
+  private aiMemoryIndex = new Map<string, AiMemoryRow>();
 
   constructor(basePath: string) {
     this.basePath = basePath;
@@ -108,6 +110,9 @@ export class MarkdownBackend implements IStorage {
 
     // 11. Read _task_relations.yaml
     this.loadTaskRelations();
+
+    // 12. Read _ai_memories.json
+    this.loadAiMemories();
 
     logger.info("Markdown backend ready", {
       tasks: this.taskIndex.size,
@@ -735,7 +740,42 @@ export class MarkdownBackend implements IStorage {
     return { changes: removed };
   }
 
+  // ── AI Memories ──
+
+  listAiMemories(): AiMemoryRow[] {
+    return Array.from(this.aiMemoryIndex.values());
+  }
+
+  insertAiMemory(row: AiMemoryRow): void {
+    this.aiMemoryIndex.set(row.id, row);
+    this.persistAiMemories();
+  }
+
+  updateAiMemory(id: string, content: string, category: AiMemoryRow["category"]): void {
+    const existing = this.aiMemoryIndex.get(id);
+    if (!existing) return;
+    this.aiMemoryIndex.set(id, { ...existing, content, category, updatedAt: new Date().toISOString() });
+    this.persistAiMemories();
+  }
+
+  deleteAiMemory(id: string): MutationResult {
+    const had = this.aiMemoryIndex.has(id);
+    this.aiMemoryIndex.delete(id);
+    this.persistAiMemories();
+    return had ? OK : NOOP;
+  }
+
   // ── Private helpers ──
+
+  private persistAiMemories(): void {
+    const memories = Array.from(this.aiMemoryIndex.values());
+    const filePath = path.join(this.basePath, "_ai_memories.json");
+    try {
+      fs.writeFileSync(filePath, JSON.stringify(memories, null, 2), "utf-8");
+    } catch (err) {
+      throw new StorageError(`write ${filePath}`, err instanceof Error ? err : undefined);
+    }
+  }
 
   private persistSections(): void {
     const sections = Array.from(this.sectionIndex.values());
@@ -1106,6 +1146,19 @@ export class MarkdownBackend implements IStorage {
     const relations = YAML.parse(content);
     if (Array.isArray(relations)) {
       this.taskRelationList = relations as TaskRelationRow[];
+    }
+  }
+
+  private loadAiMemories(): void {
+    const filePath = path.join(this.basePath, "_ai_memories.json");
+    if (!fs.existsSync(filePath)) return;
+
+    const content = fs.readFileSync(filePath, "utf-8");
+    const memories = JSON.parse(content);
+    if (Array.isArray(memories)) {
+      for (const m of memories) {
+        this.aiMemoryIndex.set(m.id, m as AiMemoryRow);
+      }
     }
   }
 }

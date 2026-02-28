@@ -268,6 +268,35 @@ export class ChatSession {
     yield { type: "error", data: JSON.stringify(tooManyError) };
   }
 
+  /**
+   * Silently review the conversation and extract memories worth saving.
+   * Fire-and-forget — errors are logged but not surfaced to the user.
+   */
+  async extractMemories(): Promise<void> {
+    // Skip short conversations
+    const userMessages = this.messages.filter((m) => m.role === "user");
+    if (userMessages.length < 2) return;
+
+    const extractPrompt =
+      "Review this conversation. If the user shared any preferences, habits, schedules, work patterns, or important context worth remembering for future conversations, use save_memory to store them. Use recall_memories first to avoid duplicates. If nothing is worth saving, do nothing. Do not respond with text.";
+
+    this.messages.push({ role: "user", content: extractPrompt });
+
+    try {
+      for await (const _event of this.executeRun()) {
+        // Consume all events silently
+      }
+    } catch (err) {
+      logger.warn("Memory extraction failed", {
+        sessionId: this.sessionId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+
+    // Remove the extraction prompt and any responses from the persisted history
+    // (we don't want this meta-conversation visible to the user)
+  }
+
   private persistMessage(msg: ChatMessage): void {
     if (!this.queries) return;
     this.queries.insertChatMessage({
@@ -470,7 +499,19 @@ ${contextBlock ? contextBlock + "\n" : ""}## Task Tools
 - After creating a task, call check_duplicates to warn about potential duplicates.
 - When setting a due date, call check_overcommitment to warn about overloaded days.
 - When asked to "break down" or "split" a task, use break_down_task.
-- When referencing tasks in your response, link them using this format: [Task Title](saydo://task/<taskId>). This makes tasks clickable in the UI.`;
+- When referencing tasks in your response, link them using this format: [Task Title](saydo://task/<taskId>). This makes tasks clickable in the UI.
+
+## Memory Tools
+- **save_memory**: Save an important fact about the user (preferences, habits, schedules, work patterns, instructions). Keep each memory concise (1-2 sentences).
+- **recall_memories**: List all saved memories with IDs. Use before saving to avoid duplicates.
+- **forget_memory**: Delete an outdated memory by ID.
+
+## Memory Guidelines
+- Proactively save important facts the user shares: preferences, habits, schedules, work patterns, instructions for how you should behave.
+- Do NOT save trivial or temporary info (e.g., "add a task called X").
+- Use recall_memories before saving to check for duplicates.
+- When facts change, forget the old memory and save the updated one.
+- Aim for max ~50 memories; consolidate related ones if approaching that limit.`;
   }
 
   private buildCompactPrompt(
@@ -497,12 +538,13 @@ ${contextBlock ? "\n" + contextBlock : ""}`;
  */
 export async function gatherContext(
   services: ToolContext,
-  options?: { compact?: boolean; voiceCall?: boolean },
+  options?: { compact?: boolean; voiceCall?: boolean; storage?: IStorage },
 ): Promise<string> {
   const { taskService, projectService } = services;
   const todayISO = new Date().toISOString().split("T")[0];
   const compact = options?.compact ?? false;
   const voiceCall = options?.voiceCall ?? false;
+  const storage = options?.storage ?? services.storage;
 
   const allTasks = await taskService.list();
   const projects = await projectService.list();
@@ -581,6 +623,22 @@ You are in a live voice call with the user. Follow these rules:
   );
   if (completedRecently.length > 0) {
     lines.push(`- Tasks completed in last 7 days: ${completedRecently.length}`);
+  }
+
+  // Inject AI memories
+  if (storage) {
+    try {
+      const memories = storage.listAiMemories();
+      if (memories.length > 0) {
+        lines.push("");
+        lines.push("## Your memories about the user");
+        for (const m of memories) {
+          lines.push(`- [${m.category}] ${m.content}`);
+        }
+      }
+    } catch {
+      // Non-critical — memories just won't be injected
+    }
   }
 
   return voiceCallBlock + lines.join("\n");

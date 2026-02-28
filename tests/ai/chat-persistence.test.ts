@@ -415,7 +415,7 @@ describe("Tool Filtering for Local Providers", () => {
     }
 
     const tools = getCapturedTools();
-    expect(tools.length).toBe(28);
+    expect(tools.length).toBe(31);
     expect(tools).toContain("analyze_workload");
     expect(tools).toContain("suggest_tags");
     expect(tools).toContain("break_down_task");

@@ -1353,6 +1353,7 @@ function apiPlugin() {
             projectService: svc.projectService,
             tagService: svc.tagService,
             statsService: svc.statsService,
+            storage: svc.storage,
           };
 
           // Gather context for new sessions
@@ -1424,6 +1425,7 @@ function apiPlugin() {
                   projectService: svc.projectService,
                   tagService: svc.tagService,
                   statsService: svc.statsService,
+                  storage: svc.storage,
                 },
                 svc.storage,
                 {
@@ -1470,6 +1472,11 @@ function apiPlugin() {
         if (req.url !== "/api/ai/sessions/new" || req.method !== "POST") return next();
 
         const svc = await getServices();
+        // Fire-and-forget memory extraction from current session
+        const currentSession = svc.chatManager.getSession();
+        if (currentSession) {
+          currentSession.extractMemories().catch(() => {});
+        }
         (svc.chatManager as any).session = null;
         res.setHeader("Content-Type", "application/json");
         res.end(JSON.stringify({ sessionId: "" }));
@@ -1502,6 +1509,11 @@ function apiPlugin() {
         if (switchMatch && req.method === "POST") {
           try {
             const svc = await getServices();
+            // Fire-and-forget memory extraction from current session
+            const currentSession = svc.chatManager.getSession();
+            if (currentSession) {
+              currentSession.extractMemories().catch(() => {});
+            }
             const sessionId = decodeURIComponent(switchMatch[1]);
             const providerSetting = svc.storage.getAppSetting("ai_provider");
             if (!providerSetting?.value) {
@@ -1533,6 +1545,7 @@ function apiPlugin() {
               projectService: svc.projectService,
               tagService: svc.tagService,
               statsService: svc.statsService,
+              storage: svc.storage,
             };
 
             const systemMessage = svc.chatManager.buildSystemMessage(
@@ -1619,6 +1632,61 @@ function apiPlugin() {
             res.end(JSON.stringify({ ok: true }));
           } catch (err: unknown) {
             const message = err instanceof Error ? err.message : "Failed to unload model";
+            res.statusCode = 500;
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ error: message }));
+          }
+          return;
+        }
+
+        next();
+      });
+
+      // ── AI Memory Endpoints ──────────────────────────
+
+      // GET /api/ai/memories — list all AI memories
+      server.middlewares.use(async (req, res, next) => {
+        if (req.url !== "/api/ai/memories" || req.method !== "GET") return next();
+
+        const svc = await getServices();
+        const memories = svc.storage.listAiMemories();
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify(memories));
+      });
+
+      // AI memory operations: update, delete
+      server.middlewares.use(async (req, res, next) => {
+        // PUT /api/ai/memories/:id — update a memory
+        const updateMatch = req.url?.match(/^\/api\/ai\/memories\/([^/]+)$/);
+        if (updateMatch && req.method === "PUT") {
+          try {
+            const svc = await getServices();
+            const id = decodeURIComponent(updateMatch[1]);
+            const body = await parseBody(req);
+            const { content, category } = body as { content: string; category: string };
+            svc.storage.updateAiMemory(id, content, category as any);
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ ok: true }));
+          } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Internal server error";
+            res.statusCode = 500;
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ error: message }));
+          }
+          return;
+        }
+
+        // DELETE /api/ai/memories/:id — delete a memory
+        const deleteMatch = req.url?.match(/^\/api\/ai\/memories\/([^/]+)$/);
+        if (deleteMatch && req.method === "DELETE") {
+          try {
+            const svc = await getServices();
+            const id = decodeURIComponent(deleteMatch[1]);
+            svc.storage.deleteAiMemory(id);
+            res.setHeader("Content-Type", "application/json");
+            res.end(JSON.stringify({ ok: true }));
+          } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Internal server error";
             res.statusCode = 500;
             res.setHeader("Content-Type", "application/json");
             res.end(JSON.stringify({ error: message }));

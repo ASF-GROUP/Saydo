@@ -1,4 +1,5 @@
 import { isTauri, BASE, handleResponse, handleVoidResponse, getServices } from "./helpers.js";
+import type { AiMemoryRow } from "../../storage/interface.js";
 
 export interface AIConfigInfo {
   provider: string | null;
@@ -236,6 +237,7 @@ export async function sendChatMessage(
         projectService: svc.projectService,
         tagService: svc.tagService,
         statsService: svc.statsService,
+        storage: svc.storage,
       };
 
       const isLocalProvider =
@@ -320,6 +322,7 @@ export async function getChatMessages(): Promise<AIChatMessage[]> {
               projectService: svc.projectService,
               tagService: svc.tagService,
               statsService: svc.statsService,
+              storage: svc.storage,
             },
             svc.storage,
             {
@@ -395,6 +398,11 @@ export async function deleteChatSession(sessionId: string): Promise<void> {
 export async function switchChatSession(sessionId: string): Promise<AIChatMessage[]> {
   if (isTauri()) {
     const svc = await getServices();
+    // Fire-and-forget memory extraction from current session
+    const currentSession = svc.chatManager.getSession();
+    if (currentSession) {
+      currentSession.extractMemories().catch(() => {});
+    }
     const providerSetting = svc.storage.getAppSetting("ai_provider");
     if (!providerSetting?.value) return [];
 
@@ -417,6 +425,7 @@ export async function switchChatSession(sessionId: string): Promise<AIChatMessag
       projectService: svc.projectService,
       tagService: svc.tagService,
       statsService: svc.statsService,
+      storage: svc.storage,
     };
 
     // Build system message and create a session from stored messages
@@ -458,6 +467,11 @@ export async function switchChatSession(sessionId: string): Promise<AIChatMessag
 export async function createNewChatSession(): Promise<string> {
   if (isTauri()) {
     const svc = await getServices();
+    // Fire-and-forget memory extraction from current session
+    const currentSession = svc.chatManager.getSession();
+    if (currentSession) {
+      currentSession.extractMemories().catch(() => {});
+    }
     // Clear current session without deleting from DB
     (svc.chatManager as any).session = null;
     return "";
@@ -465,4 +479,63 @@ export async function createNewChatSession(): Promise<string> {
   const res = await fetch(`${BASE}/ai/sessions/new`, { method: "POST" });
   const data = await handleResponse<{ sessionId: string }>(res);
   return data.sessionId;
+}
+
+// ── AI Memories ──
+
+export async function getAiMemories(): Promise<AiMemoryRow[]> {
+  if (isTauri()) {
+    const svc = await getServices();
+    return svc.storage.listAiMemories();
+  }
+  const res = await fetch(`${BASE}/ai/memories`);
+  return handleResponse<AiMemoryRow[]>(res);
+}
+
+export async function updateAiMemory(
+  id: string,
+  content: string,
+  category: AiMemoryRow["category"],
+): Promise<void> {
+  if (isTauri()) {
+    const svc = await getServices();
+    svc.storage.updateAiMemory(id, content, category);
+    return;
+  }
+  await handleVoidResponse(
+    await fetch(`${BASE}/ai/memories/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content, category }),
+    }),
+  );
+}
+
+export async function deleteAiMemory(id: string): Promise<void> {
+  if (isTauri()) {
+    const svc = await getServices();
+    svc.storage.deleteAiMemory(id);
+    return;
+  }
+  await handleVoidResponse(
+    await fetch(`${BASE}/ai/memories/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    }),
+  );
+}
+
+export async function deleteAllAiMemories(): Promise<void> {
+  if (isTauri()) {
+    const svc = await getServices();
+    const memories = svc.storage.listAiMemories();
+    for (const m of memories) {
+      svc.storage.deleteAiMemory(m.id);
+    }
+    return;
+  }
+  // Delete one by one since we don't have a bulk endpoint
+  const memories = await getAiMemories();
+  for (const m of memories) {
+    await deleteAiMemory(m.id);
+  }
 }

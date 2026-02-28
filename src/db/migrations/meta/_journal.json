@@ -57,6 +57,13 @@
       "when": 1772066055071,
       "tag": "0007_cold_living_mummy",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1772296142050,
+      "tag": "0008_sparkling_micromacro",
+      "breakpoints": true
     }
   ]
 }

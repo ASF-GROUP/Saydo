@@ -7,6 +7,7 @@ import type { TaskService } from "../../core/tasks.js";
 import type { ProjectService } from "../../core/projects.js";
 import type { TagService } from "../../core/tags.js";
 import type { StatsService } from "../../core/stats.js";
+import type { IStorage } from "../../storage/interface.js";
 
 /** JSON Schema tool definition passed to LLM providers. */
 export interface ToolDefinition {
@@ -21,6 +22,7 @@ export interface ToolContext {
   projectService: ProjectService;
   tagService?: TagService;
   statsService?: StatsService;
+  storage?: IStorage;
 }
 
 /** Function that executes a tool and returns a JSON string result. */

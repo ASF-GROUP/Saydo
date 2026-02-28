@@ -56,6 +56,9 @@ export const TOOL_META: Record<string, { icon: LucideIcon; emoji: string; verb: 
   smart_organize: { icon: Brain, emoji: "\ud83e\udde0", verb: "Organizing" },
   plan_my_day: { icon: Sun, emoji: "\u2600\ufe0f", verb: "Planning your day" },
   daily_review: { icon: Sunset, emoji: "\ud83c\udf05", verb: "Reviewing your day" },
+  save_memory: { icon: Brain, emoji: "\ud83e\udde0", verb: "Remembering" },
+  recall_memories: { icon: Brain, emoji: "\ud83e\udde0", verb: "Recalling memories" },
+  forget_memory: { icon: Brain, emoji: "\ud83e\udde0", verb: "Forgetting" },
 };
 
 export const ToolCallBadge = memo(function ToolCallBadge({
