@@ -1,20 +1,11 @@
 import type { UndoableAction } from "./undo.js";
-import type { Task, UpdateTaskInput } from "./types.js";
+import type { Task, CreateTaskInput, UpdateTaskInput } from "./types.js";
 
 interface ActionAPI {
   completeTask: (id: string) => Promise<Task>;
   deleteTask: (id: string) => Promise<void>;
   updateTask: (id: string, input: UpdateTaskInput) => Promise<Task>;
-  createTask: (input: {
-    title: string;
-    description?: string | null;
-    priority?: number | null;
-    dueDate?: string | null;
-    dueTime?: boolean;
-    projectId?: string | null;
-    recurrence?: string | null;
-    tags?: string[];
-  }) => Promise<Task>;
+  createTask: (input: CreateTaskInput) => Promise<Task>;
   completeManyTasks: (ids: string[]) => Promise<void>;
   deleteManyTasks: (ids: string[]) => Promise<void>;
   updateManyTasks: (ids: string[], changes: UpdateTaskInput) => Promise<Task[]>;
@@ -28,7 +19,7 @@ export function createCompleteAction(api: ActionAPI, task: Task): UndoableAction
       await api.completeTask(task.id);
     },
     async undo() {
-      await api.updateTask(task.id, { status: "pending" } as any);
+      await api.updateTask(task.id, { status: "pending", completedAt: null } as any);
       await api.refreshTasks();
     },
   };
@@ -49,6 +40,13 @@ export function createDeleteAction(api: ActionAPI, task: Task): UndoableAction {
         dueTime: task.dueTime,
         projectId: task.projectId,
         recurrence: task.recurrence,
+        parentId: task.parentId,
+        remindAt: task.remindAt,
+        estimatedMinutes: task.estimatedMinutes,
+        actualMinutes: task.actualMinutes,
+        deadline: task.deadline,
+        isSomeday: task.isSomeday,
+        sectionId: task.sectionId,
         tags: task.tags.map((t) => t.name),
       });
       await api.refreshTasks();
@@ -82,7 +80,7 @@ export function createBulkCompleteAction(api: ActionAPI, tasks: Task[]): Undoabl
     },
     async undo() {
       for (const id of ids) {
-        await api.updateTask(id, { status: "pending" } as any);
+        await api.updateTask(id, { status: "pending", completedAt: null } as any);
       }
       await api.refreshTasks();
     },
@@ -105,6 +103,13 @@ export function createBulkDeleteAction(api: ActionAPI, tasks: Task[]): UndoableA
           dueTime: task.dueTime,
           projectId: task.projectId,
           recurrence: task.recurrence,
+          parentId: task.parentId,
+          remindAt: task.remindAt,
+          estimatedMinutes: task.estimatedMinutes,
+          actualMinutes: task.actualMinutes,
+          deadline: task.deadline,
+          isSomeday: task.isSomeday,
+          sectionId: task.sectionId,
           tags: task.tags.map((t) => t.name),
         });
       }

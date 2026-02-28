@@ -36,11 +36,11 @@ describe("createCompleteAction", () => {
     expect(api.completeTask).toHaveBeenCalledWith("t1");
   });
 
-  it("undo restores pending status and refreshes", async () => {
+  it("undo restores pending status, clears completedAt, and refreshes", async () => {
     const task = makeTask({ id: "t1" }) as any;
     const action = createCompleteAction(api, task);
     await action.undo();
-    expect(api.updateTask).toHaveBeenCalledWith("t1", { status: "pending" });
+    expect(api.updateTask).toHaveBeenCalledWith("t1", { status: "pending", completedAt: null });
     expect(api.refreshTasks).toHaveBeenCalled();
   });
 
@@ -65,12 +65,19 @@ describe("createDeleteAction", () => {
     expect(api.deleteTask).toHaveBeenCalledWith("t2");
   });
 
-  it("undo re-creates the task with original fields", async () => {
+  it("undo re-creates the task with all original fields", async () => {
     const task = makeTask({
       id: "t2",
       title: "Deleted task",
       priority: 2,
       dueDate: "2026-03-01T00:00:00.000Z",
+      parentId: "parent1",
+      remindAt: "2026-03-01T09:00:00.000Z",
+      estimatedMinutes: 30,
+      actualMinutes: 15,
+      deadline: "2026-03-05T00:00:00.000Z",
+      isSomeday: true,
+      sectionId: "sec1",
       tags: [{ id: "tag1", name: "work", color: "#f00" }],
     }) as any;
     const action = createDeleteAction(api, task);
@@ -80,6 +87,13 @@ describe("createDeleteAction", () => {
         title: "Deleted task",
         priority: 2,
         dueDate: "2026-03-01T00:00:00.000Z",
+        parentId: "parent1",
+        remindAt: "2026-03-01T09:00:00.000Z",
+        estimatedMinutes: 30,
+        actualMinutes: 15,
+        deadline: "2026-03-05T00:00:00.000Z",
+        isSomeday: true,
+        sectionId: "sec1",
         tags: ["work"],
       }),
     );
@@ -121,12 +135,12 @@ describe("createBulkCompleteAction", () => {
     expect(api.completeManyTasks).toHaveBeenCalledWith(["t1", "t2"]);
   });
 
-  it("undo restores each task to pending", async () => {
+  it("undo restores each task to pending and clears completedAt", async () => {
     const tasks = [makeTask({ id: "t1" }), makeTask({ id: "t2" })] as any[];
     const action = createBulkCompleteAction(api, tasks);
     await action.undo();
-    expect(api.updateTask).toHaveBeenCalledWith("t1", { status: "pending" });
-    expect(api.updateTask).toHaveBeenCalledWith("t2", { status: "pending" });
+    expect(api.updateTask).toHaveBeenCalledWith("t1", { status: "pending", completedAt: null });
+    expect(api.updateTask).toHaveBeenCalledWith("t2", { status: "pending", completedAt: null });
     expect(api.refreshTasks).toHaveBeenCalled();
   });
 });
