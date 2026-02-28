@@ -94,4 +94,43 @@ describe("ContextMenu", () => {
     expect(menu.style.left).toBe("150px");
     expect(menu.style.top).toBe("250px");
   });
+
+  it("renders separator divider when separator is true", () => {
+    const items: ContextMenuItem[] = [
+      { id: "a", label: "First", separator: true, onClick: vi.fn() },
+      { id: "b", label: "Second", onClick: vi.fn() },
+    ];
+    renderMenu(items);
+    const separators = screen.getAllByRole("separator");
+    expect(separators.length).toBe(1);
+  });
+
+  it("does not render separator by default", () => {
+    renderMenu();
+    const separators = screen.queryAllByRole("separator");
+    expect(separators.length).toBe(0);
+  });
+
+  it("renders shortcut text when shortcut is provided", () => {
+    const items: ContextMenuItem[] = [
+      { id: "edit", label: "Edit", shortcut: "Ctrl+E", onClick: vi.fn() },
+    ];
+    renderMenu(items);
+    expect(screen.getByText("Ctrl+E")).toBeDefined();
+  });
+
+  it("keyboard nav works with separator items", () => {
+    const items: ContextMenuItem[] = [
+      { id: "a", label: "First", separator: true, onClick: vi.fn() },
+      { id: "b", label: "Second", onClick: vi.fn() },
+    ];
+    renderMenu(items);
+    const menu = screen.getByRole("menu");
+    // Arrow down should not crash with separator items
+    fireEvent.keyDown(menu, { key: "ArrowDown" });
+    fireEvent.keyDown(menu, { key: "ArrowDown" });
+    // No crash means pass
+    expect(screen.getByText("First")).toBeDefined();
+    expect(screen.getByText("Second")).toBeDefined();
+  });
 });

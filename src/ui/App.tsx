@@ -51,7 +51,10 @@ import { ChordIndicator } from "./components/ChordIndicator.js";
 import { Breadcrumb, type BreadcrumbItem } from "./components/Breadcrumb.js";
 import type { SettingsTab } from "./views/Settings.js";
 import { ContextMenu, type ContextMenuItem } from "./components/ContextMenu.js";
-import { Pencil, Check, Undo2, Trash2, Flag, FolderInput } from "lucide-react";
+import {
+  Pencil, Check, Undo2, Trash2, Flag, FolderInput,
+  Calendar as CalendarIcon, Bell, ArrowUpRight, Copy, Link,
+} from "lucide-react";
 import type { Project as ProjectType, Section, TaskComment, TaskActivity } from "../core/types.js";
 import { api } from "./api/index.js";
 import { toDateKey } from "../utils/format-date.js";
@@ -350,40 +353,172 @@ function AppContent() {
     [],
   );
 
+  const { createTask } = useTaskContext();
+
+  const handleDuplicateTask = useCallback(
+    async (taskId: string) => {
+      const task = state.tasks.find((t) => t.id === taskId);
+      if (!task) return;
+      await createTask({
+        title: `${task.title} (copy)`,
+        description: task.description,
+        priority: task.priority,
+        dueDate: task.dueDate,
+        dueTime: task.dueTime,
+        projectId: task.projectId,
+        recurrence: task.recurrence,
+        remindAt: task.remindAt,
+        tags: task.tags.map((t) => t.name),
+        estimatedMinutes: task.estimatedMinutes,
+        deadline: task.deadline,
+        isSomeday: task.isSomeday,
+        sectionId: task.sectionId,
+      });
+      playSound("create");
+    },
+    [state.tasks, createTask, playSound],
+  );
+
+  const handleCopyTaskLink = useCallback(
+    async (taskId: string) => {
+      const url = `${window.location.origin}${window.location.pathname}#/task/${taskId}`;
+      try {
+        await navigator.clipboard.writeText(url);
+        showToast("Link copied to clipboard");
+      } catch {
+        showToast("Could not copy link");
+      }
+    },
+    [showToast],
+  );
+
   const contextMenuItems = useMemo((): ContextMenuItem[] => {
     if (!contextMenu) return [];
     const task = state.tasks.find((t) => t.id === contextMenu.taskId);
     if (!task) return [];
 
+    const today = new Date();
+    const todayISO = today.toISOString();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowISO = tomorrow.toISOString();
+    const nextMonday = new Date(today);
+    nextMonday.setDate(nextMonday.getDate() + ((8 - nextMonday.getDay()) % 7 || 7));
+    const nextMondayISO = nextMonday.toISOString();
+
+    // ── Due date submenu ──
+    const dueDateSubmenu: ContextMenuItem[] = [
+      {
+        id: "due-today",
+        label: "Today",
+        onClick: () => handleUpdateTask(task.id, { dueDate: todayISO, dueTime: false }),
+      },
+      {
+        id: "due-tomorrow",
+        label: "Tomorrow",
+        onClick: () => handleUpdateTask(task.id, { dueDate: tomorrowISO, dueTime: false }),
+      },
+      {
+        id: "due-next-week",
+        label: "Next week",
+        onClick: () => handleUpdateTask(task.id, { dueDate: nextMondayISO, dueTime: false }),
+      },
+    ];
+    if (task.dueDate) {
+      dueDateSubmenu.push({
+        id: "due-none",
+        label: "No date",
+        onClick: () => handleUpdateTask(task.id, { dueDate: null, dueTime: false }),
+      });
+    }
+
+    // ── Priority submenu ──
+    const prioritySubmenu: ContextMenuItem[] = [
+      { id: "priority-1", label: "Priority 1", icon: <Flag size={14} className="text-priority-1" />, onClick: () => handleUpdateTask(task.id, { priority: 1 }) },
+      { id: "priority-2", label: "Priority 2", icon: <Flag size={14} className="text-priority-2" />, onClick: () => handleUpdateTask(task.id, { priority: 2 }) },
+      { id: "priority-3", label: "Priority 3", icon: <Flag size={14} className="text-priority-3" />, onClick: () => handleUpdateTask(task.id, { priority: 3 }) },
+      { id: "priority-4", label: "Priority 4", icon: <Flag size={14} className="text-priority-4" />, onClick: () => handleUpdateTask(task.id, { priority: 4 }) },
+    ];
+    if (task.priority) {
+      prioritySubmenu.push({
+        id: "priority-none",
+        label: "No priority",
+        onClick: () => handleUpdateTask(task.id, { priority: null }),
+      });
+    }
+
+    // ── Reminder submenu ──
+    const reminderSubmenu: ContextMenuItem[] = [
+      {
+        id: "remind-30min",
+        label: "In 30 minutes",
+        onClick: () => handleUpdateTask(task.id, { remindAt: new Date(Date.now() + 30 * 60_000).toISOString() }),
+      },
+      {
+        id: "remind-1hr",
+        label: "In 1 hour",
+        onClick: () => handleUpdateTask(task.id, { remindAt: new Date(Date.now() + 60 * 60_000).toISOString() }),
+      },
+      {
+        id: "remind-tomorrow-9am",
+        label: "Tomorrow at 9 AM",
+        onClick: () => {
+          const d = new Date(tomorrow);
+          d.setHours(9, 0, 0, 0);
+          handleUpdateTask(task.id, { remindAt: d.toISOString() });
+        },
+      },
+    ];
+    if (task.remindAt) {
+      reminderSubmenu.push({
+        id: "remind-none",
+        label: "No reminder",
+        onClick: () => handleUpdateTask(task.id, { remindAt: null }),
+      });
+    }
+
+    // ── Build items ──
     const items: ContextMenuItem[] = [
       {
         id: "edit",
         label: "Edit",
         icon: <Pencil size={14} />,
+        shortcut: "Ctrl+E",
         onClick: () => handleSelectTask(task.id),
       },
       {
         id: "toggle",
         label: task.status === "completed" ? "Mark incomplete" : "Complete",
         icon: task.status === "completed" ? <Undo2 size={14} /> : <Check size={14} />,
+        separator: true,
         onClick: () => handleToggleTask(task.id),
+      },
+      {
+        id: "due-date",
+        label: "Due date",
+        icon: <CalendarIcon size={14} />,
+        submenu: dueDateSubmenu,
       },
       {
         id: "priority",
         label: "Priority",
         icon: <Flag size={14} />,
-        submenu: [1, 2, 3, 4].map((p) => ({
-          id: `priority-${p}`,
-          label: `Priority ${p}`,
-          onClick: () => handleUpdateTask(task.id, { priority: p }),
-        })),
+        submenu: prioritySubmenu,
+      },
+      {
+        id: "reminder",
+        label: "Reminder",
+        icon: <Bell size={14} />,
+        submenu: reminderSubmenu,
+        separator: true,
       },
     ];
 
+    // ── Move to project submenu ──
     if (projects.length > 0) {
       items.push({
         id: "move",
-        label: "Move to project",
+        label: "Move to...",
         icon: <FolderInput size={14} />,
         submenu: [
           {
@@ -400,6 +535,30 @@ function AppContent() {
       });
     }
 
+    // ── Go to project ──
+    if (task.projectId) {
+      items.push({
+        id: "go-to-project",
+        label: "Go to project",
+        icon: <ArrowUpRight size={14} />,
+        onClick: () => handleNavigate("project", task.projectId!),
+      });
+    }
+
+    items.push({
+      id: "duplicate",
+      label: "Duplicate",
+      icon: <Copy size={14} />,
+      onClick: () => handleDuplicateTask(task.id),
+    });
+    items.push({
+      id: "copy-link",
+      label: "Copy link",
+      icon: <Link size={14} />,
+      separator: true,
+      onClick: () => handleCopyTaskLink(task.id),
+    });
+
     items.push({
       id: "delete",
       label: "Delete",
@@ -409,7 +568,7 @@ function AppContent() {
     });
 
     return items;
-  }, [contextMenu, state.tasks, projects, handleSelectTask, handleToggleTask, handleUpdateTask, handleDeleteTask]);
+  }, [contextMenu, state.tasks, projects, handleSelectTask, handleToggleTask, handleUpdateTask, handleDeleteTask, handleDuplicateTask, handleCopyTaskLink, handleNavigate]);
 
   // Clear context menu on navigation
   useEffect(() => {
