@@ -5,23 +5,61 @@ const mockCreateTask = vi.fn();
 const mockUpdateTask = vi.fn();
 const mockCompleteTask = vi.fn();
 const mockDeleteTask = vi.fn();
+const mockRefreshTasks = vi.fn();
 const mockPlaySound = vi.fn();
 const mockIndentTask = vi.fn();
 const mockOutdentTask = vi.fn();
 const mockReorderTasks = vi.fn();
 
+// Undo manager mock — tracks perform calls
+const mockPerform = vi.fn().mockImplementation(async (action: any) => {
+  await action.execute();
+});
+const mockUndoManager = { perform: mockPerform };
+
 vi.mock("../../../src/ui/context/TaskContext.js", () => ({
   useTaskContext: () => ({
     state: {
       tasks: [
-        { id: "t1", title: "Task 1", status: "pending", tags: [] },
-        { id: "t2", title: "Task 2", status: "completed", tags: [] },
+        {
+          id: "t1",
+          title: "Task 1",
+          status: "pending",
+          priority: 2,
+          dueDate: "2026-03-01T00:00:00.000Z",
+          dueTime: false,
+          completedAt: null,
+          projectId: null,
+          recurrence: null,
+          description: null,
+          tags: [{ id: "tag1", name: "work", color: "#f00" }],
+        },
+        {
+          id: "t2",
+          title: "Task 2",
+          status: "completed",
+          priority: null,
+          dueDate: null,
+          dueTime: false,
+          completedAt: "2026-02-28T10:00:00.000Z",
+          projectId: "p1",
+          recurrence: null,
+          description: null,
+          tags: [],
+        },
       ],
     },
     createTask: (...args: any[]) => mockCreateTask(...args),
     updateTask: (...args: any[]) => mockUpdateTask(...args),
     completeTask: (...args: any[]) => mockCompleteTask(...args),
     deleteTask: (...args: any[]) => mockDeleteTask(...args),
+    refreshTasks: (...args: any[]) => mockRefreshTasks(...args),
+  }),
+}));
+
+vi.mock("../../../src/ui/context/UndoContext.js", () => ({
+  useUndoContext: () => ({
+    undoManager: mockUndoManager,
   }),
 }));
 
@@ -110,24 +148,26 @@ describe("useTaskHandlers", () => {
     expect(mockCreateTask).not.toHaveBeenCalled();
   });
 
-  it("handleToggleTask completes a pending task and plays sound", async () => {
+  it("handleToggleTask completes a pending task via undo manager and plays sound", async () => {
     const { result } = renderHook(() => useTaskHandlers(null));
 
     await act(async () => {
       await result.current.handleToggleTask("t1");
     });
 
+    expect(mockPerform).toHaveBeenCalledTimes(1);
     expect(mockCompleteTask).toHaveBeenCalledWith("t1");
     expect(mockPlaySound).toHaveBeenCalledWith("complete");
   });
 
-  it("handleToggleTask uncompletes a completed task", async () => {
+  it("handleToggleTask uncompletes a completed task via undo manager", async () => {
     const { result } = renderHook(() => useTaskHandlers(null));
 
     await act(async () => {
       await result.current.handleToggleTask("t2");
     });
 
+    expect(mockPerform).toHaveBeenCalledTimes(1);
     expect(mockUpdateTask).toHaveBeenCalledWith("t2", {
       status: "pending",
       completedAt: null,
@@ -135,26 +175,80 @@ describe("useTaskHandlers", () => {
     expect(mockPlaySound).not.toHaveBeenCalledWith("complete");
   });
 
-  it("handleDeleteTask calls deleteTask and plays sound", async () => {
+  it("handleToggleTask complete action has correct description", async () => {
+    const { result } = renderHook(() => useTaskHandlers(null));
+
+    await act(async () => {
+      await result.current.handleToggleTask("t1");
+    });
+
+    const action = mockPerform.mock.calls[0][0];
+    expect(action.description).toBe('Complete "Task 1"');
+  });
+
+  it("handleDeleteTask snapshots task and pushes delete action via undo manager", async () => {
     const { result } = renderHook(() => useTaskHandlers(null));
 
     await act(async () => {
       await result.current.handleDeleteTask("t1");
     });
 
-    expect(mockDeleteTask).toHaveBeenCalledWith("t1");
+    expect(mockPerform).toHaveBeenCalledTimes(1);
+    const action = mockPerform.mock.calls[0][0];
+    expect(action.description).toBe('Delete "Task 1"');
     expect(mockPlaySound).toHaveBeenCalledWith("delete");
   });
 
-  it("handleUpdateDueDate sets due date", async () => {
+  it("handleUpdateTask captures old fields and pushes update action via undo manager", async () => {
+    const { result } = renderHook(() => useTaskHandlers(null));
+
+    await act(async () => {
+      await result.current.handleUpdateTask("t1", { priority: 1 });
+    });
+
+    expect(mockPerform).toHaveBeenCalledTimes(1);
+    expect(mockUpdateTask).toHaveBeenCalledWith("t1", { priority: 1 });
+
+    // Verify the action can undo (old priority was 2)
+    const action = mockPerform.mock.calls[0][0];
+    mockUpdateTask.mockClear();
+    await action.undo();
+    expect(mockUpdateTask).toHaveBeenCalledWith("t1", { priority: 2 });
+  });
+
+  it("handleUpdateTask snapshots tags as string array for undo", async () => {
+    const { result } = renderHook(() => useTaskHandlers(null));
+
+    await act(async () => {
+      await result.current.handleUpdateTask("t1", { tags: ["urgent"] });
+    });
+
+    const action = mockPerform.mock.calls[0][0];
+    mockUpdateTask.mockClear();
+    await action.undo();
+    // t1 has tags: [{ name: "work" }], so old snapshot should be ["work"]
+    expect(mockUpdateTask).toHaveBeenCalledWith("t1", { tags: ["work"] });
+  });
+
+  it("handleUpdateDueDate sets due date via undo manager with old date snapshot", async () => {
     const { result } = renderHook(() => useTaskHandlers(null));
 
     await act(async () => {
       await result.current.handleUpdateDueDate("t1", "2026-04-01");
     });
 
+    expect(mockPerform).toHaveBeenCalledTimes(1);
     expect(mockUpdateTask).toHaveBeenCalledWith("t1", {
       dueDate: expect.any(String),
+      dueTime: false,
+    });
+
+    // Verify undo restores old dueDate
+    const action = mockPerform.mock.calls[0][0];
+    mockUpdateTask.mockClear();
+    await action.undo();
+    expect(mockUpdateTask).toHaveBeenCalledWith("t1", {
+      dueDate: "2026-03-01T00:00:00.000Z",
       dueTime: false,
     });
   });

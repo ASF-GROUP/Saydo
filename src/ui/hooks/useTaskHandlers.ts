@@ -1,15 +1,50 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useTaskContext } from "../context/TaskContext.js";
+import { useUndoContext } from "../context/UndoContext.js";
 import { useSoundEffect } from "./useSoundEffect.js";
 import { api } from "../api/index.js";
+import {
+  createCompleteAction,
+  createDeleteAction,
+  createUpdateAction,
+} from "../../core/actions.js";
+import type { Task, UpdateTaskInput } from "../../core/types.js";
 
 export function useTaskHandlers(
   selectedProjectId: string | null,
   projects?: { id: string; name: string }[],
 ) {
-  const { state, createTask, updateTask, completeTask, deleteTask } = useTaskContext();
+  const { state, createTask, updateTask, completeTask, deleteTask, refreshTasks } =
+    useTaskContext();
+  const { undoManager } = useUndoContext();
   const playSound = useSoundEffect();
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+
+  // Adapter: bridges TaskContext methods to the ActionAPI shape expected by action creators.
+  // The action creators call through this, getting both the API call AND local state dispatch.
+  // On undo, refreshTasks re-syncs state from the server.
+  const actionApi = useMemo(
+    () => ({
+      completeTask: async (id: string) => {
+        await completeTask(id);
+        return {} as Task;
+      },
+      deleteTask,
+      updateTask: async (id: string, input: UpdateTaskInput) => {
+        await updateTask(id, input);
+        return {} as Task;
+      },
+      createTask: async (input: any) => {
+        await createTask(input);
+        return {} as Task;
+      },
+      completeManyTasks: async () => {},
+      deleteManyTasks: async () => {},
+      updateManyTasks: async () => [] as Task[],
+      refreshTasks,
+    }),
+    [completeTask, deleteTask, updateTask, createTask, refreshTasks],
+  );
 
   const handleCreateTask = async (parsed: {
     title: string;
@@ -46,10 +81,20 @@ export function useTaskHandlers(
 
   const handleToggleTask = async (id: string) => {
     const task = state.tasks.find((t) => t.id === id);
-    if (task?.status === "completed") {
-      await updateTask(id, { status: "pending", completedAt: null } as any);
+    if (!task) return;
+    if (task.status === "completed") {
+      // Uncomplete: wrap in update action so it's undoable
+      await undoManager.perform(
+        createUpdateAction(
+          actionApi,
+          id,
+          { status: "completed" as any, completedAt: task.completedAt } as UpdateTaskInput,
+          { status: "pending" as any, completedAt: null } as UpdateTaskInput,
+        ),
+      );
     } else {
-      await completeTask(id);
+      // Complete: wrap in complete action
+      await undoManager.perform(createCompleteAction(actionApi, task as Task));
       playSound("complete");
     }
   };
@@ -63,24 +108,55 @@ export function useTaskHandlers(
   };
 
   const handleUpdateTask = async (id: string, input: Parameters<typeof updateTask>[1]) => {
-    await updateTask(id, input);
+    const task = state.tasks.find((t) => t.id === id);
+    if (!task) {
+      // Fallback: no snapshot available, just update without undo
+      await updateTask(id, input);
+      return;
+    }
+    // Snapshot old fields for the keys being changed
+    const oldFields: Record<string, unknown> = {};
+    for (const key of Object.keys(input)) {
+      if (key === "tags") {
+        oldFields.tags = task.tags.map((t) => t.name);
+      } else {
+        oldFields[key] = (task as any)[key];
+      }
+    }
+    await undoManager.perform(
+      createUpdateAction(actionApi, id, oldFields as UpdateTaskInput, input),
+    );
   };
 
   const handleDeleteTask = async (id: string) => {
-    await deleteTask(id);
+    const task = state.tasks.find((t) => t.id === id);
+    if (task) {
+      await undoManager.perform(createDeleteAction(actionApi, task as Task));
+    } else {
+      await deleteTask(id);
+    }
     playSound("delete");
     setSelectedTaskId(null);
   };
 
   const handleUpdateDueDate = useCallback(
     async (taskId: string, dueDate: string | null) => {
-      if (dueDate) {
-        await updateTask(taskId, { dueDate: new Date(dueDate).toISOString(), dueTime: false });
+      const task = state.tasks.find((t) => t.id === taskId);
+      const newFields: UpdateTaskInput = dueDate
+        ? { dueDate: new Date(dueDate).toISOString(), dueTime: false }
+        : { dueDate: null, dueTime: false };
+
+      if (task) {
+        const oldFields: UpdateTaskInput = {
+          dueDate: task.dueDate,
+          dueTime: task.dueTime,
+        };
+        await undoManager.perform(createUpdateAction(actionApi, taskId, oldFields, newFields));
       } else {
-        await updateTask(taskId, { dueDate: null, dueTime: false });
+        await updateTask(taskId, newFields);
       }
     },
-    [updateTask],
+    [updateTask, undoManager, actionApi, state.tasks],
   );
 
   const handleAddSubtask = useCallback(

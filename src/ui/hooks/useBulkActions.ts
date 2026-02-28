@@ -1,34 +1,99 @@
+import { useMemo } from "react";
 import { useTaskContext } from "../context/TaskContext.js";
+import { useUndoContext } from "../context/UndoContext.js";
 import { useSoundEffect } from "./useSoundEffect.js";
+import {
+  createBulkCompleteAction,
+  createBulkDeleteAction,
+  createBulkUpdateAction,
+} from "../../core/actions.js";
+import type { Task, UpdateTaskInput } from "../../core/types.js";
 
 export function useBulkActions(multiSelectedIds: Set<string>, clearSelection: () => void) {
-  const { state, completeManyTasks, deleteManyTasks, updateManyTasks, updateTask } =
-    useTaskContext();
+  const {
+    state,
+    completeManyTasks,
+    deleteManyTasks,
+    updateManyTasks,
+    updateTask,
+    createTask,
+    completeTask,
+    deleteTask,
+    refreshTasks,
+  } = useTaskContext();
+  const { undoManager } = useUndoContext();
   const playSound = useSoundEffect();
+
+  // Adapter: bridges TaskContext methods to the ActionAPI shape expected by action creators.
+  const actionApi = useMemo(
+    () => ({
+      completeTask: async (id: string) => {
+        await completeTask(id);
+        return {} as Task;
+      },
+      deleteTask,
+      updateTask: async (id: string, input: UpdateTaskInput) => {
+        await updateTask(id, input);
+        return {} as Task;
+      },
+      createTask: async (input: any) => {
+        await createTask(input);
+        return {} as Task;
+      },
+      completeManyTasks,
+      deleteManyTasks,
+      updateManyTasks: async (ids: string[], changes: UpdateTaskInput) => {
+        await updateManyTasks(ids, changes);
+        return [] as Task[];
+      },
+      refreshTasks,
+    }),
+    [completeTask, deleteTask, updateTask, createTask, completeManyTasks, deleteManyTasks, updateManyTasks, refreshTasks],
+  );
 
   const handleBulkComplete = async () => {
     const ids = Array.from(multiSelectedIds);
-    await completeManyTasks(ids);
+    const tasks = ids
+      .map((id) => state.tasks.find((t) => t.id === id))
+      .filter(Boolean) as Task[];
+    if (tasks.length > 0) {
+      await undoManager.perform(createBulkCompleteAction(actionApi, tasks));
+    } else {
+      await completeManyTasks(ids);
+    }
     playSound("complete");
     clearSelection();
   };
 
   const handleBulkDelete = async () => {
     const ids = Array.from(multiSelectedIds);
-    await deleteManyTasks(ids);
+    const tasks = ids
+      .map((id) => state.tasks.find((t) => t.id === id))
+      .filter(Boolean) as Task[];
+    if (tasks.length > 0) {
+      await undoManager.perform(createBulkDeleteAction(actionApi, tasks));
+    } else {
+      await deleteManyTasks(ids);
+    }
     playSound("delete");
     clearSelection();
   };
 
   const handleBulkMoveToProject = async (projectId: string | null) => {
     const ids = Array.from(multiSelectedIds);
-    await updateManyTasks(ids, { projectId });
+    const tasks = ids
+      .map((id) => state.tasks.find((t) => t.id === id))
+      .filter(Boolean) as Task[];
+    if (tasks.length > 0) {
+      await undoManager.perform(createBulkUpdateAction(actionApi, tasks, { projectId }));
+    } else {
+      await updateManyTasks(ids, { projectId });
+    }
     clearSelection();
   };
 
   const handleBulkAddTag = async (tag: string) => {
-    // We need to add a tag to existing tasks. Since updateMany replaces tags,
-    // we gather existing tags and append the new one
+    // Per-task loop with different tag sets — too complex for a single undo action
     const ids = Array.from(multiSelectedIds);
     for (const id of ids) {
       const task = state.tasks.find((t) => t.id === id);
