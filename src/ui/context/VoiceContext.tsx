@@ -23,6 +23,9 @@ import type {
 } from "../../ai/voice/interface.js";
 import { BrowserTTSProvider } from "../../ai/voice/adapters/browser-tts.js";
 import { playAudioBuffer } from "../../ai/voice/audio-utils.js";
+import { createLogger } from "../../utils/logger.js";
+
+const log = createLogger("voice");
 
 export type VoiceMode = "off" | "push-to-talk" | "vad";
 
@@ -178,16 +181,9 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
 
   const speak = useCallback(
     async (text: string) => {
-      console.log(
-        "[VoiceCall:TTS] speak() called — provider:",
-        ttsProvider?.id,
-        "enabled:",
-        settings.ttsEnabled,
-        "textLen:",
-        text.length,
-      );
+      log.debug("speak() called", { provider: ttsProvider?.id, enabled: settings.ttsEnabled, textLen: text.length });
       if (!ttsProvider || !settings.ttsEnabled) {
-        console.log("[VoiceCall:TTS] speak() SKIPPED — no provider or TTS disabled");
+        log.debug("speak() skipped — no provider or TTS disabled");
         return;
       }
 
@@ -198,7 +194,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
       playbackCancelRef.current = null;
       speechCancelledRef.current = false;
       setIsSpeaking(true);
-      console.log("[VoiceCall:TTS] setIsSpeaking(true)");
+      log.debug("setIsSpeaking(true)");
 
       try {
         // Strip markdown formatting for cleaner speech
@@ -210,17 +206,14 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
           .replace(/\n/g, " ") // single newlines → spaces
           .trim();
         if (!clean) {
-          console.log("[VoiceCall:TTS] speak() SKIPPED — cleaned text is empty");
+          log.debug("speak() skipped — cleaned text is empty");
           setIsSpeaking(false);
           return;
         }
 
         const maxLen = isBrowserTTS ? 5000 : 2000;
         const truncated = clean.length > maxLen ? clean.slice(0, maxLen) + "..." : clean;
-        console.log(
-          "[VoiceCall:TTS] speaking:",
-          truncated.slice(0, 80) + (truncated.length > 80 ? "..." : ""),
-        );
+        log.debug("speaking", { text: truncated.slice(0, 80) });
 
         if (ttsProvider instanceof BrowserTTSProvider) {
           await ttsProvider.speakDirect(truncated, { voice: settings.ttsVoice || undefined });
@@ -236,11 +229,11 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
             playbackCancelRef.current = null;
           }
         }
-        console.log("[VoiceCall:TTS] speak() completed successfully");
+        log.debug("speak() completed");
       } catch (err) {
-        console.warn("[VoiceCall:TTS] Speech synthesis failed:", err);
+        log.warn("speech synthesis failed", { error: String(err) });
       } finally {
-        console.log("[VoiceCall:TTS] setIsSpeaking(false)");
+        log.debug("setIsSpeaking(false)");
         setIsSpeaking(false);
       }
     },

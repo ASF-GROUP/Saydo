@@ -2,6 +2,26 @@
   "name": "asf-saydo",
   "version": "1.0.0",
   "description": "ASF Saydo — Open-source task management with an Obsidian-style plugin system",
+  "author": "AI Strategic Forum (ASF)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/asf-org/saydo.git"
+  },
+  "homepage": "https://github.com/asf-org/saydo",
+  "bugs": {
+    "url": "https://github.com/asf-org/saydo/issues"
+  },
+  "keywords": [
+    "task-manager",
+    "todo",
+    "ai",
+    "plugins",
+    "local-first",
+    "sqlite",
+    "tauri",
+    "voice",
+    "mcp"
+  ],
   "type": "module",
   "engines": {
     "node": ">=22.0.0"

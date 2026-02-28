@@ -4,6 +4,9 @@
  */
 
 import type { STTProviderPlugin, STTOptions } from "../interface.js";
+import { createLogger } from "../../../utils/logger.js";
+
+const log = createLogger("voice");
 
 export class BrowserSTTProvider implements STTProviderPlugin {
   readonly id = "browser-stt";
@@ -50,7 +53,7 @@ export class BrowserSTTProvider implements STTProviderPlugin {
         if (resolved) return;
         resolved = true;
         const transcript = event.results[0]?.[0]?.transcript ?? "";
-        console.log("[BrowserSTT] onresult:", JSON.stringify(transcript));
+        log.debug("BrowserSTT onresult", { transcript });
         recognition.stop();
         resolve(transcript);
       };
@@ -58,7 +61,7 @@ export class BrowserSTTProvider implements STTProviderPlugin {
       recognition.onerror = (event: any) => {
         if (resolved) return;
         const errorType = event.error;
-        console.log("[BrowserSTT] onerror:", errorType);
+        log.debug("BrowserSTT onerror", { errorType });
         // "no-speech" is normal — user just hasn't spoken yet
         if (errorType === "no-speech" || errorType === "aborted") {
           resolved = true;
@@ -71,12 +74,12 @@ export class BrowserSTTProvider implements STTProviderPlugin {
 
       recognition.onend = () => {
         if (resolved) return;
-        console.log("[BrowserSTT] onend (no result)");
+        log.debug("BrowserSTT onend (no result)");
         resolved = true;
         resolve("");
       };
 
-      console.log("[BrowserSTT] recognition.start()");
+      log.debug("BrowserSTT recognition.start()");
       recognition.start();
     });
   }

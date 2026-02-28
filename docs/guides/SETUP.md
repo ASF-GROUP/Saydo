@@ -138,7 +138,7 @@ Add to your `claude_desktop_config.json`:
   "mcpServers": {
     "saydo": {
       "command": "pnpm",
-      "args": ["--dir", "/path/to/Docket", "mcp"]
+      "args": ["--dir", "/path/to/saydo", "mcp"]
     }
   }
 }
@@ -157,7 +157,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 
 const transport = new StdioClientTransport({
   command: "pnpm",
-  args: ["--dir", "/path/to/Docket", "mcp"],
+  args: ["--dir", "/path/to/saydo", "mcp"],
 });
 const client = new Client({ name: "my-agent", version: "1.0.0" });
 await client.connect(transport);

@@ -6,8 +6,6 @@ Local-first. No accounts. No tracking. Your data stays on your machine.
 
 Built by the [AI Strategic Forum (ASF)](https://github.com/asf-org) community.
 
-<!-- ![Saydo Screenshot](docs/assets/screenshot.png) -->
-
 ## Why Saydo
 
 Most task managers are either too simple (no AI, no extensibility) or too complex (enterprise bloat). Saydo sits in the middle:
@@ -36,7 +34,7 @@ For the desktop app (requires Rust + Tauri CLI):
 pnpm tauri:dev
 ```
 
-See the [local setup guide](docs/development/SETUP_LOCAL.md) for details.
+See the [local setup guide](docs/guides/SETUP.md) for details.
 
 ## Features
 
@@ -54,7 +52,7 @@ See the [local setup guide](docs/development/SETUP_LOCAL.md) for details.
 | **CLI companion** | `saydo add`, `saydo list`, `saydo done` from the terminal |
 | **Themes** | Light/dark + custom CSS |
 | **Sound effects** | Satisfying audio feedback for task actions |
-| **1018+ tests** | Solid coverage across the entire codebase |
+| **1930+ tests** | Solid coverage across the entire codebase |
 
 ## Plugins
 
@@ -84,7 +82,7 @@ Docs: [Plugin API](docs/plugins/API.md) / [Examples](docs/plugins/EXAMPLES.md)
 
 The sidebar chat connects to your LLM provider. It sees your tasks, projects, and schedule — so it gives suggestions that are actually useful.
 
-**25 built-in tools**: task CRUD, project management, tag management, reminders, task breakdown, duplicate detection, overcommitment checks, pattern analysis, workload detection, smart organization, and energy-based scheduling recommendations.
+**28 built-in tools**: task CRUD, project management, tag management, reminders, task breakdown, duplicate detection, overcommitment checks, pattern analysis, workload detection, smart organization, and energy-based scheduling recommendations.
 
 Supported providers: OpenAI, Anthropic, OpenRouter, Ollama, LM Studio — or write a custom provider plugin.
 
@@ -116,7 +114,7 @@ Voice activation with VAD (voice activity detection) — just start talking.
 | AI | OpenAI, Anthropic, OpenRouter, Ollama, LM Studio |
 | Voice | Browser, Groq, Inworld AI, Whisper, Kokoro, Piper |
 | CLI | Commander.js |
-| Tests | Vitest (1018+) |
+| Tests | Vitest (1930+) |
 | Build | Vite 6 |
 
 ## Status
@@ -129,17 +127,17 @@ Next milestone: **Saydo Sync** — optional paid cross-device sync.
 
 ## Docs
 
-- [Architecture](docs/development/ARCHITECTURE.md) — how the codebase is organized
-- [Local setup](docs/development/SETUP_LOCAL.md) — getting it running
-- [Contributing](docs/development/CONTRIBUTING.md) — how to help
-- [Security](docs/development/SECURITY.md) — threat model, plugin sandboxing
+- [Architecture](docs/guides/ARCHITECTURE.md) — how the codebase is organized
+- [Local setup](docs/guides/SETUP.md) — getting it running
+- [Contributing](docs/guides/CONTRIBUTING.md) — how to help
+- [Security](docs/guides/SECURITY.md) — threat model, plugin sandboxing
 - [Plugin API](docs/plugins/API.md) — building plugins
 - [Plugin examples](docs/plugins/EXAMPLES.md) — walkthroughs
 - [Roadmap](docs/planning/ROADMAP.md) — what's planned
 
 ## Contributing
 
-See [CONTRIBUTING.md](docs/development/CONTRIBUTING.md). Run `pnpm check` before submitting PRs.
+See [CONTRIBUTING.md](docs/guides/CONTRIBUTING.md). Run `pnpm check` before submitting PRs.
 
 ## License
 

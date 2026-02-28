@@ -5,6 +5,9 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { float32ToWav } from "../../ai/voice/audio-utils.js";
+import { createLogger } from "../../utils/logger.js";
+
+const log = createLogger("voice");
 
 interface UseVADProps {
   onSpeechStart?: () => void;
@@ -100,23 +103,23 @@ export function useVAD({
     if (vadRef.current) return;
 
     try {
-      console.log("[VAD] Loading @ricky0123/vad-web...");
+      log.debug("loading @ricky0123/vad-web");
       const { MicVAD } = await import("@ricky0123/vad-web");
       const vadOptions: any = {
         onSpeechStart: () => {
-          console.log("[VAD] Speech started");
+          log.debug("VAD speech started");
           setIsSpeaking(true);
 
           // If in grace period, cancel the timer — user is speaking again
           if (smartEndpointRef.current && graceTimerRef.current) {
-            console.log("[VAD] Speech resumed during grace period");
+            log.debug("VAD speech resumed during grace period");
             clearGraceTimer();
           }
 
           onSpeechStartRef.current?.();
         },
         onSpeechEnd: (audio: Float32Array) => {
-          console.log("[VAD] Speech ended, audio samples:", audio.length);
+          log.debug("VAD speech ended", { samples: audio.length });
           setIsSpeaking(false);
 
           if (smartEndpointRef.current) {
@@ -137,7 +140,7 @@ export function useVAD({
             graceAnimRef.current = requestAnimationFrame(animate);
 
             graceTimerRef.current = setTimeout(() => {
-              console.log("[VAD] Grace period expired, flushing audio");
+              log.debug("VAD grace period expired, flushing audio");
               flushAudioBuffer();
             }, gracePeriodMsRef.current);
           } else {
@@ -156,9 +159,9 @@ export function useVAD({
       vadRef.current = vad;
       vad.start();
       setIsListening(true);
-      console.log("[VAD] Started successfully");
+      log.debug("VAD started successfully");
     } catch (err) {
-      console.warn("[VAD] Failed to initialize:", err);
+      log.warn("VAD failed to initialize", { error: String(err) });
       setIsSupported(false);
     }
   }, [clearGraceTimer, flushAudioBuffer]);

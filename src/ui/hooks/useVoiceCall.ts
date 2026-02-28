@@ -5,6 +5,9 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { createLogger } from "../../utils/logger.js";
+
+const log = createLogger("voice");
 
 export type CallState = "idle" | "greeting" | "listening" | "processing" | "speaking";
 
@@ -58,7 +61,7 @@ export function useVoiceCall({
   // Debug helper — log state transitions
   const setCallStateDebug = useCallback((next: CallState, reason: string) => {
     setCallState((prev) => {
-      console.log(`[VoiceCall] ${prev} → ${next} (${reason})`);
+      log.debug(`${prev} → ${next} (${reason})`);
       return next;
     });
   }, []);
@@ -94,9 +97,7 @@ export function useVoiceCall({
     wasSpeakingRef.current = isSpeaking;
 
     if (isCallActive) {
-      console.log(
-        `[VoiceCall] isSpeaking: ${wasSpeaking} → ${isSpeaking}, callState: ${callState}`,
-      );
+      log.debug("isSpeaking transition", { from: wasSpeaking, to: isSpeaking, callState });
     }
 
     if (wasSpeaking && !isSpeaking) {
@@ -113,24 +114,16 @@ export function useVoiceCall({
     wasStreamingRef.current = isStreaming;
 
     if (isCallActive) {
-      console.log(
-        `[VoiceCall] isStreaming: ${wasStreaming} → ${isStreaming}, callState: ${callState}`,
-      );
+      log.debug("isStreaming transition", { from: wasStreaming, to: isStreaming, callState });
     }
 
     if (callState === "processing" && wasStreaming && !isStreaming) {
       const lastMsg = messages[messages.length - 1];
-      console.log(`[VoiceCall] AI done streaming. Last msg:`, {
-        role: lastMsg?.role,
-        hasContent: !!lastMsg?.content,
-        contentLength: lastMsg?.content?.length,
-        isError: lastMsg?.isError,
-        ttsAvailable,
-      });
+      log.debug("AI done streaming", { role: lastMsg?.role, hasContent: !!lastMsg?.content, contentLength: lastMsg?.content?.length, isError: lastMsg?.isError, ttsAvailable });
       if (lastMsg?.role === "assistant" && lastMsg.content && !lastMsg.isError && ttsAvailable) {
         setCallStateDebug("speaking", "AI response ready, speaking via TTS");
         speak(lastMsg.content).catch((err) => {
-          console.warn("[VoiceCall] TTS failed during speaking:", err);
+          log.warn("TTS failed during speaking", { error: String(err) });
           setCallStateDebug("listening", "TTS failed, back to listening");
         });
       } else {
@@ -142,28 +135,28 @@ export function useVoiceCall({
   // ── Start call ──
   const startCall = useCallback(() => {
     if (isCallActive) return;
-    console.log("[VoiceCall] startCall() — ttsAvailable:", ttsAvailable);
+    log.debug("startCall()", { ttsAvailable });
     setVoiceCallMode(true);
     setCallStateDebug("greeting", "call started");
 
     if (ttsAvailable) {
       speak(GREETING)
         .then(() => {
-          console.log("[VoiceCall] greeting speak() resolved");
+          log.debug("greeting speak() resolved");
         })
         .catch((err) => {
-          console.warn("[VoiceCall] greeting TTS failed:", err);
+          log.warn("greeting TTS failed", { error: String(err) });
           setCallStateDebug("listening", "greeting TTS failed");
         });
     } else {
-      console.log("[VoiceCall] no TTS, skipping greeting");
+      log.debug("no TTS, skipping greeting");
       setCallStateDebug("listening", "no TTS available");
     }
   }, [isCallActive, speak, ttsAvailable, setVoiceCallMode, setCallStateDebug]);
 
   // ── End call ──
   const endCall = useCallback(() => {
-    console.log("[VoiceCall] endCall()");
+    log.debug("endCall()");
     cancelSpeech();
     setCallStateDebug("idle", "call ended");
     setVoiceCallMode(false);
