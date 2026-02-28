@@ -507,7 +507,131 @@ export function AITab() {
         </div>
       </section>
 
+      <DailyBriefingSection />
+
+      <CustomInstructionsSection />
+
       <MemorySection />
     </>
+  );
+}
+
+function CustomInstructionsSection() {
+  const [instructions, setInstructions] = useState("");
+  const [loaded, setLoaded] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    api
+      .getAppSetting("ai_custom_instructions")
+      .then((val) => {
+        if (val) setInstructions(val);
+        setLoaded(true);
+      })
+      .catch(() => setLoaded(true));
+  }, []);
+
+  const handleSave = async () => {
+    await api.setAppSetting("ai_custom_instructions", instructions.trim());
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
+  if (!loaded) return null;
+
+  return (
+    <section className="mb-8">
+      <h2 className="text-lg font-semibold mb-1 text-on-surface">Custom Instructions</h2>
+      <p className="text-xs text-on-surface-muted mb-3">
+        Add instructions the AI will always follow. These are injected into every conversation.
+      </p>
+      <textarea
+        value={instructions}
+        onChange={(e) => {
+          setSaved(false);
+          setInstructions(e.target.value.slice(0, 2000));
+        }}
+        placeholder="e.g., 'Always suggest time estimates', 'You're a project manager for a software team', 'Respond in Spanish'"
+        rows={4}
+        className="w-full max-w-lg px-3 py-2 text-sm border border-border rounded-lg bg-surface text-on-surface resize-none"
+      />
+      <div className="flex items-center gap-3 mt-2">
+        <button
+          onClick={handleSave}
+          className="px-3 py-1.5 text-xs bg-accent text-white rounded-lg hover:bg-accent-hover"
+        >
+          Save
+        </button>
+        <span className="text-xs text-on-surface-muted">{instructions.length}/2000</span>
+        {saved && <span className="text-xs text-success">Saved</span>}
+      </div>
+    </section>
+  );
+}
+
+function DailyBriefingSection() {
+  const [enabled, setEnabled] = useState(false);
+  const [energy, setEnergy] = useState("medium");
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    Promise.all([
+      api.getAppSetting("ai_daily_briefing"),
+      api.getAppSetting("ai_default_energy"),
+    ])
+      .then(([briefing, energyVal]) => {
+        if (briefing === "on") setEnabled(true);
+        if (energyVal) setEnergy(energyVal);
+        setLoaded(true);
+      })
+      .catch(() => setLoaded(true));
+  }, []);
+
+  const handleToggle = async (checked: boolean) => {
+    setEnabled(checked);
+    await api.setAppSetting("ai_daily_briefing", checked ? "on" : "off");
+  };
+
+  const handleEnergyChange = async (value: string) => {
+    setEnergy(value);
+    await api.setAppSetting("ai_default_energy", value);
+  };
+
+  if (!loaded) return null;
+
+  return (
+    <section className="mb-8">
+      <h2 className="text-lg font-semibold mb-1 text-on-surface">Daily Briefing</h2>
+      <p className="text-xs text-on-surface-muted mb-3">
+        Automatically start your morning with a day plan when you open the AI chat.
+      </p>
+      <div className="space-y-3 max-w-md">
+        <label className="flex items-center gap-2 text-sm text-on-surface">
+          <input
+            type="checkbox"
+            checked={enabled}
+            onChange={(e) => handleToggle(e.target.checked)}
+            className="accent-accent"
+          />
+          Auto-show morning briefing
+          <span className="text-xs text-on-surface-muted">(5am-12pm)</span>
+        </label>
+
+        <div>
+          <label className="block text-xs font-medium text-on-surface-secondary mb-1">
+            Default energy level
+          </label>
+          <select
+            value={energy}
+            onChange={(e) => handleEnergyChange(e.target.value)}
+            className="px-3 py-2 text-sm border border-border rounded-lg bg-surface text-on-surface"
+          >
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+      </div>
+    </section>
   );
 }

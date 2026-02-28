@@ -199,7 +199,7 @@ export async function updateAIConfig(config: {
 
 export async function sendChatMessage(
   message: string,
-  options?: { voiceCall?: boolean },
+  options?: { voiceCall?: boolean; focusedTaskId?: string },
 ): Promise<ReadableStream<Uint8Array> | null> {
   if (isTauri()) {
     const svc = await getServices();
@@ -245,6 +245,7 @@ export async function sendChatMessage(
       const contextBlock = await gatherContext(toolServices, {
         compact: isLocalProvider,
         voiceCall: options?.voiceCall,
+        focusedTaskId: options?.focusedTaskId,
       });
       const session = svc.chatManager.getOrCreateSession(executor, toolServices, {
         queries: svc.storage,
@@ -290,7 +291,11 @@ export async function sendChatMessage(
   const res = await fetch(`${BASE}/ai/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, voiceCall: options?.voiceCall }),
+    body: JSON.stringify({
+      message,
+      voiceCall: options?.voiceCall,
+      focusedTaskId: options?.focusedTaskId,
+    }),
   });
   return res.body;
 }

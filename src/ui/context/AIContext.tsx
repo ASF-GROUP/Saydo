@@ -33,6 +33,9 @@ interface AIContextValue extends AIState {
   setVoiceCallMode: (active: boolean) => void;
   /** Increments when AI tools mutate projects/tags — watch this to refresh data */
   dataMutationCount: number;
+  /** Currently focused task ID — used to give AI context about what the user is viewing */
+  focusedTaskId: string | null;
+  setFocusedTaskId: (taskId: string | null) => void;
   // Phase 5: Message actions
   editAndResend: (messageIndex: number, newText: string) => void;
   regenerateLastResponse: () => void;
@@ -70,7 +73,15 @@ function parseStreamError(data: string): {
   return { message: data, category: "unknown", retryable: true };
 }
 
-const TASK_MUTATING_TOOLS = new Set(["create_task", "complete_task", "update_task", "delete_task"]);
+const TASK_MUTATING_TOOLS = new Set([
+  "create_task",
+  "complete_task",
+  "update_task",
+  "delete_task",
+  "bulk_create_tasks",
+  "bulk_complete_tasks",
+  "bulk_update_tasks",
+]);
 
 const DATA_MUTATING_TOOLS = new Set([
   "create_project",
@@ -80,6 +91,9 @@ const DATA_MUTATING_TOOLS = new Set([
   "remove_tags_from_task",
   "save_memory",
   "forget_memory",
+  "bulk_create_tasks",
+  "bulk_complete_tasks",
+  "bulk_update_tasks",
 ]);
 
 export function AIProvider({ children }: { children: ReactNode }) {
@@ -90,6 +104,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
   const [dataMutationCount, setDataMutationCount] = useState(0);
   const [sessions, setSessions] = useState<ChatSessionInfo[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null);
   const voiceCallActiveRef = useRef(false);
   const lastUserMessageRef = useRef<string>("");
   const { refreshTasks } = useTaskContext();
@@ -149,7 +164,10 @@ export function AIProvider({ children }: { children: ReactNode }) {
       let hadDataMutation = false;
 
       try {
-        const stream = await api.sendChatMessage(text, { voiceCall: voiceCallActiveRef.current });
+        const stream = await api.sendChatMessage(text, {
+          voiceCall: voiceCallActiveRef.current,
+          focusedTaskId: focusedTaskId ?? undefined,
+        });
         if (!stream) {
           setIsStreaming(false);
           return;
@@ -311,7 +329,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
         refreshSessions();
       }
     },
-    [refreshTasks, refreshSessions],
+    [refreshTasks, refreshSessions, focusedTaskId],
   );
 
   const setVoiceCallMode = useCallback((active: boolean) => {
@@ -455,6 +473,8 @@ export function AIProvider({ children }: { children: ReactNode }) {
         voiceCallActive,
         setVoiceCallMode,
         dataMutationCount,
+        focusedTaskId,
+        setFocusedTaskId,
         editAndResend,
         regenerateLastResponse,
         sessions,

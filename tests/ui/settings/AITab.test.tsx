@@ -20,6 +20,12 @@ vi.mock("../../../src/ui/api/index.js", () => ({
     listAIProviders: (...args: any[]) => mockListAIProviders(...args),
     fetchModels: (...args: any[]) => mockFetchModels(...args),
     loadModel: vi.fn().mockResolvedValue(undefined),
+    getAppSetting: vi.fn().mockResolvedValue(null),
+    setAppSetting: vi.fn().mockResolvedValue(undefined),
+    getAiMemories: vi.fn().mockResolvedValue([]),
+    deleteAiMemory: vi.fn().mockResolvedValue(undefined),
+    deleteAllAiMemories: vi.fn().mockResolvedValue(undefined),
+    updateAiMemory: vi.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -51,12 +57,17 @@ describe("AITab", () => {
     mockFetchModels.mockResolvedValue([]);
   });
 
+  function getProviderSelect() {
+    // The provider selector is the first combobox; DailyBriefingSection may add another
+    return screen.getAllByRole("combobox")[0];
+  }
+
   it("renders provider selector with None option", async () => {
     render(<AITab />);
     await waitFor(() => {
       expect(screen.getByText("Provider")).toBeDefined();
     });
-    const select = screen.getByRole("combobox");
+    const select = getProviderSelect();
     expect(select).toBeDefined();
     expect(screen.getByText("None (disabled)")).toBeDefined();
   });
@@ -74,7 +85,7 @@ describe("AITab", () => {
     await waitFor(() => {
       expect(screen.getByText("OpenAI")).toBeDefined();
     });
-    const select = screen.getByRole("combobox");
+    const select = getProviderSelect();
     fireEvent.change(select, { target: { value: "openai" } });
     await waitFor(() => {
       expect(screen.getByText("API Key")).toBeDefined();
@@ -86,7 +97,7 @@ describe("AITab", () => {
     await waitFor(() => {
       expect(screen.getByText("OpenAI")).toBeDefined();
     });
-    const select = screen.getByRole("combobox");
+    const select = getProviderSelect();
     fireEvent.change(select, { target: { value: "openai" } });
     await waitFor(() => {
       expect(screen.getByText("Model")).toBeDefined();
@@ -98,10 +109,11 @@ describe("AITab", () => {
     await waitFor(() => {
       expect(screen.getByText("OpenAI")).toBeDefined();
     });
-    const select = screen.getByRole("combobox");
+    const select = getProviderSelect();
     fireEvent.change(select, { target: { value: "openai" } });
     await waitFor(() => {
-      expect(screen.getByText("Save")).toBeDefined();
+      const saveButtons = screen.getAllByText("Save");
+      expect(saveButtons.length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -110,12 +122,13 @@ describe("AITab", () => {
     await waitFor(() => {
       expect(screen.getByText("OpenAI")).toBeDefined();
     });
-    const select = screen.getByRole("combobox");
+    const select = getProviderSelect();
     fireEvent.change(select, { target: { value: "openai" } });
     await waitFor(() => {
-      expect(screen.getByText("Save")).toBeDefined();
+      expect(screen.getAllByText("Save").length).toBeGreaterThanOrEqual(1);
     });
-    fireEvent.click(screen.getByText("Save"));
+    // The first Save button is the provider config save
+    fireEvent.click(screen.getAllByText("Save")[0]);
     await waitFor(() => {
       expect(mockUpdateConfig).toHaveBeenCalled();
     });
@@ -127,7 +140,7 @@ describe("AITab", () => {
     await waitFor(() => {
       expect(screen.getByText("OpenAI")).toBeDefined();
     });
-    const select = screen.getByRole("combobox");
+    const select = getProviderSelect();
     fireEvent.change(select, { target: { value: "openai" } });
     await waitFor(() => {
       expect(screen.getByText("Not configured")).toBeDefined();

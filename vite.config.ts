@@ -1310,8 +1310,10 @@ function apiPlugin() {
 
         const svc = await getServices();
         const body = await parseBody(req);
-        const message = (body as { message: string; voiceCall?: boolean }).message;
+        const message = (body as { message: string; voiceCall?: boolean; focusedTaskId?: string })
+          .message;
         const voiceCall = (body as { voiceCall?: boolean }).voiceCall;
+        const focusedTaskId = (body as { focusedTaskId?: string }).focusedTaskId;
 
         if (!message) {
           res.statusCode = 400;
@@ -1362,6 +1364,7 @@ function apiPlugin() {
           const contextBlock = await gatherContext(toolServices, {
             compact: isLocalProvider,
             voiceCall,
+            focusedTaskId,
           });
 
           const session = svc.chatManager.getOrCreateSession(executor, toolServices, {

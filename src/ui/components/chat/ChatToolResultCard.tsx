@@ -8,6 +8,9 @@ import {
   Zap,
   Brain,
   Tag,
+  ListPlus,
+  ListChecks,
+  ListRestart,
   FolderOpen,
   BarChart3,
   Search,
@@ -45,6 +48,9 @@ const TOOL_CARD_META: Record<string, { icon: LucideIcon; title: string }> = {
   list_reminders: { icon: Bell, title: "Reminders" },
   plan_my_day: { icon: Sun, title: "Day Plan" },
   daily_review: { icon: Sunset, title: "Daily Review" },
+  bulk_create_tasks: { icon: ListPlus, title: "Tasks Created" },
+  bulk_complete_tasks: { icon: ListChecks, title: "Tasks Completed" },
+  bulk_update_tasks: { icon: ListRestart, title: "Tasks Updated" },
 };
 
 function CardWrapper({ toolName, children }: { toolName: string; children: React.ReactNode }) {
@@ -133,6 +139,11 @@ function ToolResultVisual({
       break;
     case "daily_review":
       content = <DailyReviewCard data={parsed} />;
+      break;
+    case "bulk_create_tasks":
+    case "bulk_complete_tasks":
+    case "bulk_update_tasks":
+      content = <BulkResultCard data={parsed} toolName={toolName} onSelectTask={onSelectTask} />;
       break;
     default:
       return null; // Fall back to badge display in MessageBubble
@@ -965,6 +976,87 @@ function DailyReviewCard({ data }: { data: Record<string, unknown> }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// --- Bulk Result Card (bulk_create_tasks, bulk_complete_tasks, bulk_update_tasks) ---
+
+function BulkResultCard({
+  data,
+  toolName,
+  onSelectTask,
+}: {
+  data: Record<string, unknown>;
+  toolName: string;
+  onSelectTask?: (taskId: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  const items = (data.created ?? data.completed ?? data.updated ?? []) as {
+    id?: string;
+    title?: string;
+    status?: string;
+    priority?: number;
+  }[];
+  const count = (data.count as number) ?? items.length;
+
+  if (items.length === 0) return null;
+
+  const verb =
+    toolName === "bulk_create_tasks"
+      ? "Created"
+      : toolName === "bulk_complete_tasks"
+        ? "Completed"
+        : "Updated";
+
+  const visibleItems = expanded ? items : items.slice(0, 5);
+  const hasMore = items.length > 5;
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-2">
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="flex items-center gap-1.5 text-xs font-medium text-on-surface-secondary"
+        >
+          {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+          {verb} {count} task{count !== 1 ? "s" : ""}
+        </button>
+      </div>
+      <div className="space-y-px">
+        {visibleItems.map((item, i) => (
+          <button
+            key={item.id ?? i}
+            onClick={() => item.id && onSelectTask?.(item.id)}
+            className="w-full text-left px-2.5 py-2 rounded-lg text-xs hover:bg-surface-secondary/80 transition-colors flex items-center gap-2 group/row"
+          >
+            {toolName === "bulk_complete_tasks" ? (
+              <CheckCircle2 size={14} className="text-success shrink-0" />
+            ) : (
+              <span className="w-3.5 h-3.5 rounded-full border-2 border-accent/30 shrink-0 flex items-center justify-center">
+                <span className="w-1.5 h-1.5 rounded-full bg-accent" />
+              </span>
+            )}
+            <span className="flex-1 min-w-0 truncate text-on-surface">{item.title}</span>
+            {item.priority && item.priority >= 1 && item.priority <= 4 && (
+              <span
+                className={`shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded ${PRIORITY_COLORS[item.priority]}`}
+              >
+                {PRIORITY_LABELS[item.priority]}
+              </span>
+            )}
+          </button>
+        ))}
+        {hasMore && !expanded && (
+          <button
+            onClick={() => setExpanded(true)}
+            className="text-xs text-accent hover:text-accent-hover px-2.5 py-1.5 font-medium"
+          >
+            +{items.length - 5} more
+          </button>
+        )}
+      </div>
     </div>
   );
 }

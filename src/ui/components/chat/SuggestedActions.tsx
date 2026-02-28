@@ -14,6 +14,11 @@ const SUGGESTIONS_MAP: Record<string, string[]> = {
   break_down_task: ["Show subtasks", "Set due dates"],
   query_tasks: ["Show overdue", "Organize by priority"],
   list_tasks: ["Show overdue", "Organize by priority"],
+  bulk_create_tasks: ["Show what was created", "Organize by project"],
+  bulk_complete_tasks: ["What's next?", "Show remaining"],
+  bulk_update_tasks: ["Show updated tasks", "What's left?"],
+  plan_my_day: ["Break down my top task", "What if I have low energy?"],
+  daily_review: ["Plan tomorrow", "Show my streak"],
 };
 
 const DEFAULT_SUGGESTIONS = ["Plan my day", "What's overdue?", "Show my tasks"];

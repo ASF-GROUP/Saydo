@@ -32,6 +32,7 @@ import { registerTagCrudTools } from "./tools/builtin/tag-crud.js";
 import { registerPlanMyDayTool, registerDailyReviewTool } from "./tools/builtin/daily-planning.js";
 import { registerProductivityStatsTool } from "./tools/builtin/productivity-stats.js";
 import { registerMemoryTools } from "./tools/builtin/memory-tools.js";
+import { registerBulkOperationTools } from "./tools/builtin/bulk-operations.js";
 
 /** Create a provider registry with all built-in providers. */
 export function createDefaultRegistry(): LLMProviderRegistry {
@@ -64,6 +65,7 @@ export function createDefaultToolRegistry(): ToolRegistry {
   registerDailyReviewTool(registry);
   registerProductivityStatsTool(registry);
   registerMemoryTools(registry);
+  registerBulkOperationTools(registry);
   logger.info("Tool registry initialized", { tools: registry.size });
   return registry;
 }

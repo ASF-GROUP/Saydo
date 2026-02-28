@@ -19,6 +19,8 @@ import {
   Brain,
   Sun,
   Sunset,
+  ListPlus,
+  ListRestart,
   type LucideIcon,
 } from "lucide-react";
 
@@ -56,6 +58,9 @@ export const TOOL_META: Record<string, { icon: LucideIcon; emoji: string; verb: 
   smart_organize: { icon: Brain, emoji: "\ud83e\udde0", verb: "Organizing" },
   plan_my_day: { icon: Sun, emoji: "\u2600\ufe0f", verb: "Planning your day" },
   daily_review: { icon: Sunset, emoji: "\ud83c\udf05", verb: "Reviewing your day" },
+  bulk_create_tasks: { icon: ListPlus, emoji: "\ud83d\udccb", verb: "Creating tasks" },
+  bulk_complete_tasks: { icon: ListChecks, emoji: "\u2705", verb: "Completing tasks" },
+  bulk_update_tasks: { icon: ListRestart, emoji: "\ud83d\udcdd", verb: "Updating tasks" },
   save_memory: { icon: Brain, emoji: "\ud83e\udde0", verb: "Remembering" },
   recall_memories: { icon: Brain, emoji: "\ud83e\udde0", verb: "Recalling memories" },
   forget_memory: { icon: Brain, emoji: "\ud83e\udde0", verb: "Forgetting" },

@@ -12,6 +12,8 @@ import { createLogger } from "../utils/logger.js";
 const logger = createLogger("chat");
 
 const STREAM_TIMEOUT_MS = 60_000;
+const DEFAULT_CONTEXT_BUDGET = 8_000; // tokens — conservative for 8k-128k models
+const KEEP_RECENT_MESSAGES = 12; // ~6 turns of user/assistant
 
 /** Essential tools for local models with small context windows. */
 const LOCAL_PROVIDER_TOOLS = new Set([
@@ -82,6 +84,88 @@ export class ChatSession {
     });
   }
 
+  /** Rough token estimate: ~4 chars per token for English text. */
+  private estimateTokens(): number {
+    return this.messages.reduce((sum, m) => sum + Math.ceil(m.content.length / 4), 0);
+  }
+
+  /**
+   * Compact conversation if it exceeds the context budget.
+   * Replaces old messages with a summary, keeping the system message and recent messages.
+   */
+  private async compactIfNeeded(): Promise<void> {
+    const estimate = this.estimateTokens();
+    if (estimate <= DEFAULT_CONTEXT_BUDGET) return;
+
+    // Find the system message (always first)
+    const systemMsg = this.messages[0];
+    if (systemMsg?.role !== "system") return;
+
+    // Keep system + last N messages
+    const nonSystemMessages = this.messages.slice(1);
+    if (nonSystemMessages.length <= KEEP_RECENT_MESSAGES) return;
+
+    const oldMessages = nonSystemMessages.slice(0, -KEEP_RECENT_MESSAGES);
+    const recentMessages = nonSystemMessages.slice(-KEEP_RECENT_MESSAGES);
+    const oldCount = this.messages.length;
+
+    try {
+      // Build compaction request
+      const compactionMessages: ChatMessage[] = [
+        ...oldMessages,
+        {
+          role: "user",
+          content:
+            "Summarize this conversation so far in 2-4 paragraphs. Preserve: key decisions, task actions taken, user preferences mentioned, and any pending questions or plans.",
+        },
+      ];
+
+      const request: LLMRequest = {
+        messages: compactionMessages,
+        model: this.model,
+      };
+
+      const ctx: LLMExecutionContext = {
+        request,
+        providerName: this.providerName,
+        capabilities: this.executor.getCapabilities(this.model),
+        metadata: new Map(),
+      };
+
+      const result = await this.executor.execute(ctx);
+      let summary = "";
+      if (result.mode === "stream") {
+        for await (const event of result.events) {
+          if (event.type === "token") summary += event.data;
+        }
+      } else {
+        summary = result.response.content;
+      }
+
+      if (!summary) return;
+
+      // Replace old messages with summary
+      const summaryMsg: ChatMessage = {
+        role: "assistant",
+        content: `[Conversation summary]\n\n${summary}`,
+      };
+
+      this.messages = [systemMsg, summaryMsg, ...recentMessages];
+
+      logger.info("Conversation compacted", {
+        sessionId: this.sessionId,
+        before: oldCount,
+        after: this.messages.length,
+      });
+    } catch (err) {
+      logger.warn("Conversation compaction failed", {
+        sessionId: this.sessionId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      // Non-fatal — continue with uncompacted messages
+    }
+  }
+
   addUserMessage(content: string): void {
     logger.debug("User message added", { sessionId: this.sessionId, length: content.length });
     const msg: ChatMessage = { role: "user", content };
@@ -109,6 +193,9 @@ export class ChatSession {
   }
 
   private async *executeRun(): AsyncIterable<StreamEvent> {
+    // Compact conversation if approaching context limits
+    await this.compactIfNeeded();
+
     const isLocal = this.providerName === "ollama" || this.providerName === "lmstudio";
     const allTools = this.toolRegistry.getDefinitions();
     const tools = isLocal ? allTools.filter((t) => LOCAL_PROVIDER_TOOLS.has(t.name)) : allTools;
@@ -472,6 +559,20 @@ ${contextBlock ? contextBlock + "\n" : ""}## Task Tools
 - **add_tags_to_task**: Add tags to a task without removing existing ones. Creates new tags if needed.
 - **remove_tags_from_task**: Remove specific tags from a task, keeping others intact.
 
+## Bulk Operations
+- **bulk_create_tasks**: Create multiple tasks at once. Perfect for brain dumps, meeting notes, or planning sessions.
+  When the user describes multiple things to do, extract ALL tasks and create them with bulk_create_tasks.
+- **bulk_complete_tasks**: Mark multiple tasks done by IDs. Use after querying tasks.
+- **bulk_update_tasks**: Update multiple tasks at once (priority, due date, project, tags).
+
+## Smart Capture Behavior
+- When the user sends unstructured text with multiple actionable items, extract ALL tasks and create them with bulk_create_tasks.
+- Infer priority from urgency words ("ASAP" → P1, "when you can" → P4).
+- Infer due dates from temporal references ("tomorrow", "by Friday", "next week").
+- Infer projects from context if mentioned ("for the website redesign" → match existing project).
+- Infer tags from topic keywords.
+- After bulk creation, summarize what was created.
+
 ## Analytical Tools
 - **analyze_completion_patterns**: Habits, productivity patterns, recurring task detection.
 - **analyze_workload**: Weekly load distribution, overloaded days.
@@ -500,6 +601,7 @@ ${contextBlock ? contextBlock + "\n" : ""}## Task Tools
 - When setting a due date, call check_overcommitment to warn about overloaded days.
 - When asked to "break down" or "split" a task, use break_down_task.
 - When referencing tasks in your response, link them using this format: [Task Title](saydo://task/<taskId>). This makes tasks clickable in the UI.
+- When a "Currently Focused Task" section is present in context, the user is viewing that task. Respond to references like "this task", "break it down", "add a reminder for this" as referring to the focused task.
 
 ## Memory Tools
 - **save_memory**: Save an important fact about the user (preferences, habits, schedules, work patterns, instructions). Keep each memory concise (1-2 sentences).
@@ -538,13 +640,19 @@ ${contextBlock ? "\n" + contextBlock : ""}`;
  */
 export async function gatherContext(
   services: ToolContext,
-  options?: { compact?: boolean; voiceCall?: boolean; storage?: IStorage },
+  options?: {
+    compact?: boolean;
+    voiceCall?: boolean;
+    storage?: IStorage;
+    focusedTaskId?: string;
+  },
 ): Promise<string> {
   const { taskService, projectService } = services;
   const todayISO = new Date().toISOString().split("T")[0];
   const compact = options?.compact ?? false;
   const voiceCall = options?.voiceCall ?? false;
   const storage = options?.storage ?? services.storage;
+  const focusedTaskId = options?.focusedTaskId;
 
   const allTasks = await taskService.list();
   const projects = await projectService.list();
@@ -638,6 +746,45 @@ You are in a live voice call with the user. Follow these rules:
       }
     } catch {
       // Non-critical — memories just won't be injected
+    }
+  }
+
+  // Inject custom instructions
+  if (storage) {
+    try {
+      const customInstructions = storage.getAppSetting("ai_custom_instructions");
+      if (customInstructions?.value) {
+        lines.push("");
+        lines.push("## User's Custom Instructions");
+        lines.push(customInstructions.value);
+      }
+    } catch {
+      // Non-critical
+    }
+  }
+
+  // Inject focused task context
+  if (focusedTaskId) {
+    try {
+      const task = await taskService.get(focusedTaskId);
+      if (task) {
+        lines.push("");
+        lines.push("## Currently Focused Task");
+        lines.push(`- Title: "${task.title}"`);
+        lines.push(`- ID: ${task.id}`);
+        lines.push(`- Status: ${task.status}`);
+        if (task.priority) lines.push(`- Priority: P${task.priority}`);
+        if (task.dueDate) lines.push(`- Due: ${task.dueDate}`);
+        if (task.projectId) lines.push(`- Project ID: ${task.projectId}`);
+        if (task.tags.length > 0) lines.push(`- Tags: ${task.tags.join(", ")}`);
+        if (task.description) lines.push(`- Description: ${task.description}`);
+        if (task.estimatedMinutes) lines.push(`- Estimated: ${task.estimatedMinutes} minutes`);
+        if (task.deadline) lines.push(`- Deadline: ${task.deadline}`);
+        if (task.recurrence) lines.push(`- Recurrence: ${task.recurrence}`);
+        if (task.remindAt) lines.push(`- Reminder: ${task.remindAt}`);
+      }
+    } catch {
+      // Non-critical — focused task just won't be injected
     }
   }
 
