@@ -45,6 +45,8 @@ export interface GeneralSettings {
   nudge_overloaded_day: "true" | "false";
   quick_capture_hotkey: string;
   quick_capture_enabled: "true" | "false";
+  eat_the_frog_enabled: "true" | "false";
+  eat_the_frog_morning_only: "true" | "false";
 }
 
 const DEFAULT_SETTINGS: GeneralSettings = {
@@ -91,6 +93,8 @@ const DEFAULT_SETTINGS: GeneralSettings = {
   nudge_overloaded_day: "true",
   quick_capture_hotkey: "CmdOrCtrl+Shift+Space",
   quick_capture_enabled: "true",
+  eat_the_frog_enabled: "true",
+  eat_the_frog_morning_only: "true",
 };
 
 const SETTING_KEYS = Object.keys(DEFAULT_SETTINGS) as (keyof GeneralSettings)[];

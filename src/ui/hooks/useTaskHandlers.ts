@@ -57,6 +57,7 @@ export function useTaskHandlers(
     estimatedMinutes?: number | null;
     deadline?: Date | null;
     isSomeday?: boolean;
+    dreadLevel?: number | null;
   }) => {
     if (!parsed.title.trim()) return;
     let projectId = selectedProjectId;
@@ -75,6 +76,7 @@ export function useTaskHandlers(
       ...(parsed.estimatedMinutes != null ? { estimatedMinutes: parsed.estimatedMinutes } : {}),
       ...(parsed.deadline ? { deadline: parsed.deadline.toISOString() } : {}),
       ...(parsed.isSomeday ? { isSomeday: true } : {}),
+      ...(parsed.dreadLevel != null ? { dreadLevel: parsed.dreadLevel } : {}),
     } as any);
     playSound("create");
   };

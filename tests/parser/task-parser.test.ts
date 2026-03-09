@@ -164,4 +164,50 @@ describe("parseTask", () => {
     const result = parseTask("buy milk");
     expect(result.estimatedMinutes).toBeNull();
   });
+
+  // ── Dread Level ──
+
+  it("parses ~d3 into dreadLevel 3", () => {
+    const result = parseTask("do taxes ~d3");
+    expect(result.title).toBe("do taxes");
+    expect(result.dreadLevel).toBe(3);
+  });
+
+  it("parses !frog5 into dreadLevel 5", () => {
+    const result = parseTask("dentist appointment !frog5");
+    expect(result.title).toBe("dentist appointment");
+    expect(result.dreadLevel).toBe(5);
+  });
+
+  it("parses ~d1 into dreadLevel 1", () => {
+    const result = parseTask("easy task ~d1");
+    expect(result.title).toBe("easy task");
+    expect(result.dreadLevel).toBe(1);
+  });
+
+  it("returns null dreadLevel when not specified", () => {
+    const result = parseTask("normal task");
+    expect(result.dreadLevel).toBeNull();
+  });
+
+  it("parses dreadLevel with other fields", () => {
+    const result = parseTask("scary task p1 ~d4 #work");
+    expect(result.title).toBe("scary task");
+    expect(result.priority).toBe(1);
+    expect(result.dreadLevel).toBe(4);
+    expect(result.tags).toEqual(["work"]);
+  });
+
+  it("does not match ~d0 or ~d6 (out of range)", () => {
+    const result = parseTask("test ~d0");
+    expect(result.dreadLevel).toBeNull();
+
+    const result2 = parseTask("test ~d6");
+    expect(result2.dreadLevel).toBeNull();
+  });
+
+  it("case insensitive for !frog syntax", () => {
+    const result = parseTask("task !Frog2");
+    expect(result.dreadLevel).toBe(2);
+  });
 });

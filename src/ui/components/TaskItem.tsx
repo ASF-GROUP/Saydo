@@ -13,6 +13,7 @@ import {
 import type { Task } from "../../core/types.js";
 import { getPriority } from "../../core/priorities.js";
 import { useGeneralSettings } from "../context/SettingsContext.js";
+import { FrogIcon, getDreadLevelColor } from "./DreadLevelSelector.js";
 import { DatePicker } from "./DatePicker.js";
 import { formatRecurrenceLabel } from "./RecurrencePicker.js";
 import { hexToRgba } from "../../utils/color.js";
@@ -287,6 +288,16 @@ export const TaskItem = React.memo(function TaskItem({
             <span className="text-xs px-1.5 py-0 rounded-md bg-surface-tertiary text-on-surface-secondary font-mono flex items-center gap-0.5 flex-shrink-0">
               <Clock size={10} />
               {formattedDuration}
+            </span>
+          )}
+
+          {/* Dread level indicator */}
+          {task.dreadLevel != null && task.dreadLevel > 0 && task.status !== "completed" && (
+            <span
+              className="flex-shrink-0"
+              title={`Dread level: ${task.dreadLevel}/5`}
+            >
+              <FrogIcon size={14} color={getDreadLevelColor(task.dreadLevel).fill} />
             </span>
           )}
 

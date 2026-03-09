@@ -17,6 +17,7 @@ import { DatePicker } from "./DatePicker.js";
 import { TagsInput } from "./TagsInput.js";
 import { RecurrencePicker, formatRecurrenceLabel } from "./RecurrencePicker.js";
 import { ConfirmDialog } from "./ConfirmDialog.js";
+import { DreadLevelSelector } from "./DreadLevelSelector.js";
 import { useGeneralSettings } from "../context/SettingsContext.js";
 
 const PRIORITIES = [
@@ -95,6 +96,13 @@ export function TaskMetadataSidebar({
   const handleTagsChange = useCallback(
     (tags: string[]) => {
       onUpdate(task.id, { tags });
+    },
+    [task.id, onUpdate],
+  );
+
+  const handleDreadLevelChange = useCallback(
+    (level: number | null) => {
+      onUpdate(task.id, { dreadLevel: level });
     },
     [task.id, onUpdate],
   );
@@ -261,6 +269,16 @@ export function TaskMetadataSidebar({
               {p.label}
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Dread Level */}
+      <div>
+        <label className="text-xs font-medium text-on-surface-muted uppercase tracking-wider">
+          Dread Level
+        </label>
+        <div className="mt-1.5">
+          <DreadLevelSelector value={task.dreadLevel} onChange={handleDreadLevelChange} />
         </div>
       </div>
 

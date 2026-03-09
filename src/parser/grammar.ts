@@ -123,6 +123,19 @@ export function extractDeadline(input: string): {
   return { deadlineText, text };
 }
 
+/** Extract dread level (~d1-~d5 or !frog1-!frog5) from input. */
+export function extractDreadLevel(input: string): {
+  dreadLevel: number | null;
+  text: string;
+} {
+  const match = input.match(/(?:~d|!frog)([1-5])\b/i);
+  if (!match) return { dreadLevel: null, text: input };
+
+  const dreadLevel = parseInt(match[1], 10);
+  const text = input.replace(match[0], "").replace(/\s+/g, " ").trim();
+  return { dreadLevel, text };
+}
+
 /** Extract someday marker (~someday or /someday) from input. */
 export function extractSomeday(input: string): { isSomeday: boolean; text: string } {
   const match = input.match(/(?:~|\/)(someday)\b/i);

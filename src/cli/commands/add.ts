@@ -22,6 +22,7 @@ export async function addTask(description: string, services: AppServices, option
     dueTime: parsed.dueTime,
     tags: parsed.tags,
     projectId,
+    ...(parsed.dreadLevel != null ? { dreadLevel: parsed.dreadLevel } : {}),
   });
 
   if (options?.json) {

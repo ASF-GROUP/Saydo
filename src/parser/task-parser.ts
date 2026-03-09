@@ -6,6 +6,7 @@ import {
   extractRecurrence,
   extractDuration,
   extractDeadline,
+  extractDreadLevel,
   extractSomeday,
 } from "./grammar.js";
 
@@ -20,6 +21,7 @@ export interface ParsedTask {
   estimatedMinutes: number | null;
   deadline: Date | null;
   isSomeday: boolean;
+  dreadLevel: number | null;
 }
 
 /**
@@ -54,6 +56,10 @@ export function parseTask(input: string): ParsedTask {
   // Extract duration (~30m, ~1h, ~1.5h)
   const { estimatedMinutes, text: afterDuration } = extractDuration(remaining);
   remaining = afterDuration;
+
+  // Extract dread level (~d1-~d5 or !frog1-!frog5)
+  const { dreadLevel, text: afterDread } = extractDreadLevel(remaining);
+  remaining = afterDread;
 
   // Extract hard deadline (!!tomorrow, !!jan 15, !!next friday)
   let deadline: Date | null = null;
@@ -94,5 +100,6 @@ export function parseTask(input: string): ParsedTask {
     estimatedMinutes,
     deadline,
     isSomeday,
+    dreadLevel,
   };
 }

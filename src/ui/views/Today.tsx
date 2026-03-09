@@ -5,6 +5,7 @@ import { TaskInput } from "../components/TaskInput.js";
 import { TaskList } from "../components/TaskList.js";
 import { OverdueSection } from "../components/OverdueSection.js";
 import { CompletionRing } from "../components/CompletionRing.js";
+import { EatTheFrog } from "../components/EatTheFrog.js";
 import { DailyPlanningModal } from "../components/DailyPlanningModal.js";
 import { DailyReviewModal } from "../components/DailyReviewModal.js";
 import { WeeklyReviewModal } from "../components/WeeklyReviewModal.js";
@@ -368,6 +369,16 @@ export function Today({
         autoFocusTrigger={autoFocusTrigger}
         defaultDueDate={new Date(today + "T00:00:00")}
       />
+
+      {/* Eat the Frog — highest dread task */}
+      {settings.eat_the_frog_enabled !== "false" &&
+        !(settings.eat_the_frog_morning_only === "true" && new Date().getHours() >= 12) && (
+          <EatTheFrog
+            tasks={[...overdueTasks, ...todayTasks]}
+            onToggleTask={onToggleTask}
+            onSelectTask={onSelectTask}
+          />
+        )}
 
       {/* Overdue section (unchanged behavior) */}
       <OverdueSection
