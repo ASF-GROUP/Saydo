@@ -5,7 +5,7 @@ import {
   autoSchedule,
   applySchedule,
   type SchedulerSettings,
-  type ScheduleRequest,
+  type ScheduleRequest as _ScheduleRequest,
 } from "../../../src/plugins/builtin/timeblocking/auto-scheduler.js";
 import type { TimeBlock } from "../../../src/plugins/builtin/timeblocking/types.js";
 import type { PluginStorageAPI } from "../../../src/plugins/builtin/timeblocking/types.js";

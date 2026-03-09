@@ -82,7 +82,7 @@ Every plugin must have a `manifest.json` in its root directory.
   "main": "index.ts",
   "minSaydoVersion": "1.0.0",
   "license": "MIT",
-  "repository": "https://github.com/asf-org/saydo-plugin-pomodoro",
+  "repository": "https://github.com/ASF-GROUP/saydo-plugin-pomodoro",
   "keywords": ["pomodoro", "timer", "productivity"],
   "permissions": ["task:read", "task:write", "ui:panel", "ui:status", "commands", "storage"],
   "settings": [

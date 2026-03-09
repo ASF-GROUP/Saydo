@@ -5,11 +5,11 @@
   "author": "AI Strategic Forum (ASF)",
   "repository": {
     "type": "git",
-    "url": "https://github.com/asf-org/saydo.git"
+    "url": "https://github.com/ASF-GROUP/Saydo.git"
   },
-  "homepage": "https://github.com/asf-org/saydo",
+  "homepage": "https://github.com/ASF-GROUP/Saydo",
   "bugs": {
-    "url": "https://github.com/asf-org/saydo/issues"
+    "url": "https://github.com/ASF-GROUP/Saydo/issues"
   },
   "keywords": [
     "task-manager",

@@ -2,7 +2,7 @@
 
 ## What is ASF?
 
-[AI Strategic Forum (ASF)](https://github.com/asf-org) is a community for AI enthusiasts focused on curated news, long-form analysis, and open-source tools. ASF values accuracy over speed, sources over vibes, and transparency over persuasion.
+[AI Strategic Forum (ASF)](https://github.com/ASF-GROUP) is a community for AI enthusiasts focused on curated news, long-form analysis, and open-source tools. ASF values accuracy over speed, sources over vibes, and transparency over persuasion.
 
 ## What is Saydo?
 

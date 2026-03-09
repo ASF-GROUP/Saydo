@@ -4,7 +4,7 @@
 
 Local-first. No accounts. No tracking. Your data stays on your machine.
 
-Built by the [AI Strategic Forum (ASF)](https://github.com/asf-org) community.
+Built by the [AI Strategic Forum (ASF)](https://github.com/ASF-GROUP) community.
 
 ## Why Saydo
 
@@ -19,7 +19,7 @@ Most task managers are either too simple (no AI, no extensibility) or too comple
 ## Quick start
 
 ```bash
-git clone https://github.com/asf-org/saydo.git && cd saydo
+git clone https://github.com/ASF-GROUP/Saydo.git && cd Saydo
 pnpm install
 cp .env.example .env
 mkdir -p data && pnpm db:migrate

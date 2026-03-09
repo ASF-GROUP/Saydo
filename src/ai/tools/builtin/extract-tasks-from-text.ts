@@ -119,7 +119,7 @@ export function registerExtractTasksFromTextTool(registry: ToolRegistry): void {
       let extracted: ExtractedTask[];
 
       // Try LLM extraction via context if available (the pipeline passes sendMessage on ctx)
-      const sendMessage = (ctx as Record<string, unknown>).sendMessage as
+      const sendMessage = (ctx as unknown as Record<string, unknown>).sendMessage as
         | ((prompt: string) => Promise<string>)
         | undefined;
 

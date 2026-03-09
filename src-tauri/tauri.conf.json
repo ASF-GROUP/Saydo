@@ -39,7 +39,7 @@
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://github.com/AI-Strategic-Forum/Saydo/releases/latest/download/latest.json"
+        "https://github.com/ASF-GROUP/Saydo/releases/latest/download/latest.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEE3NzQ3QUYyQkZCNjhENTYKUldSV2piYS84bnAwcHpEMFVNSEplM2JXWk0vVlBqOC90WWF1NCsyQWRNbk8vUGNyY21DbkhDMVYK"
     }

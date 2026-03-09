@@ -8,7 +8,7 @@ ASF Saydo is an open-source, AI-native task manager with an Obsidian-style plugi
 
 It's the task manager that doesn't exist yet — beautiful and simple out of the box, with a real AI assistant (not a gimmick), and a plugin system so simple that anyone can build features through AI-generated code. No coding experience required.
 
-This is the second ASF project, alongside [ASF Sentinel](https://github.com/asf-org/sentinel) (a Discord bot for AI news curation).
+This is the second ASF project, alongside [ASF Sentinel](https://github.com/ASF-GROUP/sentinel) (a Discord bot for AI news curation).
 
 ## ASF Values (MUST Follow)
 

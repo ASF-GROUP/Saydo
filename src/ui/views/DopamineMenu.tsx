@@ -52,16 +52,14 @@ function ConfettiOverlay({ onDone }: { onDone: () => void }) {
     return () => clearTimeout(timer);
   }, [onDone]);
 
-  const particles = useMemo(
-    () =>
-      Array.from({ length: 24 }, (_, i) => ({
-        id: i,
-        color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
-        left: `${10 + Math.random() * 80}%`,
-        delay: `${Math.random() * 0.3}s`,
-        size: 4 + Math.random() * 6,
-      })),
-    [],
+  const [particles] = useState(() =>
+    Array.from({ length: 24 }, (_, i) => ({
+      id: i,
+      color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+      left: `${10 + ((i * 37 + 13) % 80)}%`,
+      delay: `${(i * 13 % 300) / 1000}s`,
+      size: 4 + (i * 7 % 6),
+    })),
   );
 
   return (
@@ -97,7 +95,7 @@ export function DopamineMenu({
   onContextMenu,
 }: DopamineMenuProps) {
   const [showConfetti, setShowConfetti] = useState(false);
-  const [completedIds, setCompletedIds] = useState<Set<string>>(new Set());
+  const [, setCompletedIds] = useState<Set<string>>(new Set());
 
   const quickWins = useMemo(() => sortQuickWins(filterQuickWins(tasks)), [tasks]);
 

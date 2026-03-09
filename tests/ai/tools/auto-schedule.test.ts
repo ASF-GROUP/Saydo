@@ -85,7 +85,7 @@ describe("auto_schedule_day tool", () => {
     return tools.find((t) => t.definition.name === "auto_schedule_day")!;
   }
 
-  function getRescheduleTool() {
+  function _getRescheduleTool() {
     return tools.find((t) => t.definition.name === "reschedule_day")!;
   }
 

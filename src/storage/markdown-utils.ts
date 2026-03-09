@@ -70,6 +70,7 @@ export function parseTaskFile(
     deadline: string | null;
     isSomeday: boolean;
     sectionId: string | null;
+    dreadLevel: number | null;
     sortOrder: number;
     createdAt: string;
     updatedAt: string;

@@ -12,7 +12,7 @@ export const openrouterPlugin: LLMProviderPlugin = createOpenAICompatPlugin({
   defaultModel: "anthropic/claude-sonnet-4-5-20250929",
   defaultBaseUrl: "https://openrouter.ai/api/v1",
   defaultHeaders: {
-    "HTTP-Referer": "https://github.com/asf-org/saydo",
+    "HTTP-Referer": "https://github.com/ASF-GROUP/Saydo",
     "X-Title": "ASF Saydo",
   },
 });

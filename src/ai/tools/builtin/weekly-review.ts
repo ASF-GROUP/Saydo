@@ -10,8 +10,8 @@ const MAX_LIST_SIZE = 10;
 const MAX_TITLE_LENGTH = 60;
 const STREAK_MAX_DAYS = 30;
 
-const TIME_BUCKETS = ["morning", "afternoon", "evening", "night"] as const;
-type TimeBucket = (typeof TIME_BUCKETS)[number];
+const _TIME_BUCKETS = ["morning", "afternoon", "evening", "night"] as const;
+type TimeBucket = (typeof _TIME_BUCKETS)[number];
 
 function truncTitle(title: string): string {
   return title.length > MAX_TITLE_LENGTH ? title.slice(0, MAX_TITLE_LENGTH - 3) + "..." : title;
@@ -26,15 +26,6 @@ function getTimeBucket(hour: number): TimeBucket {
   if (hour >= 12 && hour < 17) return "afternoon";
   if (hour >= 17 && hour < 21) return "evening";
   return "night";
-}
-
-function getMonday(dateStr: string): string {
-  const d = new Date(dateStr + "T00:00:00");
-  const day = d.getDay();
-  // day=0 is Sunday, day=1 is Monday, etc.
-  const diff = day === 0 ? 6 : day - 1;
-  d.setDate(d.getDate() - diff);
-  return isoDate(d);
 }
 
 function getLastMonday(): string {

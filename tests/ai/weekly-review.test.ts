@@ -15,7 +15,7 @@ function exec(
   return registry.execute(name, args, ctx).then((r) => JSON.parse(r));
 }
 
-function todayISO(): string {
+function _todayISO(): string {
   return new Date().toISOString().split("T")[0];
 }
 
