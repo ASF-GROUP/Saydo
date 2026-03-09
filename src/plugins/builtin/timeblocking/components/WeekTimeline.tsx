@@ -29,6 +29,8 @@ interface WeekTimelineProps {
   onBlockClick: (blockId: string) => void;
   onSlotClick: (slotId: string) => void;
   onSlotCreate?: (date: string, startTime: string, endTime: string) => void;
+  onTimelineContextMenu?: (e: React.MouseEvent, date: string, time: string) => void;
+  onBlockContextMenu?: (e: React.MouseEvent, blockId: string) => void;
   renderSlot?: (slot: TimeSlot) => React.ReactNode;
 }
 
@@ -63,6 +65,8 @@ export function WeekTimeline({
   onBlockClick,
   onSlotClick,
   onSlotCreate,
+  onTimelineContextMenu,
+  onBlockContextMenu,
   renderSlot,
 }: WeekTimelineProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -164,6 +168,8 @@ export function WeekTimeline({
               onBlockClick={onBlockClick}
               onSlotClick={onSlotClick}
               onSlotCreate={onSlotCreate}
+              onTimelineContextMenu={onTimelineContextMenu}
+              onBlockContextMenu={onBlockContextMenu}
               renderSlot={renderSlot}
             />
           ))}

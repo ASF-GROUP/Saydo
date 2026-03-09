@@ -7,7 +7,7 @@
   "description": "Akiflow-inspired time blocking — drag tasks onto a day/week timeline to schedule your day.",
   "main": "index.ts",
   "minSaydoVersion": "1.0.0",
-  "permissions": ["task:read", "task:write", "commands", "ui:view", "ui:status", "storage", "settings"],
+  "permissions": ["task:read", "task:write", "commands", "ui:view", "ui:status", "storage", "settings", "ai:tools"],
   "settings": [
     {
       "id": "defaultDurationMinutes",

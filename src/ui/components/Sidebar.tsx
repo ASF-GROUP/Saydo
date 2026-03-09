@@ -7,7 +7,7 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { ChevronLeft, ChevronRight, Plus, Search, Settings, MessageSquare } from "lucide-react";
+import { ChevronLeft, ChevronRight, Inbox, Plus, Search, Settings, MessageSquare } from "lucide-react";
 import type { Project } from "../../core/types.js";
 import type { PanelInfo, ViewInfo } from "../api/index.js";
 import { useGeneralSettings } from "../context/SettingsContext.js";
@@ -21,7 +21,7 @@ import {
   renderNavButton,
 } from "./sidebar/SidebarPrimitives.js";
 import { ViewNavigation } from "./sidebar/ViewNavigation.js";
-import { useSidebarContextMenu, type ContextMenuState } from "./sidebar/SidebarContextMenu.js";
+import { useSidebarContextMenu, useSidebarEmptyContextMenu, type ContextMenuState } from "./sidebar/SidebarContextMenu.js";
 
 interface SidebarProps {
   currentView: string;
@@ -62,6 +62,7 @@ export function Sidebar({
   const [filtersExpanded, setFiltersExpanded] = useState(true);
   const [favoriteViewsExpanded, setFavoriteViewsExpanded] = useState(true);
   const [ctxMenu, setCtxMenu] = useState<ContextMenuState | null>(null);
+  const [emptySpaceMenu, setEmptySpaceMenu] = useState<{ x: number; y: number } | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -93,7 +94,19 @@ export function Sidebar({
     () => visibleNavItems.filter((item) => favoriteViewIds.has(item.id)),
     [visibleNavItems, favoriteViewIds],
   );
-  const navItemMap = useMemo(() => new Map(NAV_ITEMS.map((item) => [item.id, item])), []);
+  const navItemMap = useMemo(() => {
+    const map = new Map<string, { id: string; label: string; icon: typeof Inbox | string; countKey?: "inbox" | "today" }>(
+      NAV_ITEMS.map((item) => [item.id, item]),
+    );
+    // Include builtin plugin navigation views so they're sortable in the sidebar
+    for (const view of pluginViews) {
+      if (view.slot === "navigation" && builtinPluginIds.has(view.pluginId)) {
+        const viewId = `plugin-view-${view.id}`;
+        map.set(viewId, { id: viewId, label: view.name, icon: view.icon ?? "🧩" });
+      }
+    }
+    return map;
+  }, [pluginViews, builtinPluginIds]);
   const favoriteProjects = useMemo(() => projects.filter((p) => p.isFavorite && !p.archived), [projects]);
 
   const viewsBySlot = useMemo(() => {
@@ -113,6 +126,10 @@ export function Sidebar({
   const orderedSidebarItems = useMemo(() => {
     const visibleIds = new Set<string>();
     for (const item of visibleNavItems) { if (!favoriteViewIds.has(item.id)) visibleIds.add(item.id); }
+    // Include builtin plugin navigation views as sortable sidebar items
+    for (const view of viewsBySlot.navigation) {
+      visibleIds.add(`plugin-view-${view.id}`);
+    }
     if (favoriteNavItems.length > 0) visibleIds.add("favorite-views");
     if (favoriteProjects.length > 0) visibleIds.add("favorites");
     if (projects.length > 0 || onOpenProjectModal) visibleIds.add("projects");
@@ -128,11 +145,16 @@ export function Sidebar({
     const result: string[] = [], seen = new Set<string>();
     for (const id of baseOrder) { if (visibleIds.has(id) && !seen.has(id)) { result.push(id); seen.add(id); } }
     for (const id of DEFAULT_SIDEBAR_ORDER) { if (visibleIds.has(id) && !seen.has(id)) result.push(id); }
+    // Append plugin navigation views not yet in the saved order
+    for (const view of viewsBySlot.navigation) {
+      const viewId = `plugin-view-${view.id}`;
+      if (!seen.has(viewId)) { result.push(viewId); seen.add(viewId); }
+    }
     return result;
   }, [
     visibleNavItems, favoriteViewIds, favoriteNavItems.length, favoriteProjects.length,
     projects.length, onOpenProjectModal, savedFilters.length, hasToolsContent,
-    settings.sidebar_section_order, settings.sidebar_nav_order,
+    settings.sidebar_section_order, settings.sidebar_nav_order, viewsBySlot.navigation,
   ]);
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
@@ -149,7 +171,17 @@ export function Sidebar({
 
   const handleNavContextMenu = useCallback((e: ReactMouseEvent, itemId: string) => {
     e.preventDefault();
+    setEmptySpaceMenu(null);
     setCtxMenu({ itemId, x: e.clientX, y: e.clientY });
+  }, []);
+
+  const handleEmptySpaceContextMenu = useCallback((e: ReactMouseEvent) => {
+    // Only trigger if clicking empty space, not on a button or interactive element
+    const target = e.target as HTMLElement;
+    if (target.closest("button") || target.closest("a") || target.closest("[role='menuitem']")) return;
+    e.preventDefault();
+    setCtxMenu(null);
+    setEmptySpaceMenu({ x: e.clientX, y: e.clientY });
   }, []);
 
   const hasHiddenViews = useMemo(
@@ -160,6 +192,15 @@ export function Sidebar({
   const contextMenuItems = useSidebarContextMenu({
     ctxMenu, favoriteViewIds, settings, updateSetting,
     onOpenSettings, orderedSidebarItems, hasHiddenViews,
+  });
+
+  const emptyContextMenuItems = useSidebarEmptyContextMenu({
+    position: emptySpaceMenu,
+    onOpenProjectModal,
+    onAddTask,
+    onOpenSettings,
+    settings,
+    updateSetting,
   });
 
   const countMap: Record<string, number | undefined> = { inbox: inboxCount, today: todayCount };
@@ -210,7 +251,8 @@ export function Sidebar({
       </div>
 
       {/* Navigation */}
-      <nav aria-label="Views" className={`flex-1 flex flex-col min-h-0 ${collapsed ? "px-2" : "px-3"}`}>
+      <nav aria-label="Views" className={`flex-1 flex flex-col min-h-0 ${collapsed ? "px-2" : "px-3"}`}
+        onContextMenu={handleEmptySpaceContextMenu}>
         <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide space-y-0.5">
           <ViewNavigation
             collapsed={collapsed} currentView={currentView}
@@ -260,6 +302,10 @@ export function Sidebar({
       {ctxMenu && contextMenuItems.length > 0 && (
         <ContextMenu items={contextMenuItems} position={{ x: ctxMenu.x, y: ctxMenu.y }}
           onClose={() => setCtxMenu(null)} />
+      )}
+      {emptySpaceMenu && emptyContextMenuItems.length > 0 && (
+        <ContextMenu items={emptyContextMenuItems} position={emptySpaceMenu}
+          onClose={() => setEmptySpaceMenu(null)} />
       )}
     </aside>
   );

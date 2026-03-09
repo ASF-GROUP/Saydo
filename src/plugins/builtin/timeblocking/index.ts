@@ -4,6 +4,7 @@ import { createLogger } from "../../../utils/logger.js";
 import { TimeBlockStore } from "./store.js";
 import { TimeblockingContext } from "./context.js";
 import { TimeblockingView as TimeblockingViewComponent } from "./components/TimeblockingView.js";
+import { buildTimeblockingTools } from "./ai-tools.js";
 
 const log = createLogger("timeblocking");
 
@@ -91,6 +92,19 @@ export default class TimeblockingPlugin extends Plugin {
         // Dispatched via keyboard shortcut 'F' in TimeblockingView
       },
     });
+
+    // Register AI tools
+    if (this.app.ai?.registerTool) {
+      const tools = buildTimeblockingTools(this.store, () => ({
+        workDayStart: this.settings.get<string>("workDayStart") ?? "09:00",
+        workDayEnd: this.settings.get<string>("workDayEnd") ?? "17:00",
+        defaultDurationMinutes: parseInt(this.settings.get<string>("defaultDurationMinutes") ?? "30", 10),
+      }));
+      for (const tool of tools) {
+        this.app.ai.registerTool(tool.definition, tool.executor);
+      }
+      log.info("Registered AI tools", { count: tools.length });
+    }
 
     log.info("Timeblocking plugin loaded");
   }

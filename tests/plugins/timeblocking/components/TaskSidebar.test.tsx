@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { DndContext } from "@dnd-kit/core";
 import { TaskSidebar } from "../../../../src/plugins/builtin/timeblocking/components/TaskSidebar.js";
 import type { Task } from "../../../../src/core/types.js";
@@ -34,10 +34,11 @@ function makeTask(overrides: Partial<Task> = {}): Task {
 function renderSidebar(
   tasks: Task[] = [],
   scheduledTaskIds: Set<string> = new Set(),
+  onTaskClick?: (taskId: string) => void,
 ) {
   return render(
     <DndContext>
-      <TaskSidebar tasks={tasks} scheduledTaskIds={scheduledTaskIds} />
+      <TaskSidebar tasks={tasks} scheduledTaskIds={scheduledTaskIds} onTaskClick={onTaskClick} />
     </DndContext>,
   );
 }
@@ -84,5 +85,39 @@ describe("TaskSidebar", () => {
     renderSidebar();
     expect(screen.getByText("Tasks")).toBeInTheDocument();
     expect(screen.getByText("Drag to schedule")).toBeInTheDocument();
+  });
+
+  it("calls onTaskClick when a task is clicked", () => {
+    const onTaskClick = vi.fn();
+    renderSidebar([makeTask({ id: "t1", title: "Click me" })], new Set(), onTaskClick);
+    fireEvent.click(screen.getByText("Click me"));
+    expect(onTaskClick).toHaveBeenCalledWith("t1");
+  });
+
+  it("renders tasks correctly with groups", () => {
+    const tasks = [
+      makeTask({ id: "t1", title: "Overdue task", dueDate: "2026-01-01" }),
+      makeTask({ id: "t2", title: "Today task", dueDate: "2026-03-09" }),
+      makeTask({ id: "t3", title: "Unscheduled task" }),
+    ];
+    render(
+      <DndContext>
+        <TaskSidebar
+          tasks={tasks}
+          scheduledTaskIds={new Set()}
+          groups={{
+            overdue: [tasks[0]],
+            today: [tasks[1]],
+            unscheduled: [tasks[2]],
+          }}
+        />
+      </DndContext>,
+    );
+    expect(screen.getByText("Overdue")).toBeInTheDocument();
+    expect(screen.getByText("Today")).toBeInTheDocument();
+    expect(screen.getByText("Unscheduled")).toBeInTheDocument();
+    expect(screen.getByText("Overdue task")).toBeInTheDocument();
+    expect(screen.getByText("Today task")).toBeInTheDocument();
+    expect(screen.getByText("Unscheduled task")).toBeInTheDocument();
   });
 });

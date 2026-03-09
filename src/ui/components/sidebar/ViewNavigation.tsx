@@ -259,13 +259,19 @@ export function ViewNavigation({
         {orderedSidebarItems.filter((id) => !SECTION_IDS.has(id)).map((itemId) => {
           const item = navItemMap.get(itemId);
           if (!item) return null;
+          const isPluginView = itemId.startsWith("plugin-view-");
+          const pluginViewId = isPluginView ? itemId.replace("plugin-view-", "") : undefined;
+          const isActive = isPluginView
+            ? currentView === "plugin-view" && selectedPluginViewId === pluginViewId
+            : currentView === item.id;
+          const navigate = isPluginView
+            ? () => onNavigate("plugin-view", pluginViewId)
+            : () => onNavigate(item.id);
           return <div key={item.id}>{renderNavButton(item.id, item.label, item.icon,
-            currentView === item.id, () => onNavigate(item.id), collapsed,
-            item.countKey ? countMap[item.countKey] : undefined)}</div>;
+            isActive, navigate, collapsed,
+            item.countKey ? countMap[item.countKey] : undefined,
+            (e) => onNavContextMenu(e, item.id))}</div>;
         })}
-        {viewsBySlot.navigation.map((view) => (
-          <div key={`plugin-view-${view.id}`}>{renderPluginViewButton(view)}</div>
-        ))}
         {projects.filter((p) => !p.archived).length > 0 && (
           <div className="space-y-0.5 mt-2">
             {projects.filter((p) => !p.archived).slice(0, 5).map((p) => (
@@ -307,10 +313,19 @@ export function ViewNavigation({
           if (!SECTION_IDS.has(itemId)) {
             const item = navItemMap.get(itemId);
             if (!item) return null;
+            // Plugin navigation views use plugin-view navigation
+            const isPluginView = itemId.startsWith("plugin-view-");
+            const pluginViewId = isPluginView ? itemId.replace("plugin-view-", "") : undefined;
+            const isActive = isPluginView
+              ? currentView === "plugin-view" && selectedPluginViewId === pluginViewId
+              : currentView === item.id;
+            const navigate = isPluginView
+              ? () => onNavigate("plugin-view", pluginViewId)
+              : () => onNavigate(item.id);
             return (
               <SortableNavItem key={itemId} id={itemId}>
-                {renderNavButton(item.id, item.label, item.icon, currentView === item.id,
-                  () => onNavigate(item.id), collapsed,
+                {renderNavButton(item.id, item.label, item.icon, isActive,
+                  navigate, collapsed,
                   item.countKey ? countMap[item.countKey] : undefined,
                   (e) => onNavContextMenu(e, item.id))}
               </SortableNavItem>
@@ -318,9 +333,6 @@ export function ViewNavigation({
           }
           return renderSection(itemId);
         })}
-        {viewsBySlot.navigation.map((view) => (
-          <div key={`plugin-view-${view.id}`}>{renderPluginViewButton(view)}</div>
-        ))}
       </SortableContext>
     </DndContext>
   );

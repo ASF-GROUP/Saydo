@@ -131,7 +131,18 @@ ${contextBlock ? contextBlock + "\n" : ""}## Task Tools
 - Do NOT save trivial or temporary info (e.g., "add a task called X").
 - Use recall_memories before saving to check for duplicates.
 - When facts change, forget the old memory and save the updated one.
-- Aim for max ~50 memories; consolidate related ones if approaching that limit.`;
+- Aim for max ~50 memories; consolidate related ones if approaching that limit.
+
+## Timeblocking
+If timeblocking tools are available, you can manage the user's schedule:
+- **timeblocking_list_blocks**: List blocks for a date or range.
+- **timeblocking_create_block**: Create a new time block with title, date, start/end times.
+- **timeblocking_update_block**: Modify block title, times, color, or lock state.
+- **timeblocking_delete_block**: Remove a block.
+- **timeblocking_schedule_task**: Schedule a task at the best available time, avoiding conflicts.
+- **timeblocking_get_availability**: Get free time slots for a date.
+- **timeblocking_set_recurrence**: Set daily/weekly/monthly recurrence on a block.
+- **timeblocking_replan_day**: Move incomplete blocks from a past date to today or another date.`;
 }
 
 export function buildCompactPrompt(

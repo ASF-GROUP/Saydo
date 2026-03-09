@@ -9,6 +9,9 @@ import {
   RotateCcw,
   ArrowUpToLine,
   ArrowDownToLine,
+  FolderPlus,
+  ListPlus,
+  SlidersHorizontal,
 } from "lucide-react";
 import type { GeneralSettings } from "../../context/SettingsContext.js";
 import { NAV_FEATURE_MAP, CORE_VIEWS, SECTION_IDS } from "./SidebarPrimitives.js";
@@ -183,4 +186,75 @@ export function useSidebarContextMenu({
 
     return items;
   }, [ctxMenu, favoriteViewIds, settings, onOpenSettings, orderedSidebarItems, hasHiddenViews, updateSetting]);
+}
+
+/** Context menu items for right-clicking empty sidebar space. */
+export function useSidebarEmptyContextMenu({
+  position,
+  onOpenProjectModal,
+  onAddTask,
+  onOpenSettings,
+  settings,
+  updateSetting,
+}: {
+  position: { x: number; y: number } | null;
+  onOpenProjectModal?: () => void;
+  onAddTask?: () => void;
+  onOpenSettings?: () => void;
+  settings: GeneralSettings;
+  updateSetting: (key: keyof GeneralSettings, value: string) => void;
+}) {
+  return useMemo(() => {
+    if (!position) return [];
+    const items: Array<{
+      id: string;
+      label: string;
+      icon?: ReactNode;
+      separator?: boolean;
+      disabled?: boolean;
+      onClick?: () => void;
+    }> = [];
+
+    if (onOpenProjectModal) {
+      items.push({
+        id: "new-project",
+        label: "New Project",
+        icon: <FolderPlus size={14} />,
+        onClick: onOpenProjectModal,
+      });
+    }
+
+    if (onAddTask) {
+      items.push({
+        id: "add-task",
+        label: "Add Task",
+        icon: <ListPlus size={14} />,
+        onClick: onAddTask,
+      });
+    }
+
+    if (onOpenSettings) {
+      items.push({
+        id: "manage-sidebar",
+        label: "Manage Sidebar",
+        icon: <SlidersHorizontal size={14} />,
+        separator: items.length > 0,
+        onClick: onOpenSettings,
+      });
+    }
+
+    if (settings.sidebar_section_order || settings.sidebar_nav_order) {
+      items.push({
+        id: "reset-order",
+        label: "Reset Order",
+        icon: <RotateCcw size={14} />,
+        onClick: () => {
+          updateSetting("sidebar_section_order", "");
+          if (settings.sidebar_nav_order) updateSetting("sidebar_nav_order", "");
+        },
+      });
+    }
+
+    return items;
+  }, [position, onOpenProjectModal, onAddTask, onOpenSettings, settings, updateSetting]);
 }

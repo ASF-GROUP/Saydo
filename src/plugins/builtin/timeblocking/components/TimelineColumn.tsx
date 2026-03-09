@@ -63,6 +63,10 @@ export interface TimelineColumnProps {
   onSlotClick?: (slotId: string) => void;
   /** Slot creation handler (Shift+Alt+Click). */
   onSlotCreate?: (date: string, startTime: string, endTime: string) => void;
+  /** Context menu on empty timeline area. */
+  onTimelineContextMenu?: (e: React.MouseEvent, date: string, time: string) => void;
+  /** Context menu on a block. */
+  onBlockContextMenu?: (e: React.MouseEvent, blockId: string) => void;
   /** Render function for slots on this column. */
   renderSlot?: (slot: TimeSlot) => React.ReactNode;
 }
@@ -116,7 +120,9 @@ export function TimelineColumn({
   onBlockCreate,
   onBlockResize,
   onBlockClick,
+  onBlockContextMenu,
   onSlotCreate,
+  onTimelineContextMenu,
   renderSlot,
 }: TimelineColumnProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -283,6 +289,22 @@ export function TimelineColumn({
     [startMinutes, endMinutes, pixelsPerMinute, gridInterval, dateStr, onBlockCreate],
   );
 
+  // Right-click on empty timeline area
+  const handleContextMenu = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if ((e.target as HTMLElement).closest("[data-block-id]")) return;
+      if ((e.target as HTMLElement).closest("[data-slot-id]")) return;
+      if (!onTimelineContextMenu) return;
+      e.preventDefault();
+      const rect = e.currentTarget.getBoundingClientRect();
+      const y = e.clientY - rect.top;
+      const minutes = snapToGrid(startMinutes + y / pixelsPerMinute, gridInterval);
+      const time = minutesToTime(Math.max(startMinutes, Math.min(minutes, endMinutes - gridInterval)));
+      onTimelineContextMenu(e, dateStr, time);
+    },
+    [startMinutes, endMinutes, pixelsPerMinute, gridInterval, dateStr, onTimelineContextMenu],
+  );
+
   // Filter blocks and slots for this column's date
   const dayBlocks = blocks.filter((b) => b.date === dateStr);
   const daySlots = slots.filter((s) => s.date === dateStr);
@@ -294,6 +316,7 @@ export function TimelineColumn({
       style={{ height: totalHeight }}
       onClick={handleTimelineClick}
       onDoubleClick={handleDoubleClick}
+      onContextMenu={handleContextMenu}
       data-testid={`timeline-column-${dateStr}`}
     >
       {/* Grid lines / drop cells */}
@@ -333,6 +356,7 @@ export function TimelineColumn({
             onEditingCancel={onEditingCancel}
             onResizeStart={handleResizeStart}
             onClick={onBlockClick}
+            onContextMenu={onBlockContextMenu}
           />
         );
       })}

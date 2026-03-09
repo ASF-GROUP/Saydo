@@ -132,6 +132,16 @@ function AppContent() {
   useEffect(() => { setDrawerOpen(false); }, [currentView, selectedProjectId, selectedPluginViewId, selectedFilterId]);
   useEffect(() => { setSelectedTaskId(null); }, [currentView, selectedProjectId, selectedPluginViewId, selectedFilterId, setSelectedTaskId]);
 
+  // Listen for plugin task detail open requests
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const taskId = (e as CustomEvent).detail?.taskId;
+      if (taskId) handleSelectTask(taskId);
+    };
+    window.addEventListener("saydo:open-task-detail", handler);
+    return () => window.removeEventListener("saydo:open-task-detail", handler);
+  }, [handleSelectTask]);
+
   // ── Visible tasks ──
   const visibleTasks = useMemo(() => {
     const tasks = state.tasks;

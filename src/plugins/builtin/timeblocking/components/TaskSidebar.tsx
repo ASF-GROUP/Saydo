@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { Calendar, ChevronDown, ChevronRight, AlertCircle, Clock, Inbox } from "lucide-react";
 import type { Task } from "../../../../core/types.js";
@@ -11,6 +11,7 @@ interface TaskSidebarProps {
     today: Task[];
     unscheduled: Task[];
   };
+  onTaskClick?: (taskId: string) => void;
 }
 
 const PRIORITY_COLORS: Record<number, string> = {
@@ -22,15 +23,31 @@ const PRIORITY_COLORS: Record<number, string> = {
 function DraggableTask({
   task,
   isScheduled,
+  onTaskClick,
 }: {
   task: Task;
   isScheduled: boolean;
+  onTaskClick?: (taskId: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: task.id,
       data: { type: "task", task },
     });
+  const didDragRef = useRef(false);
+
+  // Track drag state to prevent click after drag
+  const handlePointerDown = () => {
+    didDragRef.current = false;
+  };
+  const handlePointerMove = () => {
+    didDragRef.current = true;
+  };
+  const handleClick = () => {
+    if (!didDragRef.current && onTaskClick) {
+      onTaskClick(task.id);
+    }
+  };
 
   const style: React.CSSProperties = transform
     ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
@@ -43,6 +60,9 @@ function DraggableTask({
       className={`p-2 rounded-md border border-border bg-surface cursor-grab select-none transition-all duration-150 ${
         isDragging ? "opacity-30" : "hover:shadow-sm hover:border-accent/30"
       }`}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onClick={handleClick}
       {...attributes}
       {...listeners}
     >
@@ -89,6 +109,7 @@ function TaskGroup({
   scheduledTaskIds,
   defaultOpen = true,
   accentClass,
+  onTaskClick,
 }: {
   label: string;
   icon: React.ReactNode;
@@ -96,6 +117,7 @@ function TaskGroup({
   scheduledTaskIds: Set<string>;
   defaultOpen?: boolean;
   accentClass?: string;
+  onTaskClick?: (taskId: string) => void;
 }) {
   const [open, setOpen] = useState(defaultOpen);
 
@@ -119,6 +141,7 @@ function TaskGroup({
               key={task.id}
               task={task}
               isScheduled={scheduledTaskIds.has(task.id)}
+              onTaskClick={onTaskClick}
             />
           ))}
         </div>
@@ -127,7 +150,7 @@ function TaskGroup({
   );
 }
 
-export function TaskSidebar({ tasks, scheduledTaskIds, groups }: TaskSidebarProps) {
+export function TaskSidebar({ tasks, scheduledTaskIds, groups, onTaskClick }: TaskSidebarProps) {
   const pendingTasks = tasks.filter((t) => t.status === "pending");
 
   return (
@@ -148,18 +171,21 @@ export function TaskSidebar({ tasks, scheduledTaskIds, groups }: TaskSidebarProp
               tasks={groups.overdue}
               scheduledTaskIds={scheduledTaskIds}
               accentClass="text-error"
+              onTaskClick={onTaskClick}
             />
             <TaskGroup
               label="Today"
               icon={<Clock size={12} />}
               tasks={groups.today}
               scheduledTaskIds={scheduledTaskIds}
+              onTaskClick={onTaskClick}
             />
             <TaskGroup
               label="Unscheduled"
               icon={<Inbox size={12} />}
               tasks={groups.unscheduled}
               scheduledTaskIds={scheduledTaskIds}
+              onTaskClick={onTaskClick}
             />
           </>
         ) : (
@@ -174,6 +200,7 @@ export function TaskSidebar({ tasks, scheduledTaskIds, groups }: TaskSidebarProp
                 key={task.id}
                 task={task}
                 isScheduled={scheduledTaskIds.has(task.id)}
+                onTaskClick={onTaskClick}
               />
             ))}
           </>

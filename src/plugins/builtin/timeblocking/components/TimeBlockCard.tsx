@@ -17,6 +17,7 @@ interface TimeBlockCardProps {
   onEditingCancel?: () => void;
   onResizeStart: (blockId: string, edge: "top" | "bottom") => void;
   onClick: (blockId: string) => void;
+  onContextMenu?: (e: React.MouseEvent, blockId: string) => void;
 }
 
 function timeToMinutes(time: string): number {
@@ -52,6 +53,7 @@ export function TimeBlockCard({
   onEditingCancel,
   onResizeStart,
   onClick,
+  onContextMenu,
 }: TimeBlockCardProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: block.id,
@@ -98,6 +100,11 @@ export function TimeBlockCard({
       onClick={(e) => {
         e.stopPropagation();
         if (!isEditing) onClick(block.id);
+      }}
+      onContextMenu={(e) => {
+        if (onContextMenu) {
+          onContextMenu(e, block.id);
+        }
       }}
       {...attributes}
       {...listeners}

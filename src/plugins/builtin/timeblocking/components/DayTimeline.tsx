@@ -27,6 +27,8 @@ interface DayTimelineProps {
   onBlockClick: (blockId: string) => void;
   onSlotClick: (slotId: string) => void;
   onSlotCreate?: (date: string, startTime: string, endTime: string) => void;
+  onTimelineContextMenu?: (e: React.MouseEvent, date: string, time: string) => void;
+  onBlockContextMenu?: (e: React.MouseEvent, blockId: string) => void;
   renderSlot?: (slot: TimeSlot) => React.ReactNode;
   /** Hide the date header (when parent already shows it). */
   showHeader?: boolean;
@@ -61,6 +63,8 @@ export function DayTimeline({
   onBlockClick,
   onSlotClick,
   onSlotCreate,
+  onTimelineContextMenu,
+  onBlockContextMenu,
   renderSlot,
   showHeader = true,
 }: DayTimelineProps) {
@@ -136,6 +140,8 @@ export function DayTimeline({
             onBlockClick={onBlockClick}
             onSlotClick={onSlotClick}
             onSlotCreate={onSlotCreate}
+            onTimelineContextMenu={onTimelineContextMenu}
+            onBlockContextMenu={onBlockContextMenu}
             renderSlot={renderSlot}
           />
         </div>

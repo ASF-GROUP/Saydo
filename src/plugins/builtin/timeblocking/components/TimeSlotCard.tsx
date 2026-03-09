@@ -19,6 +19,7 @@ interface TimeSlotCardProps {
   onTaskClick: (taskId: string) => void;
   onTaskToggle: (taskId: string) => void;
   onResizeStart: (slotId: string, edge: "top" | "bottom") => void;
+  onContextMenu?: (e: React.MouseEvent, slotId: string) => void;
 }
 
 const COLLAPSED_TASK_COUNT = 3;
@@ -96,6 +97,7 @@ export function TimeSlotCard({
   onTaskClick,
   onTaskToggle,
   onResizeStart,
+  onContextMenu,
 }: TimeSlotCardProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -146,6 +148,11 @@ export function TimeSlotCard({
       onClick={(e) => {
         e.stopPropagation();
         onSlotClick(slot.id);
+      }}
+      onContextMenu={(e) => {
+        if (onContextMenu) {
+          onContextMenu(e, slot.id);
+        }
       }}
     >
       {/* Top resize handle */}
