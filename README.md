@@ -1,71 +1,92 @@
+<div align="center">
+
 # ASF Saydo
 
-**The task manager that doesn't exist yet.** Beautiful and simple out of the box, with a real AI assistant and a plugin system so simple that anyone can build features — no coding required.
+**The task manager that doesn't exist yet.**
+
+Beautiful and simple out of the box, with a real AI assistant and a plugin system so simple that anyone can build features — no coding required.
 
 Local-first. No accounts. No tracking. Your data stays on your machine.
 
+[![CI](https://github.com/ASF-GROUP/Saydo/actions/workflows/ci.yml/badge.svg)](https://github.com/ASF-GROUP/Saydo/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/Node.js-22+-339933?logo=node.js&logoColor=white)](https://nodejs.org)
+[![Tauri](https://img.shields.io/badge/Tauri-v2-FFC131?logo=tauri&logoColor=white)](https://tauri.app)
+
 Built by the [AI Strategic Forum (ASF)](https://github.com/ASF-GROUP) community.
 
-<p align="center">
-  <img src="screenshots/today-light.png" alt="Today view — light mode" width="700" />
-</p>
+<br />
 
-<p align="center">
-  <img src="screenshots/today-dark.png" alt="Today view — dark mode" width="700" />
-</p>
+<img src="screenshots/today-light.png" alt="Today view — light mode" width="720" />
+
+<br />
+
+<img src="screenshots/today-dark.png" alt="Today view — dark mode" width="720" />
+
+</div>
 
 <details>
-<summary>More screenshots</summary>
+<summary><strong>More screenshots</strong></summary>
+
+<br />
+
+<div align="center">
 
 ### Inbox
-<p align="center">
-  <img src="screenshots/inbox-light.png" alt="Inbox — light mode" width="700" />
-</p>
-<p align="center">
-  <img src="screenshots/inbox-dark.png" alt="Inbox — dark mode" width="700" />
-</p>
+
+<img src="screenshots/inbox-light.png" alt="Inbox — light mode" width="720" />
+
+<br />
+
+<img src="screenshots/inbox-dark.png" alt="Inbox — dark mode" width="720" />
+
+<br />
 
 ### Upcoming
-<p align="center">
-  <img src="screenshots/upcoming-dark.png" alt="Upcoming view" width="700" />
-</p>
+
+<img src="screenshots/upcoming-dark.png" alt="Upcoming view" width="720" />
+
+<br />
 
 ### Calendar
-<p align="center">
-  <img src="screenshots/calendar-dark.png" alt="Calendar view" width="700" />
-</p>
+
+<img src="screenshots/calendar-dark.png" alt="Calendar view" width="720" />
+
+<br />
 
 ### Eisenhower Matrix
-<p align="center">
-  <img src="screenshots/matrix-dark.png" alt="Eisenhower Matrix" width="700" />
-</p>
 
-### AI Chat
-<p align="center">
-  <img src="screenshots/ai-chat-dark.png" alt="AI Chat sidebar" width="700" />
-</p>
+<img src="screenshots/matrix-dark.png" alt="Eisenhower Matrix" width="720" />
+
+<br />
 
 ### Command Palette
-<p align="center">
-  <img src="screenshots/command-palette-dark.png" alt="Command Palette" width="700" />
-</p>
+
+<img src="screenshots/command-palette-dark.png" alt="Command Palette" width="720" />
+
+<br />
 
 ### Task Detail
-<p align="center">
-  <img src="screenshots/task-detail-dark.png" alt="Task detail panel" width="700" />
-</p>
+
+<img src="screenshots/task-detail-dark.png" alt="Task detail panel" width="720" />
+
+<br />
 
 ### Settings
-<p align="center">
-  <img src="screenshots/settings-dark.png" alt="Settings — Appearance" width="700" />
-</p>
+
+<img src="screenshots/settings-dark.png" alt="Settings — Appearance" width="720" />
+
+<br />
 
 ### Stats
-<p align="center">
-  <img src="screenshots/stats-dark.png" alt="Stats dashboard" width="700" />
-</p>
+
+<img src="screenshots/stats-dark.png" alt="Stats dashboard" width="720" />
+
+</div>
 
 </details>
+
+---
 
 ## Why Saydo
 
@@ -111,7 +132,7 @@ See the [local setup guide](docs/guides/SETUP.md) for details.
 | **Reminders** | Set reminders on any task, get notified when they're due |
 | **Focus mode** | Distraction-free, keyboard-driven |
 | **CLI companion** | `saydo add`, `saydo list`, `saydo done` from the terminal |
-| **Themes** | Light/dark + custom CSS |
+| **Themes** | Light/dark/Nord + custom CSS + accent colors |
 | **Sound effects** | Satisfying audio feedback for task actions |
 | **1930+ tests** | Solid coverage across the entire codebase |
 
