@@ -43,6 +43,8 @@ export interface GeneralSettings {
   nudge_stale_tasks: "true" | "false";
   nudge_empty_today: "true" | "false";
   nudge_overloaded_day: "true" | "false";
+  quick_capture_hotkey: string;
+  quick_capture_enabled: "true" | "false";
 }
 
 const DEFAULT_SETTINGS: GeneralSettings = {
@@ -87,6 +89,8 @@ const DEFAULT_SETTINGS: GeneralSettings = {
   nudge_stale_tasks: "true",
   nudge_empty_today: "true",
   nudge_overloaded_day: "true",
+  quick_capture_hotkey: "CmdOrCtrl+Shift+Space",
+  quick_capture_enabled: "true",
 };
 
 const SETTING_KEYS = Object.keys(DEFAULT_SETTINGS) as (keyof GeneralSettings)[];

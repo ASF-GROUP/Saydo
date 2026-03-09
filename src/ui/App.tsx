@@ -47,6 +47,9 @@ import { BlockedTaskIdsContext } from "./context/BlockedTaskIdsContext.js";
 import { AppProviders } from "./app/AppProviders.js";
 import { useTaskContextMenu } from "./app/TaskContextMenu.js";
 import { ViewRenderer } from "./app/ViewRenderer.js";
+import { useGlobalShortcut } from "./hooks/useGlobalShortcut.js";
+import { useQuickCaptureWindow } from "./hooks/useQuickCaptureWindow.js";
+import { isTauri } from "../utils/tauri.js";
 
 const SIDEBAR_COLLAPSED_STORAGE_KEY = "saydo.ui.sidebar.collapsed";
 
@@ -235,6 +238,59 @@ function AppContent() {
     const timer = setTimeout(() => dismissNudge(next.id), 8000);
     return () => clearTimeout(timer);
   }, [activeNudges, showToast, dismissNudge]);
+
+  // ── Global Quick Capture (Tauri only) ──
+  const { showWindow: showCaptureWindow } = useQuickCaptureWindow();
+
+  useGlobalShortcut(
+    featureSettings.quick_capture_hotkey,
+    showCaptureWindow,
+    featureSettings.quick_capture_enabled === "true" && isTauri(),
+  );
+
+  // Listen for quick-capture-submit events from the capture window
+  useEffect(() => {
+    if (!isTauri()) return;
+
+    let unlisten: (() => void) | null = null;
+
+    async function setup() {
+      try {
+        const { listen } = await import("@tauri-apps/api/event");
+        unlisten = await listen<{
+          title: string;
+          priority: number | null;
+          tags: string[];
+          project: string | null;
+          dueDate: string | null;
+          dueTime: boolean;
+          recurrence: string | null;
+          estimatedMinutes: number | null;
+          deadline: string | null;
+          isSomeday: boolean;
+        }>("quick-capture-submit", (event) => {
+          const data = event.payload;
+          handleCreateTask({
+            title: data.title,
+            priority: data.priority,
+            tags: data.tags,
+            project: data.project,
+            dueDate: data.dueDate ? new Date(data.dueDate) : null,
+            dueTime: data.dueTime,
+            recurrence: data.recurrence,
+            estimatedMinutes: data.estimatedMinutes,
+            deadline: data.deadline ? new Date(data.deadline) : null,
+            isSomeday: data.isSomeday,
+          });
+        });
+      } catch {
+        // Degrade gracefully
+      }
+    }
+
+    setup();
+    return () => { unlisten?.(); };
+  }, [handleCreateTask]);
 
   // ── Shortcuts & Commands ──
   useAppShortcuts(setCommandPaletteOpen, undo, redo, setSearchOpen, setFocusModeOpen, setQuickAddOpen, handleNavigate, featureSettings.feature_chords !== "false");
