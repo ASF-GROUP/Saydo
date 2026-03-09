@@ -13,6 +13,7 @@ import { FiltersLabels } from "../views/FiltersLabels.js";
 import { FilterView } from "../views/FilterView.js";
 import { TaskPage } from "../views/TaskPage.js";
 import { AIChat } from "../views/AIChat.js";
+import { DopamineMenu } from "../views/DopamineMenu.js";
 import type { Project as ProjectType, Section } from "../../core/types.js";
 import type { ViewInfo } from "../api/index.js";
 import type { View, CalendarMode } from "../hooks/useRouting.js";
@@ -283,6 +284,21 @@ export function ViewRenderer({
     case "ai-chat":
       return (
         <AIChat onOpenSettings={() => setSettingsOpen(true)} onSelectTask={handleSelectTask} />
+      );
+    case "dopamine-menu":
+      return (
+        <DopamineMenu
+          tasks={tasks}
+          onToggleTask={handleToggleTask}
+          onSelectTask={handleSelectTask}
+          selectedTaskId={selectedTaskId}
+          selectedTaskIds={multiSelectedIds}
+          onMultiSelect={handleMultiSelect}
+          onReorder={handleReorder}
+          onAddSubtask={handleAddSubtask}
+          onUpdateDueDate={handleUpdateDueDate}
+          onContextMenu={handleContextMenu}
+        />
       );
     default:
       return null;

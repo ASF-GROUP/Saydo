@@ -17,7 +17,8 @@ export type View =
   | "stats"
   | "matrix"
   | "filter"
-  | "ai-chat";
+  | "ai-chat"
+  | "dopamine-menu";
 
 export type CalendarMode = "day" | "week" | "month";
 
@@ -128,6 +129,9 @@ function parseRouteStateFromHash(hash: string, defaultView: View = "inbox"): Rou
     case "ai-chat":
       route.view = "ai-chat";
       break;
+    case "dopamine-menu":
+      route.view = "dopamine-menu";
+      break;
     default:
       route.view = defaultView;
       break;
@@ -191,6 +195,9 @@ function buildHashFromRoute(route: RouteState): string {
       break;
     case "ai-chat":
       path = "/ai-chat";
+      break;
+    case "dopamine-menu":
+      path = "/dopamine-menu";
       break;
     case "inbox":
     default:

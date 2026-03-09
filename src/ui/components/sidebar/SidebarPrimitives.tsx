@@ -13,6 +13,7 @@ import {
   Grid2x2,
   SlidersHorizontal,
   GripVertical,
+  Zap,
 } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -47,13 +48,14 @@ export const NAV_ITEMS: Array<{
   { id: "matrix", label: "Matrix", icon: Grid2x2 },
   { id: "stats", label: "Stats", icon: BarChart3 },
   { id: "someday", label: "Someday", icon: Lightbulb },
+  { id: "dopamine-menu", label: "Quick Wins", icon: Zap },
 ];
 
 export const CORE_VIEWS = new Set(["inbox", "today", "upcoming"]);
 
 export const DEFAULT_SIDEBAR_ORDER = [
   "inbox", "today", "upcoming", "calendar", "filters-labels",
-  "completed", "cancelled", "matrix", "stats", "someday",
+  "completed", "cancelled", "matrix", "stats", "someday", "dopamine-menu",
   "favorite-views", "favorites", "projects", "my-views", "tools",
 ];
 

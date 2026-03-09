@@ -269,6 +269,7 @@ function AppContent() {
       case "matrix": return "Matrix - Saydo";
       case "filter": { const f = savedFilters.find((f) => f.id === selectedFilterId); return f ? `${f.name} - Saydo` : "Filter - Saydo"; }
       case "ai-chat": return "AI Chat - Saydo";
+      case "dopamine-menu": return "Quick Wins - Saydo";
       default: return "Saydo";
     }
   }, [focusModeOpen, currentView, projects, selectedProjectId, selectedRouteTaskId, state.tasks, pluginViews, selectedPluginViewId, selectedFilterId, savedFilters, calendarMode]);
