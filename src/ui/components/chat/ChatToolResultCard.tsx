@@ -25,7 +25,7 @@ import {
   ProjectList,
   ReminderList,
 } from "./ChatTaskResults";
-import { DayPlanCard, DailyReviewCard, BulkResultCard } from "./ChatPlanningCards";
+import { DayPlanCard, DailyReviewCard, BulkResultCard, WeeklyReviewCard } from "./ChatPlanningCards";
 
 interface ToolResult {
   toolName: string;
@@ -52,6 +52,7 @@ const TOOL_CARD_META: Record<string, { icon: LucideIcon; title: string }> = {
   list_reminders: { icon: Bell, title: "Reminders" },
   plan_my_day: { icon: Sun, title: "Day Plan" },
   daily_review: { icon: Sunset, title: "Daily Review" },
+  weekly_review: { icon: BarChart3, title: "Weekly Review" },
   bulk_create_tasks: { icon: ListPlus, title: "Tasks Created" },
   bulk_complete_tasks: { icon: ListChecks, title: "Tasks Completed" },
   bulk_update_tasks: { icon: ListRestart, title: "Tasks Updated" },
@@ -143,6 +144,9 @@ function ToolResultVisual({
       break;
     case "daily_review":
       content = <DailyReviewCard data={parsed} />;
+      break;
+    case "weekly_review":
+      content = <WeeklyReviewCard data={parsed} />;
       break;
     case "bulk_create_tasks":
     case "bulk_complete_tasks":
