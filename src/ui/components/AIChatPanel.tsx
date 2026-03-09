@@ -1,11 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { X, Bot, Settings, Trash2 } from "lucide-react";
+import { X, Bot, Trash2 } from "lucide-react";
 import { useAIContext } from "../context/AIContext.js";
-import { useVoiceContext } from "../context/VoiceContext.js";
-import { useVAD } from "../hooks/useVAD.js";
-import { useVoiceCall } from "../hooks/useVoiceCall.js";
 import { VoiceCallOverlay } from "./VoiceCallOverlay.js";
-import { BrowserSTTProvider } from "../../ai/voice/adapters/browser-stt.js";
 import {
   MessageBubble,
   TypingIndicator,
@@ -15,6 +11,8 @@ import {
   ChatHistory,
 } from "./chat/index.js";
 import type { ChatInputRef } from "./chat/index.js";
+import { useAIChatVoice } from "./chat/useAIChatVoice.js";
+import { AIChatNotConfigured } from "./chat/AIChatNotConfigured.js";
 
 interface AIChatPanelProps {
   onClose: () => void;
@@ -80,129 +78,13 @@ export function AIChatPanel({
     setLastKnownMessageCount(messages.length);
   }, [messages.length]);
 
-  const voice = useVoiceContext();
-  const wasStreamingRef = useRef(false);
-
-  const ttsAvailable = !!(voice.ttsProvider && voice.settings.ttsEnabled);
-
-  const voiceCall = useVoiceCall({
-    speak: voice.speak,
-    cancelSpeech: voice.cancelSpeech,
-    isSpeaking: voice.isSpeaking,
-    isStreaming,
-    messages,
-    ttsAvailable,
-    setVoiceCallMode,
-  });
-
-  const handleVoiceResult = useCallback(
-    (transcript: string) => {
-      const cleaned = transcript.trim();
-      if (!cleaned || cleaned === "[BLANK_AUDIO]") return;
-      if (voiceCall.isCallActive || voice.settings.autoSend) {
-        sendMessage(cleaned);
-      } else {
-        // Append to input — handled via ChatInput's own state
-      }
-    },
-    [voice.settings.autoSend, sendMessage, voiceCall.isCallActive],
-  );
-
-  // VAD integration
-  const handleVADSpeechEnd = useCallback(
-    async (audio: Blob) => {
-      try {
-        const transcript = await voice.transcribeAudio(audio);
-        handleVoiceResult(transcript);
-      } catch {
-        // VAD transcription failed
-      }
-    },
-    [voice, handleVoiceResult],
-  );
-
-  const isNonBrowserSTT =
-    voiceCall.isCallActive && !(voice.sttProvider instanceof BrowserSTTProvider);
-  const browserSTTAvailable =
-    typeof window !== "undefined" &&
-    ("SpeechRecognition" in window || "webkitSpeechRecognition" in window);
-
-  const vadEnabled =
-    (voice.settings.voiceMode === "vad" &&
-      !isStreaming &&
-      !voice.isSpeaking &&
-      !voiceCall.isCallActive) ||
-    (voiceCall.vadEnabled && isNonBrowserSTT);
-
-  const vad = useVAD({
-    onSpeechEnd: handleVADSpeechEnd,
-    enabled: vadEnabled,
-    deviceId: voice.settings.microphoneId || undefined,
-    smartEndpoint: voice.settings.smartEndpoint,
-    gracePeriodMs: voice.settings.gracePeriodMs,
-  });
-
-  const needBrowserSTTFallback =
-    voiceCall.isCallActive &&
-    (voice.sttProvider instanceof BrowserSTTProvider || (isNonBrowserSTT && !vad.isSupported));
-  const useBrowserSTTLoop = needBrowserSTTFallback && browserSTTAvailable;
-
-  // Browser STT recognition loop
-  const browserSTTRef = useRef<BrowserSTTProvider | null>(null);
-  useEffect(() => {
-    if (!browserSTTRef.current && browserSTTAvailable) {
-      browserSTTRef.current = new BrowserSTTProvider();
-    }
-  }, [browserSTTAvailable]);
-
-  useEffect(() => {
-    if (!useBrowserSTTLoop || voiceCall.callState !== "listening") return;
-    const stt = browserSTTRef.current;
-    if (!stt) return;
-    let cancelled = false;
-
-    const listen = async () => {
-      while (!cancelled) {
-        try {
-          const transcript = await stt.startLiveRecognition();
-          if (cancelled) break;
-          const cleaned = transcript.trim();
-          if (cleaned && cleaned !== "[BLANK_AUDIO]") {
-            handleVoiceResult(cleaned);
-            break;
-          }
-          await new Promise((r) => setTimeout(r, 200));
-        } catch {
-          if (cancelled) break;
-          await new Promise((r) => setTimeout(r, 1000));
-        }
-      }
-    };
-    listen();
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    useBrowserSTTLoop,
-    voiceCall.callState,
-    handleVoiceResult,
-    voiceCall.isCallActive,
-    isNonBrowserSTT,
-  ]);
-
-  // TTS when AI finishes responding
-  useEffect(() => {
-    const wasStreaming = wasStreamingRef.current;
-    wasStreamingRef.current = isStreaming;
-    if (!wasStreaming || isStreaming) return;
-    if (voiceCall.isCallActive) return;
-    if (!voice.settings.ttsEnabled || voice.settings.voiceMode === "off") return;
-
-    const lastMsg = messages[messages.length - 1];
-    if (lastMsg?.role === "assistant" && lastMsg.content && !lastMsg.isError) {
-      voice.speak(lastMsg.content).catch(() => {});
-    }
-  }, [isStreaming, messages, voice, voiceCall.isCallActive]);
+  const { voice, voiceCall, vad, handleVoiceResult, ttsAvailable, showCallButton } =
+    useAIChatVoice({
+      isStreaming,
+      messages,
+      sendMessage,
+      setVoiceCallMode,
+    });
 
   const handleSubmit = useCallback(
     (text: string) => {
@@ -211,50 +93,12 @@ export function AIChatPanel({
     [sendMessage],
   );
 
-  const showCallButton = !!(voice.sttProvider && ttsAvailable);
   const isNewMessage = messages.length > lastKnownMessageCount;
 
   // ── Not Configured State ──
   if (!isConfigured) {
     return (
-      <aside
-        className={`${isView ? "w-full h-full" : "w-full h-full md:w-80 md:h-auto border-l-0 md:border-l border-border"} flex flex-col bg-surface`}
-      >
-        {!isView && (
-          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-            <h3 className="font-semibold text-sm text-on-surface">AI Chat</h3>
-            <button
-              onClick={onClose}
-              aria-label="Close AI chat"
-              className="text-on-surface-muted hover:text-on-surface-secondary transition-colors p-1 rounded-md hover:bg-surface-tertiary"
-            >
-              <X size={18} />
-            </button>
-          </div>
-        )}
-        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-          <div
-            className={`${isView ? "w-16 h-16 mb-6" : "w-12 h-12 mb-4"} rounded-full bg-accent/10 flex items-center justify-center`}
-          >
-            <Bot size={isView ? 32 : 24} className="text-accent" />
-          </div>
-          <h4 className={`font-medium ${isView ? "text-lg mb-2" : "text-sm mb-2"} text-on-surface`}>
-            AI Assistant
-          </h4>
-          <p
-            className={`${isView ? "text-sm mb-6 max-w-md" : "text-xs mb-4"} text-on-surface-muted`}
-          >
-            Configure an AI provider in Settings to start chatting.
-          </p>
-          <button
-            onClick={onOpenSettings}
-            className={`${isView ? "px-5 py-2.5" : "px-4 py-2"} text-sm bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors flex items-center gap-2`}
-          >
-            <Settings size={isView ? 16 : 14} />
-            Open Settings
-          </button>
-        </div>
-      </aside>
+      <AIChatNotConfigured onClose={onClose} onOpenSettings={onOpenSettings} isView={isView} />
     );
   }
 

@@ -1,18 +1,7 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
-import {
-  DndContext,
-  DragOverlay,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-  type DragStartEvent,
-} from "@dnd-kit/core";
-import { arrayMove } from "@dnd-kit/sortable";
+import { useCallback } from "react";
+import { DndContext, DragOverlay } from "@dnd-kit/core";
 import { ChevronLeft, ChevronRight, PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import type { Task } from "../../../../core/types.js";
-import type { TimeBlock, TimeSlot } from "../types.js";
-import { isTaskScheduled } from "../task-linking.js";
+import type { TimeSlot } from "../types.js";
 import { useTimeblocking } from "../context.js";
 import { DayTimeline } from "./DayTimeline.js";
 import { WeekTimeline } from "./WeekTimeline.js";
@@ -22,603 +11,126 @@ import { TaskDragPreview, BlockDragPreview } from "./DragPreview.js";
 import { ReplanBanner } from "./ReplanBanner.js";
 import { SettingsPopover } from "./SettingsPopover.js";
 import { FocusTimer } from "./FocusTimer.js";
-import { isOverlapping } from "../slot-helpers.js";
-import { formatDateStr, timeToMinutes, minutesToTime, snapToGrid } from "./TimelineColumn.js";
-
-type ViewMode = 1 | 2 | 3 | 4 | 5 | 6 | 7;
-
-const VIEW_MODE_LABELS: Array<{ value: ViewMode; label: string }> = [
-  { value: 1, label: "Day" },
-  { value: 3, label: "3D" },
-  { value: 5, label: "5D" },
-  { value: 7, label: "Week" },
-];
-
-function getPixelsPerHour(dayCount: ViewMode): number {
-  if (dayCount === 1) return 80;
-  if (dayCount <= 3) return 64;
-  if (dayCount <= 5) return 48;
-  return 40;
-}
-
-function formatDateRange(startDate: Date, dayCount: number): string {
-  if (dayCount === 1) {
-    return startDate.toLocaleDateString("en-US", {
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    });
-  }
-  const endDate = new Date(startDate);
-  endDate.setDate(endDate.getDate() + dayCount - 1);
-  const startStr = startDate.toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
-  const endStr = endDate.toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-  return `${startStr} – ${endStr}`;
-}
-
-function getDateRangeStrings(startDate: Date, dayCount: number): { startStr: string; endStr: string } {
-  const endDate = new Date(startDate);
-  endDate.setDate(endDate.getDate() + dayCount - 1);
-  return { startStr: formatDateStr(startDate), endStr: formatDateStr(endDate) };
-}
-
-/** Find the currently active block (current time falls within its range). */
-function findActiveBlock(blocks: TimeBlock[]): TimeBlock | null {
-  const now = new Date();
-  const todayStr = formatDateStr(now);
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
-  return blocks.find(
-    (b) =>
-      b.date === todayStr &&
-      nowMinutes >= timeToMinutes(b.startTime) &&
-      nowMinutes < timeToMinutes(b.endTime),
-  ) ?? null;
-}
-
-const SIDEBAR_MIN_WIDTH = 200;
-const SIDEBAR_MAX_WIDTH = 400;
-const SIDEBAR_DEFAULT_WIDTH = 280;
+import { ContextMenu } from "../../../../ui/components/ContextMenu.js";
+import { VIEW_MODE_LABELS, getPixelsPerHour, formatDateRange } from "../utils/timeblocking-utils.js";
+import { useTimeblockingState } from "../hooks/useTimeblockingState.js";
+import { useTimeblockingData } from "../hooks/useTimeblockingData.js";
+import { useTimeblockingNavigation } from "../hooks/useTimeblockingNavigation.js";
+import { useTimeblockingBlocks } from "../hooks/useTimeblockingBlocks.js";
+import { useTimeblockingDnD } from "../hooks/useTimeblockingDnD.js";
+import { useTimeblockingContextMenu } from "../hooks/useTimeblockingContextMenu.js";
+import { useTimeblockingKeyboard } from "../hooks/useTimeblockingKeyboard.js";
 
 export function TimeblockingView() {
   const plugin = useTimeblocking();
   const store = plugin.store;
 
-  const [selectedDate, setSelectedDate] = useState(() => new Date());
-  const [dayCount, setDayCount] = useState<ViewMode>(1);
-  const [blocks, setBlocks] = useState<TimeBlock[]>([]);
-  const [slotsState, setSlotsState] = useState<TimeSlot[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [activeDragId, setActiveDragId] = useState<string | null>(null);
-  const [activeDragType, setActiveDragType] = useState<"task" | "block" | null>(null);
-  const [dragConflict, setDragConflict] = useState(false);
+  const {
+    selectedDate, setSelectedDate, dayCount, setDayCount,
+    blocks, setBlocks, slotsState, setSlotsState, tasks, setTasks,
+    activeDragId, activeDragType, dragConflict,
+    setActiveDragId, setActiveDragType, setDragConflict,
+    editingBlockId, editingTitle, setEditingBlockId, setEditingTitle,
+    sidebarCollapsed, setSidebarCollapsed, sidebarWidth, setSidebarWidth, dividerRef,
+    selectedBlockId, setSelectedBlockId,
+    contextMenu, setContextMenu, clipboardBlock, setClipboardBlock,
+    setSettingsVersion,
+    workDayStart, workDayEnd, gridIntervalStr, defaultDurationStr,
+    gridInterval, defaultDuration, rangeStart, rangeEnd, sensors,
+    taskStatuses, projects, scheduledTaskIds, activeBlock, sidebarGroups,
+  } = useTimeblockingState(plugin, store);
 
-  // Inline editing state
-  const [editingBlockId, setEditingBlockId] = useState<string | null>(null);
-  const [editingTitle, setEditingTitle] = useState("");
+  const { refreshData, refreshTasks: _refreshTasks } = useTimeblockingData({
+    store,
+    plugin,
+    selectedDate,
+    dayCount,
+    rangeStart,
+    rangeEnd,
+    setBlocks,
+    setSlotsState,
+    setTasks,
+  });
 
-  // Sidebar state
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT_WIDTH);
-  const dividerRef = useRef<HTMLDivElement>(null);
+  const { goToPrevious, goToNext, goToToday } = useTimeblockingNavigation({
+    dayCount,
+    setSelectedDate,
+  });
 
-  // Selected block for keyboard operations
-  const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
+  const blockOps = useTimeblockingBlocks({
+    store,
+    plugin,
+    blocks,
+    slotsState,
+    selectedDate,
+    selectedBlockId,
+    editingBlockId,
+    editingTitle,
+    sidebarWidth,
+    workDayStart,
+    workDayEnd,
+    gridInterval,
+    defaultDuration,
+    refreshData,
+    setEditingBlockId,
+    setEditingTitle,
+    setSelectedBlockId,
+    setSettingsVersion,
+    setSidebarWidth,
+  });
 
-  // Settings version — incremented to force re-render after settings change
-  const [settingsVersion, setSettingsVersion] = useState(0);
+  const dnd = useTimeblockingDnD({
+    store,
+    blocks,
+    tasks,
+    slotsState,
+    selectedDate,
+    activeDragId,
+    activeDragType,
+    defaultDuration,
+    workDayEnd,
+    gridInterval,
+    refreshData,
+    setActiveDragId,
+    setActiveDragType,
+    setDragConflict,
+  });
 
-  // Plugin settings (re-read when settingsVersion changes)
-  const workDayStart = plugin.settings.get<string>("workDayStart") ?? "09:00";
-  const workDayEnd = plugin.settings.get<string>("workDayEnd") ?? "17:00";
-  const gridIntervalStr = plugin.settings.get<string>("gridIntervalMinutes") ?? "30";
-  const defaultDurationStr = plugin.settings.get<string>("defaultDurationMinutes") ?? "30";
-  const gridInterval = parseInt(gridIntervalStr, 10);
-  const defaultDuration = parseInt(defaultDurationStr, 10);
-  void settingsVersion; // Ensure re-render dependency
+  const ctxMenu = useTimeblockingContextMenu({
+    store,
+    blocks,
+    slotsState,
+    contextMenu,
+    clipboardBlock,
+    selectedBlockId,
+    defaultDuration,
+    workDayEnd,
+    refreshData,
+    setContextMenu,
+    setClipboardBlock,
+    setEditingBlockId,
+    setEditingTitle,
+    setSelectedBlockId,
+    handleBlockCreate: blockOps.handleBlockCreate,
+    handleSlotCreate: blockOps.handleSlotCreate,
+    handleDuplicateBlock: blockOps.handleDuplicateBlock,
+    handleToggleLock: blockOps.handleToggleLock,
+    handleChangeColor: blockOps.handleChangeColor,
+    handleClearSlotTasks: blockOps.handleClearSlotTasks,
+    handleDeleteSlot: blockOps.handleDeleteSlot,
+  });
 
-  const { startStr: rangeStart, endStr: rangeEnd } = getDateRangeStrings(selectedDate, dayCount);
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-  );
-
-  // Load data
-  const refreshData = useCallback(() => {
-    if (dayCount === 1) {
-      const dateStr = formatDateStr(selectedDate);
-      setBlocks(store.listBlocks(dateStr));
-      setSlotsState(store.listSlots(dateStr));
-    } else {
-      setBlocks(store.listBlocksInRange(rangeStart, rangeEnd));
-      setSlotsState(store.listSlotsInRange(rangeStart, rangeEnd));
-    }
-  }, [store, selectedDate, dayCount, rangeStart, rangeEnd]);
-
-  const refreshTasks = useCallback(async () => {
-    const list = await plugin.app.tasks.list?.();
-    if (list) setTasks(list);
-  }, [plugin.app.tasks]);
-
-  useEffect(() => {
-    refreshData();
-    refreshTasks();
-  }, [refreshData, refreshTasks]);
-
-  // Task status map for blocks
-  const taskStatuses = useMemo(() => {
-    const map = new Map<string, "pending" | "completed" | "cancelled">();
-    for (const t of tasks) {
-      map.set(t.id, t.status);
-    }
-    return map;
-  }, [tasks]);
-
-  // Project list for slot colors
-  const projects = useMemo(() => {
-    return tasks.reduce<Array<{ id: string; color: string }>>((acc, t) => {
-      if (t.projectId && !acc.some((p) => p.id === t.projectId)) {
-        acc.push({ id: t.projectId, color: "#6366f1" });
-      }
-      return acc;
-    }, []);
-  }, [tasks]);
-
-  // Scheduled task IDs for the sidebar
-  const scheduledTaskIds = useMemo(() => {
-    const allBlocks = store.listBlocks();
-    const today = formatDateStr(new Date());
-    const ids = new Set<string>();
-    for (const b of allBlocks) {
-      if (b.taskId && isTaskScheduled(allBlocks, b.taskId, today)) {
-        ids.add(b.taskId);
-      }
-    }
-    return ids;
-  }, [store, blocks]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Active block (for focus timer)
-  const activeBlock = useMemo(() => {
-    const allBlocks = store.listBlocks();
-    return findActiveBlock(allBlocks);
-  }, [store, blocks]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Date navigation
-  const goToPrevious = useCallback(() => {
-    setSelectedDate((d) => {
-      const prev = new Date(d);
-      prev.setDate(prev.getDate() - dayCount);
-      return prev;
-    });
-  }, [dayCount]);
-
-  const goToNext = useCallback(() => {
-    setSelectedDate((d) => {
-      const next = new Date(d);
-      next.setDate(next.getDate() + dayCount);
-      return next;
-    });
-  }, [dayCount]);
-
-  const goToToday = useCallback(() => {
-    setSelectedDate(new Date());
-  }, []);
-
-  // Create block at next available time
-  const createBlockAtNextAvailable = useCallback(async () => {
-    const todayStr = formatDateStr(selectedDate);
-    const now = new Date();
-    const nowMinutes = now.getHours() * 60 + now.getMinutes();
-    const startMin = timeToMinutes(workDayStart);
-    const endMin = timeToMinutes(workDayEnd);
-
-    // Find next available slot
-    const dayBlocks = store.listBlocks(todayStr);
-    let candidateStart = Math.max(snapToGrid(nowMinutes, gridInterval), startMin);
-
-    // Check for overlaps and find a free slot
-    for (let attempt = 0; attempt < 100; attempt++) {
-      const candidateEnd = Math.min(candidateStart + defaultDuration, endMin);
-      if (candidateEnd <= candidateStart || candidateStart >= endMin) break;
-
-      const hasOverlap = dayBlocks.some((b) =>
-        isOverlapping(
-          minutesToTime(candidateStart),
-          minutesToTime(candidateEnd),
-          b.startTime,
-          b.endTime,
-        ),
-      );
-
-      if (!hasOverlap) {
-        const block = await store.createBlock({
-          title: "New Block",
-          date: todayStr,
-          startTime: minutesToTime(candidateStart),
-          endTime: minutesToTime(candidateEnd),
-          locked: false,
-        });
-        refreshData();
-        setEditingBlockId(block.id);
-        setEditingTitle("New Block");
-        return;
-      }
-
-      candidateStart += gridInterval;
-    }
-  }, [selectedDate, workDayStart, workDayEnd, gridInterval, defaultDuration, store, refreshData]);
-
-  // Delete selected block
-  const deleteSelectedBlock = useCallback(async () => {
-    if (!selectedBlockId) return;
-    try {
-      await store.deleteBlock(selectedBlockId);
-      setSelectedBlockId(null);
-      refreshData();
-    } catch {
-      // Block might not exist
-    }
-  }, [selectedBlockId, store, refreshData]);
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (
-        e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement ||
-        e.target instanceof HTMLSelectElement
-      ) {
-        return;
-      }
-
-      switch (e.key) {
-        case "ArrowLeft":
-          e.preventDefault();
-          goToPrevious();
-          break;
-        case "ArrowRight":
-          e.preventDefault();
-          goToNext();
-          break;
-        case "t":
-        case "T":
-          e.preventDefault();
-          goToToday();
-          break;
-        case "d":
-        case "D":
-          e.preventDefault();
-          setDayCount(1);
-          break;
-        case "w":
-        case "W":
-          e.preventDefault();
-          setDayCount(7);
-          break;
-        case "s":
-        case "S":
-          e.preventDefault();
-          setSidebarCollapsed((c) => !c);
-          break;
-        case "n":
-        case "N":
-          e.preventDefault();
-          createBlockAtNextAvailable();
-          break;
-        case "f":
-        case "F":
-          e.preventDefault();
-          // Focus on active/selected block — handled by FocusTimer component
-          if (activeBlock) {
-            setSelectedBlockId(activeBlock.id);
-          }
-          break;
-        case "Delete":
-        case "Backspace":
-          e.preventDefault();
-          deleteSelectedBlock();
-          break;
-        default:
-          if (e.key >= "1" && e.key <= "7") {
-            e.preventDefault();
-            setDayCount(parseInt(e.key) as ViewMode);
-          }
-          break;
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, [goToPrevious, goToNext, goToToday, createBlockAtNextAvailable, deleteSelectedBlock, activeBlock]);
-
-  // Settings change handler
-  const handleSettingChange = useCallback(
-    (key: string, value: string) => {
-      plugin.settings.set(key, value);
-      setSettingsVersion((v) => v + 1);
-    },
-    [plugin.settings],
-  );
-
-  // Focus timer status bar update
-  const handleFocusStatusUpdate = useCallback(
-    (_status: string) => {
-      // Status bar integration — future enhancement
-    },
-    [],
-  );
-
-  // Sidebar resize via divider drag
-  const handleDividerPointerDown = useCallback(
-    (e: React.PointerEvent) => {
-      e.preventDefault();
-      const startX = e.clientX;
-      const startWidth = sidebarWidth;
-
-      const onPointerMove = (ev: PointerEvent) => {
-        const delta = ev.clientX - startX;
-        const newWidth = Math.max(
-          SIDEBAR_MIN_WIDTH,
-          Math.min(SIDEBAR_MAX_WIDTH, startWidth + delta),
-        );
-        setSidebarWidth(newWidth);
-      };
-
-      const onPointerUp = () => {
-        window.removeEventListener("pointermove", onPointerMove);
-        window.removeEventListener("pointerup", onPointerUp);
-      };
-
-      window.addEventListener("pointermove", onPointerMove);
-      window.addEventListener("pointerup", onPointerUp);
-    },
-    [sidebarWidth],
-  );
-
-  // DnD handlers
-  const handleDragStart = useCallback(
-    (event: DragStartEvent) => {
-      const data = event.active.data.current;
-      if (data?.type === "task") {
-        setActiveDragId(event.active.id as string);
-        setActiveDragType("task");
-      } else if (data?.type === "block") {
-        setActiveDragId(event.active.id as string);
-        setActiveDragType("block");
-      }
-      setDragConflict(false);
-    },
-    [],
-  );
-
-  const handleDragEnd = useCallback(
-    async (event: DragEndEvent) => {
-      const { active, over } = event;
-      setActiveDragId(null);
-      setActiveDragType(null);
-      setDragConflict(false);
-
-      if (!over) return;
-
-      const overData = over.data.current;
-      const activeData = active.data.current;
-
-      // Task dropped onto a slot
-      if (overData?.type === "slot" && activeData?.type === "task") {
-        const task = activeData.task as Task;
-        const slotId = overData.slotId as string;
-        await store.addTaskToSlot(slotId, task.id);
-        refreshData();
-        return;
-      }
-
-      // Task dropped on timeline grid
-      if (overData?.type === "timeline-slot" && activeData?.type === "task") {
-        const task = activeData.task as Task;
-        const dropTime = overData.time as string;
-        const dropDate = (overData.date as string) || formatDateStr(selectedDate);
-        const duration = task.estimatedMinutes ?? defaultDuration;
-        const startMinutes = timeToMinutes(dropTime);
-        const endMinutes = Math.min(
-          startMinutes + duration,
-          timeToMinutes(workDayEnd),
-        );
-        const endTime = minutesToTime(endMinutes);
-
-        await store.createBlock({
-          taskId: task.id,
-          title: task.title,
-          date: dropDate,
-          startTime: dropTime,
-          endTime,
-          locked: false,
-        });
-        refreshData();
-        return;
-      }
-
-      // Block dropped on timeline grid
-      if (overData?.type === "timeline-slot" && activeData?.type === "block") {
-        const block = activeData.block as TimeBlock;
-        const dropTime = overData.time as string;
-        const dropDate = (overData.date as string) || formatDateStr(selectedDate);
-        const duration = timeToMinutes(block.endTime) - timeToMinutes(block.startTime);
-        const newStartMinutes = snapToGrid(timeToMinutes(dropTime), gridInterval);
-        const newEndMinutes = Math.min(
-          newStartMinutes + duration,
-          timeToMinutes(workDayEnd),
-        );
-
-        await store.updateBlock(block.id, {
-          date: dropDate,
-          startTime: minutesToTime(newStartMinutes),
-          endTime: minutesToTime(newEndMinutes),
-        });
-        refreshData();
-        return;
-      }
-
-      // Reorder within slot (sortable)
-      if (activeData?.type === "slot-task" && overData?.type === "slot-task") {
-        const activeTaskId = activeData.taskId as string;
-        const overTaskId = overData.taskId as string;
-        for (const slot of slotsState) {
-          const oldIndex = slot.taskIds.indexOf(activeTaskId);
-          const newIndex = slot.taskIds.indexOf(overTaskId);
-          if (oldIndex !== -1 && newIndex !== -1) {
-            const newOrder = arrayMove(slot.taskIds, oldIndex, newIndex);
-            await store.reorderSlotTasks(slot.id, newOrder);
-            refreshData();
-            return;
-          }
-        }
-      }
-    },
-    [store, selectedDate, defaultDuration, workDayEnd, gridInterval, refreshData, slotsState],
-  );
-
-  const handleDragCancel = useCallback(() => {
-    setActiveDragId(null);
-    setActiveDragType(null);
-    setDragConflict(false);
-  }, []);
-
-  // Block operations
-  const handleBlockCreate = useCallback(
-    async (_date: string, startTime: string, endTime: string) => {
-      const block = await store.createBlock({
-        title: "New Block",
-        date: _date,
-        startTime,
-        endTime,
-        locked: false,
-      });
-      refreshData();
-      setEditingBlockId(block.id);
-      setEditingTitle("New Block");
-    },
-    [store, refreshData],
-  );
-
-  const handleBlockMove = useCallback(
-    async (blockId: string, newDate: string, newStartTime: string) => {
-      const block = blocks.find((b) => b.id === blockId);
-      if (!block) return;
-      const duration = timeToMinutes(block.endTime) - timeToMinutes(block.startTime);
-      const newEndTime = minutesToTime(timeToMinutes(newStartTime) + duration);
-      await store.updateBlock(blockId, {
-        date: newDate,
-        startTime: newStartTime,
-        endTime: newEndTime,
-      });
-      refreshData();
-    },
-    [store, blocks, refreshData],
-  );
-
-  const handleBlockResize = useCallback(
-    async (blockId: string, newStartTime: string, newEndTime: string) => {
-      await store.updateBlock(blockId, {
-        startTime: newStartTime,
-        endTime: newEndTime,
-      });
-      refreshData();
-    },
-    [store, refreshData],
-  );
-
-  const handleBlockClick = useCallback((blockId: string) => {
-    setSelectedBlockId(blockId);
-  }, []);
-
-  const handleSlotClick = useCallback((_slotId: string) => {
-    // Future: open slot detail panel
-  }, []);
-
-  const handleSlotCreate = useCallback(
-    async (date: string, startTime: string, endTime: string) => {
-      await store.createSlot({
-        title: "Focus Block",
-        date,
-        startTime,
-        endTime,
-        taskIds: [],
-      });
-      refreshData();
-    },
-    [store, refreshData],
-  );
-
-  const handleTaskToggle = useCallback(
-    async (_taskId: string) => {
-      // Task toggle requires task:write + update API — future enhancement
-    },
-    [],
-  );
-
-  const handleTaskClick = useCallback((_taskId: string) => {
-    // Future: open task detail
-  }, []);
-
-  const handleSlotResize = useCallback(
-    async (slotId: string, _edge: "top" | "bottom") => {
-      void slotId;
-    },
-    [],
-  );
-
-  // Inline editing handlers
-  const handleEditingConfirm = useCallback(async () => {
-    if (!editingBlockId) return;
-    const trimmed = editingTitle.trim();
-    if (trimmed) {
-      await store.updateBlock(editingBlockId, { title: trimmed });
-    } else {
-      await store.deleteBlock(editingBlockId);
-    }
-    setEditingBlockId(null);
-    setEditingTitle("");
-    refreshData();
-  }, [editingBlockId, editingTitle, store, refreshData]);
-
-  const handleEditingCancel = useCallback(async () => {
-    if (!editingBlockId) return;
-    await store.deleteBlock(editingBlockId);
-    setEditingBlockId(null);
-    setEditingTitle("");
-    refreshData();
-  }, [editingBlockId, store, refreshData]);
-
-  // Resolve active drag item for DragOverlay
-  const activeDragTask =
-    activeDragType === "task"
-      ? tasks.find((t) => t.id === activeDragId)
-      : null;
-  const activeDragBlock =
-    activeDragType === "block"
-      ? blocks.find((b) => b.id === activeDragId)
-      : null;
-
-  // Check if dragged block would conflict
-  useEffect(() => {
-    if (!activeDragBlock) {
-      setDragConflict(false);
-      return;
-    }
-    const others = blocks.filter((b) => b.id !== activeDragBlock.id);
-    const hasConflict = others.some((b) =>
-      isOverlapping(activeDragBlock.startTime, activeDragBlock.endTime, b.startTime, b.endTime),
-    );
-    setDragConflict(hasConflict);
-  }, [activeDragBlock, blocks]);
+  useTimeblockingKeyboard({
+    goToPrevious,
+    goToNext,
+    goToToday,
+    createBlockAtNextAvailable: blockOps.createBlockAtNextAvailable,
+    deleteSelectedBlock: blockOps.deleteSelectedBlock,
+    activeBlock,
+    setDayCount,
+    setSidebarCollapsed,
+    setSelectedBlockId,
+  });
 
   // Slot renderer passed to timeline columns
   const renderSlot = useCallback(
@@ -630,58 +142,40 @@ export function TimeblockingView() {
         projects={projects}
         pixelsPerHour={getPixelsPerHour(dayCount)}
         workDayStart={workDayStart}
-        onSlotClick={handleSlotClick}
-        onTaskClick={handleTaskClick}
-        onTaskToggle={handleTaskToggle}
-        onResizeStart={handleSlotResize}
+        onSlotClick={blockOps.handleSlotClick}
+        onTaskClick={blockOps.handleTaskClick}
+        onTaskToggle={blockOps.handleTaskToggle}
+        onResizeStart={blockOps.handleSlotResize}
+        onContextMenu={ctxMenu.handleSlotContextMenu}
       />
     ),
-    [tasks, projects, dayCount, workDayStart, handleSlotClick, handleTaskClick, handleTaskToggle, handleSlotResize],
+    [tasks, projects, dayCount, workDayStart, blockOps.handleSlotClick, blockOps.handleTaskClick, blockOps.handleTaskToggle, blockOps.handleSlotResize, ctxMenu.handleSlotContextMenu],
   );
-
-  // Task grouping for sidebar
-  const sidebarGroups = useMemo(() => {
-    const todayStr = formatDateStr(new Date());
-    const pending = tasks.filter((t) => t.status === "pending");
-    const overdue: Task[] = [];
-    const today: Task[] = [];
-    const unscheduled: Task[] = [];
-
-    for (const t of pending) {
-      if (t.dueDate && t.dueDate < todayStr) {
-        overdue.push(t);
-      } else if (t.dueDate === todayStr) {
-        today.push(t);
-      } else {
-        unscheduled.push(t);
-      }
-    }
-
-    return { overdue, today, unscheduled };
-  }, [tasks]);
 
   const pixelsPerHour = getPixelsPerHour(dayCount);
 
   // Common timeline props
   const timelineProps = {
-    blocks,
+    blocks: blocks,
     slots: slotsState,
-    workDayStart,
-    workDayEnd,
-    gridInterval,
+    workDayStart: workDayStart,
+    workDayEnd: workDayEnd,
+    gridInterval: gridInterval,
     pixelsPerHour,
-    taskStatuses,
-    editingBlockId,
-    editingTitle,
+    taskStatuses: taskStatuses,
+    editingBlockId: editingBlockId,
+    editingTitle: editingTitle,
     onEditingTitleChange: setEditingTitle,
-    onEditingConfirm: handleEditingConfirm,
-    onEditingCancel: handleEditingCancel,
-    onBlockCreate: handleBlockCreate,
-    onBlockMove: handleBlockMove,
-    onBlockResize: handleBlockResize,
-    onBlockClick: handleBlockClick,
-    onSlotClick: handleSlotClick,
-    onSlotCreate: handleSlotCreate,
+    onEditingConfirm: blockOps.handleEditingConfirm,
+    onEditingCancel: blockOps.handleEditingCancel,
+    onBlockCreate: blockOps.handleBlockCreate,
+    onBlockMove: blockOps.handleBlockMove,
+    onBlockResize: blockOps.handleBlockResize,
+    onBlockClick: blockOps.handleBlockClick,
+    onBlockContextMenu: ctxMenu.handleBlockContextMenu,
+    onSlotClick: blockOps.handleSlotClick,
+    onSlotCreate: blockOps.handleSlotCreate,
+    onTimelineContextMenu: ctxMenu.handleTimelineContextMenu,
     renderSlot,
   };
 
@@ -726,7 +220,7 @@ export function TimeblockingView() {
           <FocusTimer
             block={activeBlock}
             onComplete={refreshData}
-            onStatusUpdate={handleFocusStatusUpdate}
+            onStatusUpdate={blockOps.handleFocusStatusUpdate}
           />
         )}
 
@@ -754,16 +248,16 @@ export function TimeblockingView() {
           workDayEnd={workDayEnd}
           gridInterval={gridIntervalStr}
           defaultDuration={defaultDurationStr}
-          onSettingChange={handleSettingChange}
+          onSettingChange={blockOps.handleSettingChange}
         />
       </div>
 
       {/* Main content */}
       <DndContext
         sensors={sensors}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-        onDragCancel={handleDragCancel}
+        onDragStart={dnd.handleDragStart}
+        onDragEnd={dnd.handleDragEnd}
+        onDragCancel={dnd.handleDragCancel}
       >
         <div className="flex flex-1 overflow-hidden">
           {/* Task sidebar */}
@@ -777,6 +271,7 @@ export function TimeblockingView() {
                   tasks={tasks}
                   scheduledTaskIds={scheduledTaskIds}
                   groups={sidebarGroups}
+                  onTaskClick={blockOps.handleTaskClick}
                 />
               </div>
 
@@ -784,7 +279,7 @@ export function TimeblockingView() {
               <div
                 ref={dividerRef}
                 className="w-1 flex-shrink-0 bg-border hover:bg-accent/50 cursor-col-resize transition-colors hidden md:block"
-                onPointerDown={handleDividerPointerDown}
+                onPointerDown={blockOps.handleDividerPointerDown}
                 data-testid="sidebar-divider"
               />
             </>
@@ -818,12 +313,21 @@ export function TimeblockingView() {
 
         {/* Drag overlay */}
         <DragOverlay>
-          {activeDragTask ? <TaskDragPreview task={activeDragTask} /> : null}
-          {activeDragBlock ? (
-            <BlockDragPreview block={activeDragBlock} hasConflict={dragConflict} />
+          {dnd.activeDragTask ? <TaskDragPreview task={dnd.activeDragTask} /> : null}
+          {dnd.activeDragBlock ? (
+            <BlockDragPreview block={dnd.activeDragBlock} hasConflict={dragConflict} />
           ) : null}
         </DragOverlay>
       </DndContext>
+
+      {/* Context menu */}
+      {contextMenu && ctxMenu.contextMenuItems.length > 0 && (
+        <ContextMenu
+          items={ctxMenu.contextMenuItems}
+          position={contextMenu.position}
+          onClose={ctxMenu.closeContextMenu}
+        />
+      )}
     </div>
   );
 }
