@@ -66,7 +66,10 @@ export function parseDate(input: string, referenceDate?: Date): ParsedDate | nul
   const hasTime = result.start.isCertain("hour");
 
   // Map the matched range back to the original input (shorthands may differ in length)
-  const originalText = input.substring(result.index, result.index + findOriginalLength(input, expanded, result.index, result.text.length));
+  const originalText = input.substring(
+    result.index,
+    result.index + findOriginalLength(input, expanded, result.index, result.text.length),
+  );
 
   return {
     date: result.start.date(),
@@ -76,7 +79,12 @@ export function parseDate(input: string, referenceDate?: Date): ParsedDate | nul
 }
 
 /** Find the length of the original text that corresponds to an expanded match. */
-function findOriginalLength(original: string, expanded: string, expandedStart: number, expandedLen: number): number {
+function findOriginalLength(
+  original: string,
+  expanded: string,
+  expandedStart: number,
+  expandedLen: number,
+): number {
   // If no expansion happened, lengths match directly
   if (original === expanded) return expandedLen;
 
@@ -117,7 +125,7 @@ function findOriginalLength(original: string, expanded: string, expandedStart: n
   origPositions[expanded.length] = original.length;
 
   const origStart = origPositions[expandedStart] ?? expandedStart;
-  const origEnd = origPositions[expandedStart + expandedLen] ?? (origStart + expandedLen);
+  const origEnd = origPositions[expandedStart + expandedLen] ?? origStart + expandedLen;
   return origEnd - origStart;
 }
 

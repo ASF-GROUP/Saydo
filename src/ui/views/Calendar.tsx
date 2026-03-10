@@ -63,7 +63,9 @@ export function Calendar({
       <div className="flex flex-wrap items-center justify-between gap-2 px-4 md:px-6 py-3 border-b border-border bg-surface shrink-0">
         <div className="flex items-center gap-2 md:gap-3 min-w-0">
           <CalendarRange size={22} className="text-accent shrink-0" />
-          <h1 className="text-base md:text-lg font-semibold text-on-surface truncate">{nav.periodLabel}</h1>
+          <h1 className="text-base md:text-lg font-semibold text-on-surface truncate">
+            {nav.periodLabel}
+          </h1>
           {nav.mode === "day" && taskCount > 0 && (
             <span className="text-xs text-on-surface-muted bg-surface-secondary px-2 py-0.5 rounded-full shrink-0">
               {taskCount} task{taskCount !== 1 ? "s" : ""}

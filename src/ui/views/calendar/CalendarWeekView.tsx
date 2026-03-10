@@ -158,7 +158,9 @@ export function CalendarWeekView({
                             </span>
                             <span
                               className={`line-clamp-2 ${
-                                isCompleted ? "line-through text-on-surface-muted" : "text-on-surface"
+                                isCompleted
+                                  ? "line-through text-on-surface-muted"
+                                  : "text-on-surface"
                               }`}
                             >
                               {task.title}

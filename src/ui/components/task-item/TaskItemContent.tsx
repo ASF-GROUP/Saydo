@@ -52,11 +52,14 @@ export function TaskItemContent({
         )}
 
         {/* Dread level indicator */}
-        {showDreadLevel && task.dreadLevel != null && task.dreadLevel > 0 && task.status !== "completed" && (
-          <span className="flex-shrink-0" title={`Dread level: ${task.dreadLevel}/5`}>
-            <FrogIcon size={14} color={getDreadLevelColor(task.dreadLevel).fill} />
-          </span>
-        )}
+        {showDreadLevel &&
+          task.dreadLevel != null &&
+          task.dreadLevel > 0 &&
+          task.status !== "completed" && (
+            <span className="flex-shrink-0" title={`Dread level: ${task.dreadLevel}/5`}>
+              <FrogIcon size={14} color={getDreadLevelColor(task.dreadLevel).fill} />
+            </span>
+          )}
 
         {/* Blocked badge */}
         {isBlocked && task.status === "pending" && (
