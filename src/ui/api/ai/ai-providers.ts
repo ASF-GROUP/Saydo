@@ -15,6 +15,7 @@ export async function listAIProviders(): Promise<AIProviderInfo[]> {
       displayName: r.plugin.displayName,
       needsApiKey: r.plugin.needsApiKey,
       optionalApiKey: r.plugin.optionalApiKey ?? false,
+      supportsOAuth: r.plugin.supportsOAuth ?? false,
       defaultModel: r.plugin.defaultModel,
       defaultBaseUrl: r.plugin.defaultBaseUrl,
       showBaseUrl: r.plugin.showBaseUrl ?? false,

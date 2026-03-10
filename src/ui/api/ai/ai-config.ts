@@ -14,11 +14,15 @@ export async function getAIConfig(): Promise<AIConfigInfo> {
     const modelSetting = svc.storage.getAppSetting("ai_model");
     const baseUrlSetting = svc.storage.getAppSetting("ai_base_url");
     const apiKeySetting = svc.storage.getAppSetting("ai_api_key");
+    const authTypeSetting = svc.storage.getAppSetting("ai_auth_type");
+    const oauthTokenSetting = svc.storage.getAppSetting("ai_oauth_token");
     return {
       provider: providerSetting?.value ?? null,
       model: modelSetting?.value ?? null,
       baseUrl: baseUrlSetting?.value ?? null,
       hasApiKey: !!apiKeySetting?.value,
+      authType: (authTypeSetting?.value as "api-key" | "oauth") ?? undefined,
+      hasOAuthToken: !!oauthTokenSetting?.value,
     };
   }
   const res = await fetch(`${BASE}/ai/config`);
@@ -30,6 +34,8 @@ export async function updateAIConfig(config: {
   apiKey?: string;
   model?: string;
   baseUrl?: string;
+  authType?: string;
+  oauthToken?: string;
 }): Promise<void> {
   if (useDirectServices()) {
     const svc = await getServices();
@@ -49,6 +55,14 @@ export async function updateAIConfig(config: {
         svc.storage.deleteAppSetting("ai_base_url");
       }
     }
+    if (config.authType !== undefined) {
+      if (config.authType) {
+        svc.storage.setAppSetting("ai_auth_type", config.authType);
+      } else {
+        svc.storage.deleteAppSetting("ai_auth_type");
+      }
+    }
+    if (config.oauthToken) svc.storage.setAppSetting("ai_oauth_token", config.oauthToken);
     svc.chatManager.clearSession(svc.storage);
     svc.save();
     return;

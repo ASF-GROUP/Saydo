@@ -16,6 +16,8 @@ export interface AIContextValue extends AIState {
     apiKey?: string;
     model?: string;
     baseUrl?: string;
+    authType?: string;
+    oauthToken?: string;
   }) => Promise<void>;
   refreshConfig: () => Promise<void>;
   retryLastMessage: () => void;

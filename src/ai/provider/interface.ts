@@ -18,6 +18,8 @@ export interface LLMProviderPlugin {
   readonly needsApiKey: boolean;
   /** When true, shows the API key field in the UI but doesn't require it. */
   readonly optionalApiKey?: boolean;
+  /** When true, the provider supports OAuth-based authentication as an alternative to API keys. */
+  readonly supportsOAuth?: boolean;
   readonly defaultModel: string;
   readonly defaultBaseUrl?: string;
   readonly showBaseUrl?: boolean;

@@ -9,6 +9,7 @@ export const openaiPlugin: LLMProviderPlugin = createOpenAICompatPlugin({
   name: "openai",
   displayName: "OpenAI",
   needsApiKey: true,
+  supportsOAuth: true,
   defaultModel: "gpt-4o",
   modelFilter: (id) => /gpt|o[1-9]|chatgpt/.test(id),
 });

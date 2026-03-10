@@ -178,6 +178,8 @@ export interface OpenAICompatConfig {
   loadModel?: (modelKey: string, config: AIProviderConfig) => Promise<void>;
   /** Custom model unloader (e.g., LM Studio). */
   unloadModel?: (modelKey: string, config: AIProviderConfig) => Promise<void>;
+  /** Whether this provider supports OAuth-based authentication. */
+  supportsOAuth?: boolean;
 }
 
 const FETCH_TIMEOUT_MS = 5000;
@@ -228,12 +230,16 @@ export function createOpenAICompatPlugin(cfg: OpenAICompatConfig): LLMProviderPl
     displayName: cfg.displayName,
     needsApiKey: cfg.needsApiKey,
     optionalApiKey: cfg.optionalApiKey,
+    supportsOAuth: cfg.supportsOAuth,
     defaultModel: cfg.defaultModel,
     defaultBaseUrl: cfg.defaultBaseUrl,
     showBaseUrl: cfg.showBaseUrl,
 
     createExecutor(config: AIProviderConfig): LLMExecutor {
-      const apiKey = config.apiKey ?? cfg.fakeApiKey ?? "not-needed";
+      const apiKey =
+        config.authType === "oauth"
+          ? (config.oauthToken ?? "")
+          : (config.apiKey ?? cfg.fakeApiKey ?? "not-needed");
       const baseURL = config.baseUrl ?? cfg.defaultBaseUrl;
       const client = new OpenAI({
         apiKey,
@@ -248,7 +254,10 @@ export function createOpenAICompatPlugin(cfg: OpenAICompatConfig): LLMProviderPl
       if (cfg.discoverModels) {
         return cfg.discoverModels(config);
       }
-      const apiKey = config.apiKey ?? cfg.fakeApiKey ?? "";
+      const apiKey =
+        config.authType === "oauth"
+          ? (config.oauthToken ?? "")
+          : (config.apiKey ?? cfg.fakeApiKey ?? "");
       if (cfg.needsApiKey && !apiKey) return [];
       const baseUrl = config.baseUrl ?? cfg.defaultBaseUrl ?? "https://api.openai.com/v1";
       return defaultDiscoverModels(config, baseUrl, apiKey, cfg.modelFilter);

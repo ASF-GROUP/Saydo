@@ -65,7 +65,8 @@ export class LLMProviderRegistry {
       throw new Error(`Unknown AI provider: ${config.provider}`);
     }
     logger.debug("Creating LLM executor", { provider: config.provider, model: config.model });
-    if (reg.plugin.needsApiKey && !config.apiKey) {
+    const hasOAuthToken = config.authType === "oauth" && !!config.oauthToken;
+    if (reg.plugin.needsApiKey && !config.apiKey && !hasOAuthToken) {
       throw new Error(`${reg.plugin.displayName} requires an API key`);
     }
     return reg.plugin.createExecutor(config);

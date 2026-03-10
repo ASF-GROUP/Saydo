@@ -12,6 +12,13 @@ import { anthropicPlugin } from "./provider/adapters/anthropic.js";
 import { openrouterPlugin } from "./provider/adapters/openrouter.js";
 import { ollamaPlugin } from "./provider/adapters/ollama.js";
 import { lmstudioPlugin } from "./provider/adapters/lmstudio.js";
+import { deepseekPlugin } from "./provider/adapters/deepseek.js";
+import { geminiPlugin } from "./provider/adapters/gemini.js";
+import { mistralPlugin } from "./provider/adapters/mistral.js";
+import { kimiPlugin } from "./provider/adapters/kimi.js";
+import { dashscopePlugin } from "./provider/adapters/dashscope.js";
+import { groqPlugin } from "./provider/adapters/groq.js";
+import { zaiPlugin } from "./provider/adapters/zai.js";
 import { ToolRegistry } from "./tools/registry.js";
 import { registerTaskCrudTools } from "./tools/builtin/task-crud.js";
 import { registerQueryTasksTool } from "./tools/builtin/query-tasks.js";
@@ -45,7 +52,14 @@ export function createDefaultRegistry(): LLMProviderRegistry {
   registry.register(openrouterPlugin);
   registry.register(ollamaPlugin);
   registry.register(lmstudioPlugin);
-  logger.info("LLM provider registry initialized", { providers: 5 });
+  registry.register(deepseekPlugin);
+  registry.register(geminiPlugin);
+  registry.register(mistralPlugin);
+  registry.register(kimiPlugin);
+  registry.register(dashscopePlugin);
+  registry.register(groqPlugin);
+  registry.register(zaiPlugin);
+  logger.info("LLM provider registry initialized", { providers: 12 });
   return registry;
 }
 

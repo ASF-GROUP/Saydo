@@ -13,6 +13,7 @@ export function aiRoutes(services: AppServices): Hono {
       displayName: r.plugin.displayName,
       needsApiKey: r.plugin.needsApiKey,
       optionalApiKey: r.plugin.optionalApiKey ?? false,
+      supportsOAuth: r.plugin.supportsOAuth ?? false,
       defaultModel: r.plugin.defaultModel,
       defaultBaseUrl: r.plugin.defaultBaseUrl,
       showBaseUrl: r.plugin.showBaseUrl ?? false,
@@ -27,22 +28,28 @@ export function aiRoutes(services: AppServices): Hono {
     const modelSetting = services.storage.getAppSetting("ai_model");
     const baseUrlSetting = services.storage.getAppSetting("ai_base_url");
     const apiKeySetting = services.storage.getAppSetting("ai_api_key");
+    const authTypeSetting = services.storage.getAppSetting("ai_auth_type");
+    const oauthTokenSetting = services.storage.getAppSetting("ai_oauth_token");
     return c.json({
       provider: providerSetting?.value ?? null,
       model: modelSetting?.value ?? null,
       baseUrl: baseUrlSetting?.value ?? null,
       hasApiKey: !!apiKeySetting?.value,
+      authType: authTypeSetting?.value ?? undefined,
+      hasOAuthToken: !!oauthTokenSetting?.value,
     });
   });
 
   // PUT /ai/config
   app.put("/config", async (c) => {
     const body = await c.req.json();
-    const { provider, apiKey, model, baseUrl } = body as {
+    const { provider, apiKey, model, baseUrl, authType, oauthToken } = body as {
       provider?: string;
       apiKey?: string;
       model?: string;
       baseUrl?: string;
+      authType?: string;
+      oauthToken?: string;
     };
     if (provider) services.storage.setAppSetting("ai_provider", provider);
     if (apiKey) services.storage.setAppSetting("ai_api_key", apiKey);
@@ -60,6 +67,14 @@ export function aiRoutes(services: AppServices): Hono {
         services.storage.deleteAppSetting("ai_base_url");
       }
     }
+    if (authType !== undefined) {
+      if (authType) {
+        services.storage.setAppSetting("ai_auth_type", authType);
+      } else {
+        services.storage.deleteAppSetting("ai_auth_type");
+      }
+    }
+    if (oauthToken) services.storage.setAppSetting("ai_oauth_token", oauthToken);
     services.chatManager.clearSession(services.storage);
     return c.json({ ok: true });
   });
@@ -155,12 +170,16 @@ export function aiRoutes(services: AppServices): Hono {
       const apiKeySetting = services.storage.getAppSetting("ai_api_key");
       const modelSetting = services.storage.getAppSetting("ai_model");
       const baseUrlSetting = services.storage.getAppSetting("ai_base_url");
+      const authTypeSetting = services.storage.getAppSetting("ai_auth_type");
+      const oauthTokenSetting = services.storage.getAppSetting("ai_oauth_token");
 
       const executor = services.aiProviderRegistry.createExecutor({
         provider: providerSetting.value as string,
         apiKey: apiKeySetting?.value,
         model: modelSetting?.value,
         baseUrl: baseUrlSetting?.value,
+        authType: authTypeSetting?.value as "api-key" | "oauth" | undefined,
+        oauthToken: oauthTokenSetting?.value,
       });
 
       const toolServices = {
@@ -302,12 +321,16 @@ export function aiRoutes(services: AppServices): Hono {
     const apiKeySetting = services.storage.getAppSetting("ai_api_key");
     const modelSetting = services.storage.getAppSetting("ai_model");
     const baseUrlSetting = services.storage.getAppSetting("ai_base_url");
+    const authTypeSetting = services.storage.getAppSetting("ai_auth_type");
+    const oauthTokenSetting = services.storage.getAppSetting("ai_oauth_token");
 
     const executor = services.aiProviderRegistry.createExecutor({
       provider: providerSetting.value as string,
       apiKey: apiKeySetting?.value,
       model: modelSetting?.value,
       baseUrl: baseUrlSetting?.value,
+      authType: authTypeSetting?.value as "api-key" | "oauth" | undefined,
+      oauthToken: oauthTokenSetting?.value,
     });
 
     const rows = services.storage.listChatMessages(sessionId);

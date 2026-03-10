@@ -11,6 +11,8 @@ export function AITab() {
   const [providers, setProviders] = useState<AIProviderInfo[]>([]);
   const [provider, setProvider] = useState("");
   const [apiKey, setApiKey] = useState("");
+  const [authType, setAuthType] = useState<"api-key" | "oauth">("api-key");
+  const [oauthToken, setOauthToken] = useState("");
   const [model, setModel] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
   const [loaded, setLoaded] = useState(false);
@@ -32,6 +34,7 @@ export function AITab() {
       setProvider(config.provider ?? "");
       setModel(config.model ?? "");
       setBaseUrl(config.baseUrl ?? "");
+      setAuthType(config.authType ?? "api-key");
       setLoaded(true);
     }
   }, [config, loaded]);
@@ -85,13 +88,22 @@ export function AITab() {
   const handleProviderChange = async (newProvider: string) => {
     setProvider(newProvider);
     setApiKey("");
+    setAuthType("api-key");
+    setOauthToken("");
     const prov = providers.find((p) => p.name === newProvider);
     setModel(prov?.defaultModel ?? "");
     setBaseUrl(prov?.defaultBaseUrl ?? "");
     setUseCustomModel(false);
 
     if (!newProvider) {
-      await updateConfig({ provider: "", apiKey: "", model: "", baseUrl: "" });
+      await updateConfig({
+        provider: "",
+        apiKey: "",
+        model: "",
+        baseUrl: "",
+        authType: "",
+        oauthToken: "",
+      });
     }
   };
 
@@ -127,8 +139,11 @@ export function AITab() {
       apiKey: apiKey || undefined,
       model: model || undefined,
       baseUrl: baseUrl || undefined,
+      authType: authType || undefined,
+      oauthToken: oauthToken || undefined,
     });
     setApiKey("");
+    setOauthToken("");
     await refreshConfig();
     // Re-fetch models after save (API key may have changed)
     if (provider) {
@@ -173,30 +188,101 @@ export function AITab() {
             <>
               {(currentProvider?.needsApiKey || currentProvider?.optionalApiKey) && (
                 <div>
-                  <label className="block text-xs font-medium text-on-surface-secondary mb-1">
-                    API Key
-                    {currentProvider?.optionalApiKey && !currentProvider?.needsApiKey && (
-                      <span className="font-normal text-on-surface-muted ml-1">(optional)</span>
-                    )}
-                    {config?.hasApiKey && (
-                      <span className="font-normal text-success ml-2">Set</span>
-                    )}
-                  </label>
-                  <input
-                    type="password"
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    placeholder={
-                      config?.hasApiKey
-                        ? "Enter new key to update"
-                        : currentProvider?.optionalApiKey
-                          ? "Enter API key for remote servers"
-                          : "Enter API key"
-                    }
-                    className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-on-surface"
-                  />
-                  {PROVIDER_HELP[provider] && (
-                    <p className="mt-1 text-xs text-on-surface-muted">{PROVIDER_HELP[provider]}</p>
+                  {currentProvider?.supportsOAuth && (
+                    <div className="mb-3">
+                      <label className="block text-xs font-medium text-on-surface-secondary mb-1">
+                        Authentication
+                      </label>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setAuthType("api-key")}
+                          className={`px-3 py-1.5 text-xs rounded-lg border ${
+                            authType === "api-key"
+                              ? "bg-accent text-white border-accent"
+                              : "bg-surface text-on-surface-secondary border-border hover:border-on-surface-muted"
+                          }`}
+                        >
+                          API Key
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAuthType("oauth")}
+                          className={`px-3 py-1.5 text-xs rounded-lg border ${
+                            authType === "oauth"
+                              ? "bg-accent text-white border-accent"
+                              : "bg-surface text-on-surface-secondary border-border hover:border-on-surface-muted"
+                          }`}
+                        >
+                          OAuth Token
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {authType === "api-key" ? (
+                    <>
+                      <label className="block text-xs font-medium text-on-surface-secondary mb-1">
+                        API Key
+                        {currentProvider?.optionalApiKey && !currentProvider?.needsApiKey && (
+                          <span className="font-normal text-on-surface-muted ml-1">(optional)</span>
+                        )}
+                        {config?.hasApiKey && (
+                          <span className="font-normal text-success ml-2">Set</span>
+                        )}
+                      </label>
+                      <input
+                        type="password"
+                        value={apiKey}
+                        onChange={(e) => setApiKey(e.target.value)}
+                        placeholder={
+                          config?.hasApiKey
+                            ? "Enter new key to update"
+                            : currentProvider?.optionalApiKey
+                              ? "Enter API key for remote servers"
+                              : "Enter API key"
+                        }
+                        className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-on-surface"
+                      />
+                      {PROVIDER_HELP[provider] && (
+                        <p className="mt-1 text-xs text-on-surface-muted">
+                          {PROVIDER_HELP[provider]}
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <label className="block text-xs font-medium text-on-surface-secondary mb-1">
+                        OAuth Token
+                        {config?.hasOAuthToken && (
+                          <span className="font-normal text-success ml-2">Set</span>
+                        )}
+                      </label>
+                      <input
+                        type="password"
+                        value={oauthToken}
+                        onChange={(e) => setOauthToken(e.target.value)}
+                        placeholder={
+                          config?.hasOAuthToken
+                            ? "Enter new token to update"
+                            : "Paste your OAuth token"
+                        }
+                        className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface text-on-surface"
+                      />
+                      <p className="mt-1 text-xs text-on-surface-muted">
+                        Use your existing {currentProvider?.displayName} subscription. Paste your
+                        OAuth access token above. Full OAuth flow will be available in a future
+                        update.
+                      </p>
+                      <div className="mt-3 p-3 rounded-lg border border-warning/30 bg-warning/5">
+                        <p className="text-xs text-on-surface-muted">
+                          <strong>Personal use only.</strong> Using your subscription OAuth token in
+                          third-party apps may not be supported by all providers. Ensure your usage
+                          complies with your provider{"'"}s terms. Your token is stored locally and
+                          never leaves your device.
+                        </p>
+                      </div>
+                    </>
                   )}
                 </div>
               )}

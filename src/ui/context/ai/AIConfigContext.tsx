@@ -9,6 +9,8 @@ export interface AIConfigContextValue {
     apiKey?: string;
     model?: string;
     baseUrl?: string;
+    authType?: string;
+    oauthToken?: string;
   }) => Promise<void>;
   refreshConfig: () => Promise<void>;
 }

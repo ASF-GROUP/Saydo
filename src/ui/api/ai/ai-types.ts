@@ -3,6 +3,8 @@ export interface AIConfigInfo {
   model: string | null;
   baseUrl: string | null;
   hasApiKey: boolean;
+  authType?: "api-key" | "oauth";
+  hasOAuthToken?: boolean;
 }
 
 export interface AIChatMessage {
@@ -28,6 +30,7 @@ export interface AIProviderInfo {
   displayName: string;
   needsApiKey: boolean;
   optionalApiKey?: boolean;
+  supportsOAuth?: boolean;
   defaultModel: string;
   suggestedModels?: string[];
   defaultBaseUrl?: string;

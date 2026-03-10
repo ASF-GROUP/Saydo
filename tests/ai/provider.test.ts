@@ -11,7 +11,14 @@ describe("createDefaultRegistry", () => {
     expect(names).toContain("openrouter");
     expect(names).toContain("ollama");
     expect(names).toContain("lmstudio");
-    expect(all).toHaveLength(5);
+    expect(names).toContain("deepseek");
+    expect(names).toContain("gemini");
+    expect(names).toContain("mistral");
+    expect(names).toContain("kimi");
+    expect(names).toContain("dashscope");
+    expect(names).toContain("groq");
+    expect(names).toContain("zai");
+    expect(all).toHaveLength(12);
   });
 
   it("creates an executor for OpenAI with API key", () => {

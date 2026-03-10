@@ -38,6 +38,7 @@ export function AIProvider({ children }: { children: ReactNode }) {
   const isConfigured = !!(
     config?.provider &&
     (config.hasApiKey ||
+      config.hasOAuthToken ||
       config.provider === "ollama" ||
       config.provider === "lmstudio" ||
       config.provider.includes(":"))
@@ -102,7 +103,14 @@ export function AIProvider({ children }: { children: ReactNode }) {
   }, [refreshSessions]);
 
   const updateConfig = useCallback(
-    async (cfg: { provider?: string; apiKey?: string; model?: string; baseUrl?: string }) => {
+    async (cfg: {
+      provider?: string;
+      apiKey?: string;
+      model?: string;
+      baseUrl?: string;
+      authType?: string;
+      oauthToken?: string;
+    }) => {
       await api.updateAIConfig(cfg);
       await refreshConfig();
       setMessages([]);

@@ -6,6 +6,8 @@ export interface AIProviderConfig {
   apiKey?: string;
   model?: string;
   baseUrl?: string;
+  authType?: "api-key" | "oauth";
+  oauthToken?: string;
 }
 
 export interface ChatMessage {
