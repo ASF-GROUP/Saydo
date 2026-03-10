@@ -1,8 +1,14 @@
 import type { TaskComment, TaskActivity } from "../../core/types.js";
-import { isTauri, BASE, handleResponse, handleVoidResponse, getServices } from "./helpers.js";
+import {
+  useDirectServices,
+  BASE,
+  handleResponse,
+  handleVoidResponse,
+  getServices,
+} from "./helpers.js";
 
 export async function listTaskComments(taskId: string): Promise<TaskComment[]> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     return svc.storage.listTaskComments(taskId);
   }
@@ -11,7 +17,7 @@ export async function listTaskComments(taskId: string): Promise<TaskComment[]> {
 }
 
 export async function addTaskComment(taskId: string, content: string): Promise<TaskComment> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const { generateId } = await import("../../utils/ids.js");
     const svc = await getServices();
     const now = new Date().toISOString();
@@ -35,7 +41,7 @@ export async function addTaskComment(taskId: string, content: string): Promise<T
 }
 
 export async function updateTaskComment(commentId: string, content: string): Promise<void> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     svc.storage.updateTaskComment(commentId, {
       content,
@@ -54,7 +60,7 @@ export async function updateTaskComment(commentId: string, content: string): Pro
 }
 
 export async function deleteTaskComment(commentId: string): Promise<void> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     svc.storage.deleteTaskComment(commentId);
     svc.save();
@@ -64,7 +70,7 @@ export async function deleteTaskComment(commentId: string): Promise<void> {
 }
 
 export async function listTaskActivity(taskId: string): Promise<TaskActivity[]> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     return svc.storage.listTaskActivity(taskId);
   }

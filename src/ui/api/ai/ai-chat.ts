@@ -1,11 +1,17 @@
-import { isTauri, BASE, handleResponse, handleVoidResponse, getServices } from "../helpers.js";
+import {
+  useDirectServices,
+  BASE,
+  handleResponse,
+  handleVoidResponse,
+  getServices,
+} from "../helpers.js";
 import type { AIChatMessage } from "./ai-types.js";
 
 export async function sendChatMessage(
   message: string,
   options?: { voiceCall?: boolean; focusedTaskId?: string },
 ): Promise<ReadableStream<Uint8Array> | null> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     const providerSetting = svc.storage.getAppSetting("ai_provider");
     if (!providerSetting?.value) {
@@ -105,7 +111,7 @@ export async function sendChatMessage(
 }
 
 export async function getChatMessages(): Promise<AIChatMessage[]> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     let session = svc.chatManager.getSession();
 
@@ -154,7 +160,7 @@ export async function getChatMessages(): Promise<AIChatMessage[]> {
 }
 
 export async function clearChat(): Promise<void> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     svc.chatManager.clearSession(svc.storage);
     svc.save();

@@ -1,8 +1,14 @@
-import { isTauri, BASE, handleResponse, handleVoidResponse, getServices } from "../helpers.js";
+import {
+  useDirectServices,
+  BASE,
+  handleResponse,
+  handleVoidResponse,
+  getServices,
+} from "../helpers.js";
 import type { AIConfigInfo } from "./ai-types.js";
 
 export async function getAIConfig(): Promise<AIConfigInfo> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     const providerSetting = svc.storage.getAppSetting("ai_provider");
     const modelSetting = svc.storage.getAppSetting("ai_model");
@@ -25,7 +31,7 @@ export async function updateAIConfig(config: {
   model?: string;
   baseUrl?: string;
 }): Promise<void> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     if (config.provider) svc.storage.setAppSetting("ai_provider", config.provider);
     if (config.apiKey) svc.storage.setAppSetting("ai_api_key", config.apiKey);

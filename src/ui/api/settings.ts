@@ -1,5 +1,11 @@
 import type { Task, Project } from "../../core/types.js";
-import { isTauri, BASE, handleResponse, handleVoidResponse, getServices } from "./helpers.js";
+import {
+  useDirectServices,
+  BASE,
+  handleResponse,
+  handleVoidResponse,
+  getServices,
+} from "./helpers.js";
 import { listTasks } from "./tasks.js";
 import { listProjects } from "./projects.js";
 
@@ -8,7 +14,7 @@ export async function exportAllData(): Promise<{
   projects: Project[];
   tags: { id: string; name: string; color: string }[];
 }> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     const tasks = await svc.taskService.list();
     const projects = await svc.projectService.list();
@@ -27,7 +33,7 @@ export async function exportAllData(): Promise<{
 }
 
 export async function getAppSetting(key: string): Promise<string | null> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     const row = svc.storage.getAppSetting(key);
     return row?.value ?? null;
@@ -39,7 +45,7 @@ export async function getAppSetting(key: string): Promise<string | null> {
 }
 
 export async function getStorageInfo(): Promise<{ mode: string; path: string }> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     // Tauri always uses SQLite
     return { mode: "sqlite", path: "(embedded database)" };
   }
@@ -48,7 +54,7 @@ export async function getStorageInfo(): Promise<{ mode: string; path: string }> 
 }
 
 export async function setAppSetting(key: string, value: string): Promise<void> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     svc.storage.setAppSetting(key, value);
     svc.save();

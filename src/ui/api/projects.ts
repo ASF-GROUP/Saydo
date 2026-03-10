@@ -1,8 +1,14 @@
 import type { Project } from "../../core/types.js";
-import { isTauri, BASE, handleResponse, handleVoidResponse, getServices } from "./helpers.js";
+import {
+  useDirectServices,
+  BASE,
+  handleResponse,
+  handleVoidResponse,
+  getServices,
+} from "./helpers.js";
 
 export async function listTags(): Promise<{ id: string; name: string; color: string }[]> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     return svc.tagService.list();
   }
@@ -11,7 +17,7 @@ export async function listTags(): Promise<{ id: string; name: string; color: str
 }
 
 export async function listProjects(): Promise<Project[]> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     return svc.projectService.list();
   }
@@ -27,7 +33,7 @@ export async function createProject(
   isFavorite?: boolean,
   viewStyle?: "list" | "board" | "calendar",
 ): Promise<Project> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     const project = await svc.projectService.create(name, {
       color,
@@ -57,7 +63,7 @@ export async function updateProject(
     Pick<Project, "name" | "color" | "icon" | "archived" | "parentId" | "isFavorite" | "viewStyle">
   >,
 ): Promise<Project | null> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     const project = await svc.projectService.update(id, data);
     svc.save();
@@ -72,7 +78,7 @@ export async function updateProject(
 }
 
 export async function deleteProject(id: string): Promise<void> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     await svc.projectService.delete(id);
     svc.save();

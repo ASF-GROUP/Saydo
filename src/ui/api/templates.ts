@@ -4,10 +4,16 @@ import type {
   CreateTemplateInput,
   UpdateTemplateInput,
 } from "../../core/types.js";
-import { isTauri, BASE, handleResponse, handleVoidResponse, getServices } from "./helpers.js";
+import {
+  useDirectServices,
+  BASE,
+  handleResponse,
+  handleVoidResponse,
+  getServices,
+} from "./helpers.js";
 
 export async function listTemplates(): Promise<TaskTemplate[]> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     return svc.templateService.list();
   }
@@ -16,7 +22,7 @@ export async function listTemplates(): Promise<TaskTemplate[]> {
 }
 
 export async function createTemplate(input: CreateTemplateInput): Promise<TaskTemplate> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     const template = await svc.templateService.create(input);
     svc.save();
@@ -34,7 +40,7 @@ export async function updateTemplate(
   id: string,
   input: UpdateTemplateInput,
 ): Promise<TaskTemplate> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     const template = await svc.templateService.update(id, input);
     svc.save();
@@ -49,7 +55,7 @@ export async function updateTemplate(
 }
 
 export async function deleteTemplate(id: string): Promise<void> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     await svc.templateService.delete(id);
     svc.save();
@@ -62,7 +68,7 @@ export async function instantiateTemplate(
   id: string,
   variables?: Record<string, string>,
 ): Promise<Task> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     const task = await svc.templateService.instantiate(id, variables);
     svc.save();

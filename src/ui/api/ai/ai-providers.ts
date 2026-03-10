@@ -1,8 +1,14 @@
-import { isTauri, BASE, handleResponse, handleVoidResponse, getServices } from "../helpers.js";
+import {
+  useDirectServices,
+  BASE,
+  handleResponse,
+  handleVoidResponse,
+  getServices,
+} from "../helpers.js";
 import type { AIProviderInfo, ModelDiscoveryInfo } from "./ai-types.js";
 
 export async function listAIProviders(): Promise<AIProviderInfo[]> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     return svc.aiProviderRegistry.getAll().map((r) => ({
       name: r.plugin.name,
@@ -23,7 +29,7 @@ export async function fetchModels(
   providerName: string,
   baseUrl?: string,
 ): Promise<ModelDiscoveryInfo[]> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     const apiKeySetting = svc.storage.getAppSetting("ai_api_key");
     const baseUrlSetting = svc.storage.getAppSetting("ai_base_url");
@@ -48,7 +54,7 @@ export async function loadModel(
   modelKey: string,
   baseUrl?: string,
 ): Promise<void> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     const baseUrlSetting = svc.storage.getAppSetting("ai_base_url");
     const apiKeySetting = svc.storage.getAppSetting("ai_api_key");
@@ -76,7 +82,7 @@ export async function unloadModel(
   modelKey: string,
   baseUrl?: string,
 ): Promise<void> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     const baseUrlSetting = svc.storage.getAppSetting("ai_base_url");
     const apiKeySetting = svc.storage.getAppSetting("ai_api_key");

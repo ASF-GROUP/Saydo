@@ -1,8 +1,8 @@
 import type { DailyStat } from "../../core/types.js";
-import { isTauri, BASE, handleResponse, getServices } from "./helpers.js";
+import { useDirectServices, BASE, handleResponse, getServices } from "./helpers.js";
 
 export async function getDailyStats(startDate: string, endDate: string): Promise<DailyStat[]> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     return svc.statsService.getStats(startDate, endDate);
   }
@@ -14,7 +14,7 @@ export async function getDailyStats(startDate: string, endDate: string): Promise
 }
 
 export async function getTodayStats(): Promise<DailyStat> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     return svc.statsService.getToday();
   }

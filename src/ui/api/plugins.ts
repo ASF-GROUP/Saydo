@@ -1,4 +1,10 @@
-import { isTauri, BASE, handleResponse, handleVoidResponse, getServices } from "./helpers.js";
+import {
+  useDirectServices,
+  BASE,
+  handleResponse,
+  handleVoidResponse,
+  getServices,
+} from "./helpers.js";
 
 export interface PluginInfo {
   id: string;
@@ -74,7 +80,7 @@ export interface StorePluginInfo {
 }
 
 export async function listPlugins(): Promise<PluginInfo[]> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     // No plugin loader in Tauri mode (deferred)
     return [];
   }
@@ -83,7 +89,7 @@ export async function listPlugins(): Promise<PluginInfo[]> {
 }
 
 export async function getPluginSettings(pluginId: string): Promise<Record<string, unknown>> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     return svc.settingsManager.getAll(pluginId);
   }
@@ -96,7 +102,7 @@ export async function updatePluginSetting(
   key: string,
   value: unknown,
 ): Promise<void> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     await svc.settingsManager.set(pluginId, key, value);
     svc.save();
@@ -112,7 +118,7 @@ export async function updatePluginSetting(
 }
 
 export async function listPluginCommands(): Promise<PluginCommandInfo[]> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     return svc.commandRegistry.getAll().map((c) => ({
       id: c.id,
@@ -125,7 +131,7 @@ export async function listPluginCommands(): Promise<PluginCommandInfo[]> {
 }
 
 export async function executePluginCommand(id: string): Promise<void> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     svc.commandRegistry.execute(id);
     return;
@@ -138,7 +144,7 @@ export async function executePluginCommand(id: string): Promise<void> {
 }
 
 export async function getStatusBarItems(): Promise<StatusBarItemInfo[]> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     return svc.uiRegistry.getStatusBarItems().map((item) => ({
       id: item.id,
@@ -151,7 +157,7 @@ export async function getStatusBarItems(): Promise<StatusBarItemInfo[]> {
 }
 
 export async function getPluginPanels(): Promise<PanelInfo[]> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     return svc.uiRegistry.getPanels().map((panel) => ({
       id: panel.id,
@@ -167,7 +173,7 @@ export async function getPluginPanels(): Promise<PanelInfo[]> {
 }
 
 export async function getPluginViews(): Promise<ViewInfo[]> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     return svc.uiRegistry.getViews().map((view) => ({
       id: view.id,
@@ -184,7 +190,7 @@ export async function getPluginViews(): Promise<ViewInfo[]> {
 }
 
 export async function getPluginViewContent(viewId: string): Promise<string> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     return svc.uiRegistry.getViewContent(viewId) ?? "";
   }
@@ -194,7 +200,7 @@ export async function getPluginViewContent(viewId: string): Promise<string> {
 }
 
 export async function getPluginPermissions(pluginId: string): Promise<string[] | null> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     return svc.storage.getPluginPermissions(pluginId);
   }
@@ -207,7 +213,7 @@ export async function approvePluginPermissions(
   pluginId: string,
   permissions: string[],
 ): Promise<void> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     // Not yet supported in Tauri mode
     return;
   }
@@ -221,7 +227,7 @@ export async function approvePluginPermissions(
 }
 
 export async function revokePluginPermissions(pluginId: string): Promise<void> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     // Not yet supported in Tauri mode
     return;
   }
@@ -233,7 +239,7 @@ export async function revokePluginPermissions(pluginId: string): Promise<void> {
 }
 
 export async function getPluginStore(): Promise<{ plugins: StorePluginInfo[] }> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     // Plugin store not available in Tauri mode (deferred)
     return { plugins: [] };
   }
@@ -242,7 +248,7 @@ export async function getPluginStore(): Promise<{ plugins: StorePluginInfo[] }> 
 }
 
 export async function installPlugin(pluginId: string, downloadUrl: string): Promise<void> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     throw new Error("Plugin install not available in desktop mode");
   }
   const res = await fetch(`${BASE}/plugins/install`, {
@@ -257,7 +263,7 @@ export async function installPlugin(pluginId: string, downloadUrl: string): Prom
 }
 
 export async function uninstallPlugin(pluginId: string): Promise<void> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     throw new Error("Plugin uninstall not available in desktop mode");
   }
   const res = await fetch(`${BASE}/plugins/${pluginId}/uninstall`, {
@@ -270,7 +276,7 @@ export async function uninstallPlugin(pluginId: string): Promise<void> {
 }
 
 export async function togglePlugin(pluginId: string): Promise<void> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     // Not yet supported in Tauri mode
     return;
   }

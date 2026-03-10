@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "identifier": "com.asf.saydo",
   "build": {
-    "beforeDevCommand": "pnpm dev",
+    "beforeDevCommand": "pnpm dev:full",
     "beforeBuildCommand": "pnpm build",
     "devUrl": "http://localhost:5173",
     "frontendDist": "../dist"
@@ -33,7 +33,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https:"
+      "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' http://localhost:4822 https:"
     }
   },
   "bundle": {

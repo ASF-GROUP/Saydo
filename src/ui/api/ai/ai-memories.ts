@@ -1,8 +1,14 @@
-import { isTauri, BASE, handleResponse, handleVoidResponse, getServices } from "../helpers.js";
+import {
+  useDirectServices,
+  BASE,
+  handleResponse,
+  handleVoidResponse,
+  getServices,
+} from "../helpers.js";
 import type { AiMemoryRow } from "@/storage/interface.js";
 
 export async function getAiMemories(): Promise<AiMemoryRow[]> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     return svc.storage.listAiMemories();
   }
@@ -15,7 +21,7 @@ export async function updateAiMemory(
   content: string,
   category: AiMemoryRow["category"],
 ): Promise<void> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     svc.storage.updateAiMemory(id, content, category);
     return;
@@ -30,7 +36,7 @@ export async function updateAiMemory(
 }
 
 export async function deleteAiMemory(id: string): Promise<void> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     svc.storage.deleteAiMemory(id);
     return;
@@ -43,7 +49,7 @@ export async function deleteAiMemory(id: string): Promise<void> {
 }
 
 export async function deleteAllAiMemories(): Promise<void> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     const memories = svc.storage.listAiMemories();
     for (const m of memories) {

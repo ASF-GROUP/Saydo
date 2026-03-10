@@ -1,8 +1,14 @@
-import { isTauri, BASE, handleResponse, handleVoidResponse, getServices } from "../helpers.js";
+import {
+  useDirectServices,
+  BASE,
+  handleResponse,
+  handleVoidResponse,
+  getServices,
+} from "../helpers.js";
 import type { AIChatMessage, ChatSessionInfo } from "./ai-types.js";
 
 export async function listChatSessions(): Promise<ChatSessionInfo[]> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     return svc.storage.listChatSessions();
   }
@@ -11,7 +17,7 @@ export async function listChatSessions(): Promise<ChatSessionInfo[]> {
 }
 
 export async function renameChatSession(sessionId: string, title: string): Promise<void> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     svc.storage.renameChatSession(sessionId, title);
     svc.save();
@@ -27,7 +33,7 @@ export async function renameChatSession(sessionId: string, title: string): Promi
 }
 
 export async function deleteChatSession(sessionId: string): Promise<void> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     svc.storage.deleteChatSession(sessionId);
     // Also remove the title override
@@ -43,7 +49,7 @@ export async function deleteChatSession(sessionId: string): Promise<void> {
 }
 
 export async function switchChatSession(sessionId: string): Promise<AIChatMessage[]> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     // Fire-and-forget memory extraction from current session
     const currentSession = svc.chatManager.getSession();
@@ -118,7 +124,7 @@ export async function switchChatSession(sessionId: string): Promise<AIChatMessag
 }
 
 export async function createNewChatSession(): Promise<string> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     // Fire-and-forget memory extraction from current session
     const currentSession = svc.chatManager.getSession();

@@ -1,8 +1,14 @@
 import type { Section } from "../../core/types.js";
-import { isTauri, BASE, handleResponse, handleVoidResponse, getServices } from "./helpers.js";
+import {
+  useDirectServices,
+  BASE,
+  handleResponse,
+  handleVoidResponse,
+  getServices,
+} from "./helpers.js";
 
 export async function listSections(projectId: string): Promise<Section[]> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     return svc.sectionService.list(projectId);
   }
@@ -11,7 +17,7 @@ export async function listSections(projectId: string): Promise<Section[]> {
 }
 
 export async function createSection(projectId: string, name: string): Promise<Section> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     const section = await svc.sectionService.create({ projectId, name });
     svc.save();
@@ -29,7 +35,7 @@ export async function updateSection(
   id: string,
   data: { name?: string; isCollapsed?: boolean },
 ): Promise<void> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     await svc.sectionService.update(id, data);
     svc.save();
@@ -45,7 +51,7 @@ export async function updateSection(
 }
 
 export async function deleteSection(id: string): Promise<void> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     await svc.sectionService.delete(id);
     svc.save();
@@ -55,7 +61,7 @@ export async function deleteSection(id: string): Promise<void> {
 }
 
 export async function reorderSections(orderedIds: string[]): Promise<void> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     await svc.sectionService.reorder(orderedIds);
     svc.save();

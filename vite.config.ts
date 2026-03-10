@@ -2218,11 +2218,16 @@ function apiPlugin() {
   };
 }
 
+// When VITE_USE_BACKEND=true (e.g. `pnpm dev:full`), the standalone Hono API
+// server is running separately on port 4822. In that mode we skip the inline
+// apiPlugin and proxy /api requests to it instead.
+const useBackend = process.env.VITE_USE_BACKEND === "true";
+
 export default defineConfig(({ command }) => ({
   plugins: [
     tailwindcss(),
     react(),
-    ...(command === "serve" ? [apiPlugin()] : []),
+    ...(command === "serve" && !useBackend ? [apiPlugin()] : []),
     viteStaticCopy({
       targets: [
         {
@@ -2236,6 +2241,16 @@ export default defineConfig(({ command }) => ({
       ],
     }),
   ],
+  server: useBackend
+    ? {
+        proxy: {
+          "/api": {
+            target: "http://localhost:4822",
+            changeOrigin: true,
+          },
+        },
+      }
+    : undefined,
   resolve: {
     alias: {
       "@": "/src",

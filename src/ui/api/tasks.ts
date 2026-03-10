@@ -1,14 +1,20 @@
 import type { Task, CreateTaskInput, UpdateTaskInput } from "../../core/types.js";
 import type { TaskFilter } from "../../core/filters.js";
 import type { ImportedTask, ImportResult } from "../../core/import.js";
-import { isTauri, BASE, handleResponse, handleVoidResponse, getServices } from "./helpers.js";
+import {
+  useDirectServices,
+  BASE,
+  handleResponse,
+  handleVoidResponse,
+  getServices,
+} from "./helpers.js";
 
 export async function listTasks(params?: {
   search?: string;
   projectId?: string;
   status?: string;
 }): Promise<Task[]> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     return svc.taskService.list(
       params && Object.keys(params).length > 0 ? (params as TaskFilter) : undefined,
@@ -23,7 +29,7 @@ export async function listTasks(params?: {
 }
 
 export async function createTask(input: CreateTaskInput): Promise<Task> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     const task = await svc.taskService.create(input);
     svc.save();
@@ -38,7 +44,7 @@ export async function createTask(input: CreateTaskInput): Promise<Task> {
 }
 
 export async function completeTask(id: string): Promise<Task> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     const task = await svc.taskService.complete(id);
     svc.save();
@@ -51,7 +57,7 @@ export async function completeTask(id: string): Promise<Task> {
 }
 
 export async function updateTask(id: string, input: UpdateTaskInput): Promise<Task> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     const task = await svc.taskService.update(id, input);
     svc.save();
@@ -66,7 +72,7 @@ export async function updateTask(id: string, input: UpdateTaskInput): Promise<Ta
 }
 
 export async function deleteTask(id: string): Promise<void> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     await svc.taskService.delete(id);
     svc.save();
@@ -76,7 +82,7 @@ export async function deleteTask(id: string): Promise<void> {
 }
 
 export async function completeManyTasks(ids: string[]): Promise<Task[]> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     const tasks = await svc.taskService.completeMany(ids);
     svc.save();
@@ -91,7 +97,7 @@ export async function completeManyTasks(ids: string[]): Promise<Task[]> {
 }
 
 export async function deleteManyTasks(ids: string[]): Promise<void> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     await svc.taskService.deleteMany(ids);
     svc.save();
@@ -107,7 +113,7 @@ export async function deleteManyTasks(ids: string[]): Promise<void> {
 }
 
 export async function updateManyTasks(ids: string[], changes: UpdateTaskInput): Promise<Task[]> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     const tasks = await svc.taskService.updateMany(ids, changes);
     svc.save();
@@ -122,7 +128,7 @@ export async function updateManyTasks(ids: string[], changes: UpdateTaskInput): 
 }
 
 export async function fetchDueReminders(): Promise<Task[]> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     return svc.taskService.getDueReminders();
   }
@@ -131,7 +137,7 @@ export async function fetchDueReminders(): Promise<Task[]> {
 }
 
 export async function listTaskTree(): Promise<Task[]> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     return svc.taskService.listTree();
   }
@@ -140,7 +146,7 @@ export async function listTaskTree(): Promise<Task[]> {
 }
 
 export async function getChildren(parentId: string): Promise<Task[]> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     return svc.taskService.getChildren(parentId);
   }
@@ -149,7 +155,7 @@ export async function getChildren(parentId: string): Promise<Task[]> {
 }
 
 export async function indentTask(id: string): Promise<Task> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     const task = await svc.taskService.indent(id);
     svc.save();
@@ -160,7 +166,7 @@ export async function indentTask(id: string): Promise<Task> {
 }
 
 export async function outdentTask(id: string): Promise<Task> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     const task = await svc.taskService.outdent(id);
     svc.save();
@@ -171,7 +177,7 @@ export async function outdentTask(id: string): Promise<Task> {
 }
 
 export async function reorderTasks(orderedIds: string[]): Promise<void> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     await svc.taskService.reorder(orderedIds);
     svc.save();
@@ -187,7 +193,7 @@ export async function reorderTasks(orderedIds: string[]): Promise<void> {
 }
 
 export async function importTasks(tasks: ImportedTask[]): Promise<ImportResult> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     const errors: string[] = [];
     let imported = 0;
@@ -238,7 +244,7 @@ export async function importTasks(tasks: ImportedTask[]): Promise<ImportResult> 
 export async function listTaskRelations(): Promise<
   Array<{ taskId: string; relatedTaskId: string; type: "blocks" }>
 > {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     return svc.taskService.listAllRelations() as any;
   }
@@ -249,7 +255,7 @@ export async function listTaskRelations(): Promise<
 export async function getTaskRelations(
   taskId: string,
 ): Promise<{ blocks: Task[]; blockedBy: Task[] }> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     const { blocks, blockedBy } = await svc.taskService.getRelations(taskId);
     const blocksTasks: Task[] = [];
@@ -273,7 +279,7 @@ export async function addTaskRelation(
   relatedTaskId: string,
   type: "blocks" = "blocks",
 ): Promise<void> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     await svc.taskService.addRelation(taskId, relatedTaskId, type);
     svc.save();
@@ -289,7 +295,7 @@ export async function addTaskRelation(
 }
 
 export async function removeTaskRelation(taskId: string, relatedTaskId: string): Promise<void> {
-  if (isTauri()) {
+  if (useDirectServices()) {
     const svc = await getServices();
     await svc.taskService.removeRelation(taskId, relatedTaskId);
     svc.save();
