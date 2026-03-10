@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import type { Task, UpdateTaskInput } from "../../../core/types.js";
 import { DreadLevelSelector } from "../DreadLevelSelector.js";
+import { useGeneralSettings } from "../../context/SettingsContext.js";
 import { PRIORITIES } from "./metadata-constants.js";
 
 interface PriorityDreadSectionProps {
@@ -9,6 +10,9 @@ interface PriorityDreadSectionProps {
 }
 
 export function PriorityDreadSection({ task, onUpdate }: PriorityDreadSectionProps) {
+  const { settings } = useGeneralSettings();
+  const showDreadLevel = settings.eat_the_frog_enabled !== "false";
+
   const handlePriorityClick = (priority: number) => {
     const newPriority = task.priority === priority ? null : priority;
     onUpdate(task.id, { priority: newPriority });
@@ -46,14 +50,16 @@ export function PriorityDreadSection({ task, onUpdate }: PriorityDreadSectionPro
       </div>
 
       {/* Dread Level */}
-      <div>
-        <label className="text-xs font-medium text-on-surface-muted uppercase tracking-wider">
-          Dread Level
-        </label>
-        <div className="mt-1.5">
-          <DreadLevelSelector value={task.dreadLevel} onChange={handleDreadLevelChange} />
+      {showDreadLevel && (
+        <div>
+          <label className="text-xs font-medium text-on-surface-muted uppercase tracking-wider">
+            Dread Level
+          </label>
+          <div className="mt-1.5">
+            <DreadLevelSelector value={task.dreadLevel} onChange={handleDreadLevelChange} />
+          </div>
         </div>
-      </div>
+      )}
     </>
   );
 }

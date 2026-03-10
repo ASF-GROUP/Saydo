@@ -3,6 +3,7 @@ import type { Task } from "../../../core/types.js";
 import { FrogIcon, getDreadLevelColor } from "../DreadLevelSelector.js";
 import { formatRecurrenceLabel } from "../RecurrencePicker.js";
 import { hexToRgba } from "../../../utils/color.js";
+import { useGeneralSettings } from "../../context/SettingsContext.js";
 
 interface TaskItemContentProps {
   task: Task;
@@ -25,6 +26,8 @@ export function TaskItemContent({
   completedChildCount,
   expanded,
 }: TaskItemContentProps) {
+  const { settings } = useGeneralSettings();
+  const showDreadLevel = settings.eat_the_frog_enabled !== "false";
   const hasMetadataLine =
     task.tags.length > 0 || task.dueDate || task.recurrence || task.remindAt || hasDuration;
 
@@ -49,7 +52,7 @@ export function TaskItemContent({
         )}
 
         {/* Dread level indicator */}
-        {task.dreadLevel != null && task.dreadLevel > 0 && task.status !== "completed" && (
+        {showDreadLevel && task.dreadLevel != null && task.dreadLevel > 0 && task.status !== "completed" && (
           <span className="flex-shrink-0" title={`Dread level: ${task.dreadLevel}/5`}>
             <FrogIcon size={14} color={getDreadLevelColor(task.dreadLevel).fill} />
           </span>

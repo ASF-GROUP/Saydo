@@ -91,23 +91,11 @@ export function Sidebar({
 
   const visibleNavItems = useMemo(() => {
     const hidden = new Set<string>();
-    if (settings.feature_cancelled === "false") hidden.add("cancelled");
-    if (settings.feature_stats === "false") hidden.add("stats");
-    if (settings.feature_someday === "false") hidden.add("someday");
-    if (settings.feature_matrix === "false") hidden.add("matrix");
-    if (settings.feature_calendar === "false") hidden.add("calendar");
-    if (settings.feature_filters_labels === "false") hidden.add("filters-labels");
-    if (settings.feature_completed === "false") hidden.add("completed");
+    for (const [viewId, settingKey] of Object.entries(NAV_FEATURE_MAP)) {
+      if (settings[settingKey] === "false") hidden.add(viewId);
+    }
     return NAV_ITEMS.filter((item) => !hidden.has(item.id));
-  }, [
-    settings.feature_cancelled,
-    settings.feature_stats,
-    settings.feature_someday,
-    settings.feature_matrix,
-    settings.feature_calendar,
-    settings.feature_filters_labels,
-    settings.feature_completed,
-  ]);
+  }, [settings]);
 
   const favoriteViewIds = useMemo(() => {
     const str = settings.sidebar_favorite_views;

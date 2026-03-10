@@ -1,5 +1,6 @@
 import { CompletionRing } from "../../components/CompletionRing.js";
 import { TaskJar } from "../../components/TaskJar.js";
+import { useGeneralSettings } from "../../context/SettingsContext.js";
 import type { Task } from "../../../core/types.js";
 
 interface TodayHeaderProps {
@@ -23,6 +24,10 @@ export function TodayHeader({
   onEndOfDay,
   onWeeklyReview,
 }: TodayHeaderProps) {
+  const { settings } = useGeneralSettings();
+  const showTaskJar = settings.eat_the_frog_enabled !== "false";
+  const showWeeklyReview = settings.feature_stats !== "false";
+
   return (
     <div className="flex items-center justify-between mb-4 md:mb-6">
       <div className="flex items-center gap-3">
@@ -39,15 +44,17 @@ export function TodayHeader({
         >
           End of Day
         </button>
-        <button
-          onClick={onWeeklyReview}
-          className="px-3 py-1 text-xs font-medium rounded-full bg-surface-tertiary text-on-surface-muted hover:bg-surface-tertiary/80 transition-colors"
-        >
-          Weekly Review
-        </button>
+        {showWeeklyReview && (
+          <button
+            onClick={onWeeklyReview}
+            className="px-3 py-1 text-xs font-medium rounded-full bg-surface-tertiary text-on-surface-muted hover:bg-surface-tertiary/80 transition-colors"
+          >
+            Weekly Review
+          </button>
+        )}
       </div>
       <div className="flex items-center gap-3">
-        <TaskJar tasks={tasks} onSelectTask={onSelectTask} />
+        {showTaskJar && <TaskJar tasks={tasks} onSelectTask={onSelectTask} />}
         <span className="text-sm text-on-surface-muted">
           {totalCount} {totalCount === 1 ? "task" : "tasks"}
         </span>

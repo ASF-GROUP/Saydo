@@ -301,7 +301,7 @@ export function ViewRenderer({
           />
         );
       case "dopamine-menu":
-        return (
+        return featureSettings.feature_dopamine_menu !== "false" ? (
           <DopamineMenu
             tasks={tasks}
             onToggleTask={handleToggleTask}
@@ -314,7 +314,7 @@ export function ViewRenderer({
             onUpdateDueDate={handleUpdateDueDate}
             onContextMenu={handleContextMenu}
           />
-        );
+        ) : null;
       default:
         return null;
     }
