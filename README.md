@@ -73,11 +73,11 @@ Built by the [AI Strategic Forum (ASF)](https://github.com/ASF-GROUP) community.
 
 | Platform | Download |
 |----------|----------|
-| **Windows** | [`.msi` installer](https://github.com/ASF-GROUP/Saydo/releases/latest/download/ASF.Saydo_1.0.0_x64-setup.msi) |
+| **Windows** | [`.exe` installer](https://github.com/ASF-GROUP/Saydo/releases/latest/download/ASF.Saydo_1.0.0_x64-setup.exe) · [`.msi`](https://github.com/ASF-GROUP/Saydo/releases/latest/download/ASF.Saydo_1.0.0_x64_en-US.msi) |
 | **macOS (Apple Silicon)** | [`.dmg`](https://github.com/ASF-GROUP/Saydo/releases/latest/download/ASF.Saydo_1.0.0_aarch64.dmg) |
 | **macOS (Intel)** | [`.dmg`](https://github.com/ASF-GROUP/Saydo/releases/latest/download/ASF.Saydo_1.0.0_x64.dmg) |
-| **Linux (Debian/Ubuntu)** | [`.deb`](https://github.com/ASF-GROUP/Saydo/releases/latest/download/asf-saydo_1.0.0_amd64.deb) |
-| **Linux (AppImage)** | [`.AppImage`](https://github.com/ASF-GROUP/Saydo/releases/latest/download/asf-saydo_1.0.0_amd64.AppImage) |
+| **Linux (Debian/Ubuntu)** | [`.deb`](https://github.com/ASF-GROUP/Saydo/releases/latest/download/ASF.Saydo_1.0.0_amd64.deb) |
+| **Linux (AppImage)** | [`.AppImage`](https://github.com/ASF-GROUP/Saydo/releases/latest/download/ASF.Saydo_1.0.0_amd64.AppImage) |
 
 Or browse all releases: [**GitHub Releases**](https://github.com/ASF-GROUP/Saydo/releases)
 
